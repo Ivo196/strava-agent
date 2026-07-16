@@ -1,7 +1,9 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { ArrowUp, LockKeyhole, Sparkles } from "lucide-react";
+import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { ArrowUp, BrainCircuit, LockKeyhole, RotateCcw, ShieldCheck, Sparkles } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { API_URL } from "@/lib/api";
 import { localIsoDate } from "@/lib/local-clock";
 
@@ -17,25 +19,38 @@ type CoachSessionProps = {
   weightKg: number | null;
 };
 
-const quickPrompts = ["Analiza mi semana", "¿Qué corro mañana?", "¿Qué debo mejorar?"];
+const quickPrompts = [
+  "Analiza mi semana",
+  "¿Qué debo mejorar?",
+  "¿Cómo corro la próxima sesión?",
+  "Evalúa mi objetivo de 4:55/km",
+];
+
+function welcomeMessage(weightKg: number | null): Message {
+  return {
+    role: "assistant",
+    content: `### Listo para entrenarte
+
+Ya tengo tu **plan fijo**, tus carreras recientes y tu perfil${weightKg ? ` de **${weightKg} kg**` : ""}. Puedo revisar tu carga, ritmo, pulso, recuperación y rodilla para decirte qué va bien y qué conviene mejorar.`,
+  };
+}
 
 export function CoachSession(props: CoachSessionProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: `Tengo tu plan, tus carreras recientes y tu perfil de ${props.weightKg ?? "peso no informado"}${props.weightKg ? " kg" : ""}. ¿Qué quieres revisar?`,
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([welcomeMessage(props.weightKg)]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [busy, messages]);
 
   async function sendMessage(text: string) {
     const clean = text.trim();
     if (!clean || busy || !props.configured) return;
     const prior = messages.slice(-10);
-    const userMessage: Message = { role: "user", content: clean };
-    setMessages((current) => [...current, userMessage]);
+    setMessages((current) => [...current, { role: "user", content: clean }]);
     setDraft("");
     setError("");
     setBusy(true);
@@ -43,11 +58,7 @@ export function CoachSession(props: CoachSessionProps) {
       const response = await fetch(`${API_URL}/api/coach/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: clean,
-          history: prior,
-          local_date: localIsoDate(),
-        }),
+        body: JSON.stringify({ message: clean, history: prior, local_date: localIsoDate() }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.detail ?? "El Coach AI no pudo responder.");
@@ -64,15 +75,31 @@ export function CoachSession(props: CoachSessionProps) {
     void sendMessage(draft);
   }
 
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void sendMessage(draft);
+    }
+  }
+
+  function resetConversation() {
+    setMessages([welcomeMessage(props.weightKg)]);
+    setDraft("");
+    setError("");
+  }
+
   return (
-    <div className="coach-layout">
-      <section className="coach-main panel">
-        <div className="coach-context" aria-label="Contexto del entrenador">
-          <div><span>Esta semana</span><strong>{props.weekKm} km</strong></div>
-          <div><span>Media 28 días</span><strong>{props.averageKm} km</strong></div>
-          <div><span>Tirada larga</span><strong>{props.longestKm} km</strong></div>
-          <div><span>Peso</span><strong>{props.weightKg ?? "—"} kg</strong></div>
-        </div>
+    <div className="coach-workspace">
+      <section className="coach-chat panel">
+        <header className="coach-toolbar">
+          <div className="coach-identity">
+            <span className="coach-avatar"><BrainCircuit size={19} /></span>
+            <span><strong>Entrenador AI</strong><small><i /> Conectado a tus datos</small></span>
+          </div>
+          <button className="new-chat-button" type="button" onClick={resetConversation} disabled={busy}>
+            <RotateCcw size={14} /> Nueva conversación
+          </button>
+        </header>
 
         {!props.configured ? (
           <div className="ai-setup">
@@ -85,33 +112,62 @@ export function CoachSession(props: CoachSessionProps) {
           </div>
         ) : (
           <>
-            <div className="chat-messages" aria-live="polite">
+            <div className="chat-thread" aria-live="polite">
               {messages.map((message, index) => (
-                <div className={`chat-message ${message.role}`} key={`${message.role}-${index}`}>
-                  {message.role === "assistant" && <Sparkles size={15} />}
-                  <p>{message.content}</p>
-                </div>
+                <article className={`chat-turn ${message.role}`} key={`${message.role}-${index}`}>
+                  <div className="turn-avatar" aria-hidden="true">{message.role === "assistant" ? <Sparkles size={15} /> : "I"}</div>
+                  <div className="turn-body">
+                    <span className="turn-author">{message.role === "assistant" ? "Coach" : "Tú"}</span>
+                    {message.role === "assistant" ? (
+                      <div className="coach-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown></div>
+                    ) : <p>{message.content}</p>}
+                  </div>
+                </article>
               ))}
-              {busy && <div className="chat-message assistant thinking"><Sparkles size={15} /><p>Revisando carga, plan y recuperación…</p></div>}
+              {busy && (
+                <article className="chat-turn assistant">
+                  <div className="turn-avatar"><Sparkles size={15} /></div>
+                  <div className="turn-body"><span className="turn-author">Coach</span><div className="typing-indicator" aria-label="Analizando"><i /><i /><i /></div></div>
+                </article>
+              )}
+              <div ref={endRef} />
             </div>
-            <div className="quick-prompts">
-              {quickPrompts.map((prompt) => <button disabled={busy} key={prompt} onClick={() => void sendMessage(prompt)}>{prompt}</button>)}
+
+            {messages.length === 1 && (
+              <div className="prompt-grid" aria-label="Preguntas sugeridas">
+                {quickPrompts.map((prompt) => <button type="button" disabled={busy} key={prompt} onClick={() => void sendMessage(prompt)}>{prompt}<ArrowUp size={13} /></button>)}
+              </div>
+            )}
+
+            <div className="composer-wrap">
+              {error && <p className="chat-error">{error}</p>}
+              <form className="coach-composer" onSubmit={submit}>
+                <textarea rows={2} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={handleKeyDown} maxLength={2000} placeholder="Pregunta por tu semana, recuperación o próxima carrera…" aria-label="Mensaje para el Coach AI" />
+                <button disabled={busy || !draft.trim()} aria-label="Enviar mensaje"><ArrowUp size={18} /></button>
+              </form>
+              <small className="composer-hint">Enter para enviar · Shift + Enter para una nueva línea</small>
             </div>
-            <form className="coach-composer" onSubmit={submit}>
-              <textarea value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} placeholder="Pregúntale por tu semana, ritmo o próxima sesión…" aria-label="Mensaje para el Coach AI" />
-              <button disabled={busy || !draft.trim()} aria-label="Enviar"><ArrowUp size={18} /></button>
-            </form>
-            {error && <p className="form-message error">{error}</p>}
           </>
         )}
       </section>
 
-      <aside className="coach-side panel">
-        <span className="eyebrow">Cómo trabaja</span>
-        <h2>Consejo con contexto real.</h2>
-        <p>Lee volumen, ritmos, pulso, perfil y próximas sesiones. Tiene en cuenta tu rodilla y evita saltos bruscos de carga.</p>
-        <div className="privacy-note"><LockKeyhole size={16} /><span>{props.privacy}</span></div>
-        <p className="plan-note">El Coach analiza tu ejecución y tu estado. El calendario está bloqueado y solo cambia si tú lo pides expresamente.</p>
+      <aside className="coach-data-rail">
+        <section className="coach-rail-section">
+          <span className="eyebrow">Contexto activo</span>
+          <h2>Lo que estoy viendo.</h2>
+          <div className="coach-metrics">
+            <div><span>Esta semana</span><strong>{props.weekKm}<small> km</small></strong></div>
+            <div><span>Media 28 días</span><strong>{props.averageKm}<small> km</small></strong></div>
+            <div><span>Tirada más larga</span><strong>{props.longestKm}<small> km</small></strong></div>
+          </div>
+        </section>
+        <section className="coach-rail-section coach-guardrail">
+          <ShieldCheck size={18} />
+          <div><strong>Plan protegido</strong><p>Analizo tu ejecución y tu estado, pero nunca modifico el calendario sin tu permiso.</p></div>
+        </section>
+        <section className="coach-rail-section coach-privacy">
+          <LockKeyhole size={15} /><p>{props.privacy}</p>
+        </section>
       </aside>
     </div>
   );

@@ -364,6 +364,7 @@ def coach_chat(payload: CoachChatInput) -> dict[str, str]:
         recent_activities=recent_activities,
         plan_weeks=[_serialize_week(week) for week in plan[:3]],
         days_to_race=max((RACE_DATE - today).days, 0),
+        current_date=today.isoformat(),
     )
     try:
         answer = ask_coach(
