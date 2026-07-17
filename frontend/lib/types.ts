@@ -49,9 +49,27 @@ export type ActivityDetail = {
     calories: number | null;
   };
   streams_available: boolean;
+  running_dynamics_available: boolean;
+  running_dynamics: RunningDynamicsPoint[];
+  running_dynamics_summary: Partial<Omit<RunningDynamicsPoint, "elapsed_min">>;
   series: ActivitySeriesPoint[];
   splits: ActivitySplit[];
 };
+
+export type RunningDynamicsPoint = {
+  elapsed_min: number;
+  power_w?: number;
+  speed_kmh?: number;
+  ground_contact_ms?: number;
+  stride_m?: number;
+  vertical_oscillation_cm?: number;
+};
+
+export type RecoveryMetric = {
+  value: number;
+  unit: string;
+  date: string;
+} | null;
 
 export type TrainingWeek = {
   number: number;
@@ -89,6 +107,13 @@ export type DashboardData = {
     hr_coverage: number;
   };
   readiness: { status: string; notes: string[] };
+  recovery: {
+    hrv: RecoveryMetric;
+    resting_hr: RecoveryMetric;
+    vo2_max: RecoveryMetric;
+    sleep: RecoveryMetric;
+    weight: RecoveryMetric;
+  };
   weeks: { week: string; distance_km: number; training_load: number; runs: number }[];
   recent_activities: Activity[];
   next_week: TrainingWeek | null;

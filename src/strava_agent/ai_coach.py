@@ -33,6 +33,7 @@ def build_coach_context(
     plan_weeks: list[dict[str, Any]],
     days_to_race: int,
     current_date: str | None = None,
+    recovery: dict[str, Any] | None = None,
 ) -> str:
     weight = profile.get("weight_kg")
     lines = [
@@ -51,13 +52,38 @@ def build_coach_context(
         f"Carga últimos 7 días: {float(metrics.get('load_7d', 0)):.1f}; semana anterior: {float(metrics.get('load_previous_7d', 0)):.1f}",
         f"Cobertura de frecuencia cardíaca: {float(metrics.get('hr_coverage', 0)):.0f}%",
         "",
-        "ÚLTIMAS CARRERAS (sin rutas GPS)",
+        "RECUPERACIÓN DE APPLE HEALTH",
     ]
+    recovery = recovery or {}
+    for label, key in (
+        ("HRV media 7 días", "hrv"),
+        ("FC en reposo media 7 días", "resting_hr"),
+        ("VO2 máx.", "vo2_max"),
+        ("Sueño más reciente", "sleep"),
+        ("Peso más reciente", "weight"),
+    ):
+        item = recovery.get(key)
+        if item:
+            lines.append(f"- {label}: {item['value']} {item['unit']} ({item['date']})")
+        else:
+            lines.append(f"- {label}: sin dato")
+
+    lines.extend(["", "ÚLTIMAS CARRERAS (sin rutas GPS)"])
     for activity in recent_activities[:8]:
+        dynamics = activity.get("running_dynamics") or {}
+        dynamics_text = ""
+        if dynamics:
+            dynamics_text = (
+                f", potencia {dynamics.get('power_w', 'sin dato')} W, "
+                f"contacto {dynamics.get('ground_contact_ms', 'sin dato')} ms, "
+                f"zancada {dynamics.get('stride_m', 'sin dato')} m, "
+                f"oscilación {dynamics.get('vertical_oscillation_cm', 'sin dato')} cm"
+            )
         lines.append(
             f"- {activity.get('date')}: {float(activity.get('distance_km', 0)):.1f} km, "
             f"ritmo {activity.get('pace') or 'sin dato'}, FC media {activity.get('average_heartrate') or 'sin dato'}, "
             f"desnivel {activity.get('elevation_gain_m', 'sin dato')} m, carga {activity.get('training_load', 'sin dato')}"
+            f"{dynamics_text}"
         )
     if not recent_activities:
         lines.append("- Sin carreras registradas")

@@ -5,7 +5,7 @@ import json
 import math
 import secrets
 from dataclasses import asdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
@@ -168,6 +168,7 @@ def dashboard() -> dict[str, Any]:
         "profile": profile,
         "metrics": {key: round(float(value), 1) for key, value in metrics.items()},
         "readiness": {"status": status, "notes": notes},
+        "recovery": _recovery_snapshot(),
         "weeks": [
             {
                 "week": row.week.isoformat(),
@@ -213,6 +214,7 @@ def activity_detail(activity_id: int) -> dict[str, Any]:
     moving_time = int(activity["moving_time_s"])
     streams = json.loads(activity["streams_json"]) if activity.get("streams_json") else None
     detail = _activity_series(streams) if streams else {"series": [], "splits": []}
+    dynamics = _running_dynamics(activity)
     return {
         "activity": {
             "id": int(activity["id"]),
@@ -228,8 +230,129 @@ def activity_detail(activity_id: int) -> dict[str, Any]:
             "calories": _rounded_or_none(activity["calories"]),
         },
         "streams_available": bool(detail["series"]),
+        **dynamics,
         **detail,
     }
+
+
+RUNNING_DYNAMICS = {
+    "running_power": "power_w",
+    "running_speed": "speed_kmh",
+    "running_ground_contact_time": "ground_contact_ms",
+    "running_stride_length": "stride_m",
+    "running_vertical_oscillation": "vertical_oscillation_cm",
+}
+
+
+def _running_dynamics(activity: dict[str, Any]) -> dict[str, Any]:
+    start = _parse_health_datetime(activity.get("start_date"))
+    if start is None:
+        return {
+            "running_dynamics_available": False,
+            "running_dynamics": [],
+            "running_dynamics_summary": {},
+        }
+    duration = int(activity.get("elapsed_time_s") or activity.get("moving_time_s") or 0)
+    end = start + timedelta(seconds=duration + 180)
+    rows = database.list_apple_health_metrics(list(RUNNING_DYNAMICS))
+    points: dict[int, dict[str, Any]] = {}
+    values: dict[str, list[float]] = {target: [] for target in RUNNING_DYNAMICS.values()}
+    for row in rows:
+        recorded = _parse_health_datetime(row["recorded_at"])
+        if recorded is None or recorded < start or recorded > end:
+            continue
+        measurement = json.loads(row["value_json"])
+        value = measurement.get("qty", measurement.get("Avg"))
+        if value is None:
+            continue
+        target = RUNNING_DYNAMICS[row["metric_name"]]
+        elapsed_min = max(0, round((recorded - start).total_seconds() / 60, 2))
+        minute_key = round(elapsed_min)
+        point = points.setdefault(minute_key, {"elapsed_min": elapsed_min})
+        point[target] = round(float(value), 2)
+        values[target].append(float(value))
+
+    series = [points[key] for key in sorted(points)]
+    summary = {
+        key: round(sum(items) / len(items), 1 if key not in {"stride_m"} else 2)
+        for key, items in values.items()
+        if items
+    }
+    return {
+        "running_dynamics_available": bool(series),
+        "running_dynamics": series,
+        "running_dynamics_summary": summary,
+    }
+
+
+def _recovery_snapshot() -> dict[str, Any]:
+    names = [
+        "heart_rate_variability",
+        "resting_heart_rate",
+        "vo2_max",
+        "sleep_analysis",
+        "weight_&_body_mass",
+    ]
+    rows = database.list_apple_health_metrics(names)
+    cutoff = datetime.now().astimezone() - timedelta(days=7)
+    grouped: dict[str, list[tuple[datetime, float, str]]] = {name: [] for name in names}
+    sleep_latest: dict[str, Any] | None = None
+    for row in rows:
+        recorded = _parse_health_datetime(row["recorded_at"])
+        if recorded is None:
+            continue
+        measurement = json.loads(row["value_json"])
+        if row["metric_name"] == "sleep_analysis":
+            if sleep_latest is None or recorded > sleep_latest["date"]:
+                total = sum(float(measurement.get(key) or 0) for key in ("core", "rem", "deep"))
+                sleep_latest = {"date": recorded, "value": total, "unit": "h"}
+            continue
+        value = measurement.get("qty", measurement.get("Avg"))
+        if value is not None:
+            grouped[row["metric_name"]].append((recorded, float(value), row["units"]))
+
+    def metric(name: str, *, average_7d: bool = False) -> dict[str, Any] | None:
+        samples = grouped[name]
+        if not samples:
+            return None
+        recent = [sample for sample in samples if sample[0] >= cutoff]
+        selected = recent or samples
+        if average_7d and recent:
+            value = sum(sample[1] for sample in recent) / len(recent)
+            recorded = max(sample[0] for sample in recent)
+            unit = recent[-1][2]
+        else:
+            recorded, value, unit = max(selected, key=lambda sample: sample[0])
+        return {
+            "value": round(value, 1),
+            "unit": "bpm" if unit == "count/min" else unit,
+            "date": recorded.date().isoformat(),
+        }
+
+    sleep = None
+    if sleep_latest:
+        sleep = {
+            "value": round(float(sleep_latest["value"]), 1),
+            "unit": "h",
+            "date": sleep_latest["date"].date().isoformat(),
+        }
+    return {
+        "hrv": metric("heart_rate_variability", average_7d=True),
+        "resting_hr": metric("resting_heart_rate", average_7d=True),
+        "vo2_max": metric("vo2_max"),
+        "sleep": sleep,
+        "weight": metric("weight_&_body_mass"),
+    }
+
+
+def _parse_health_datetime(value: Any) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def _activity_series(streams: dict[str, Any]) -> dict[str, Any]:
@@ -392,12 +515,17 @@ def coach_chat(payload: CoachChatInput) -> dict[str, str]:
     recent = frame.sort_values("start_date", ascending=False).head(8)
     recent_activities = [
         {
+            "id": int(row.id),
             "date": row.start_date.date().isoformat(),
             "distance_km": round(float(row.distance_km), 2),
             "pace": format_pace(float(row.pace_min_km)),
             "average_heartrate": None if _is_nan(row.average_heartrate) else round(float(row.average_heartrate)),
             "elevation_gain_m": round(float(row.elevation_gain_m)),
             "training_load": round(float(row.training_load)),
+            "running_dynamics": _running_dynamics(database.get_activity(int(row.id)) or {}).get(
+                "running_dynamics_summary",
+                {},
+            ),
         }
         for row in recent.itertuples()
     ]
@@ -408,6 +536,7 @@ def coach_chat(payload: CoachChatInput) -> dict[str, str]:
         plan_weeks=[_serialize_week(week) for week in plan[:3]],
         days_to_race=max((RACE_DATE - today).days, 0),
         current_date=today.isoformat(),
+        recovery=_recovery_snapshot(),
     )
     try:
         answer = ask_coach(

@@ -25,6 +25,10 @@ def test_coach_context_uses_training_data_without_routes() -> None:
             }
         ],
         days_to_race=87,
+        recovery={
+            "hrv": {"value": 84.5, "unit": "ms", "date": "2026-07-17"},
+            "resting_hr": {"value": 55.8, "unit": "bpm", "date": "2026-07-17"},
+        },
     )
 
     assert "Peso: 78 kg" in context
@@ -32,6 +36,7 @@ def test_coach_context_uses_training_data_without_routes() -> None:
     assert "Rodilla al empezar rápido" in context
     assert "GPS" in context
     assert "latitud" not in context.lower()
+    assert "HRV media 7 días: 84.5 ms" in context
 
 
 def test_extracts_text_from_responses_api_payload() -> None:

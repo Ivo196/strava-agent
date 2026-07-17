@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActivityDetailCharts } from "@/components/activity-detail-charts";
+import { RunningDynamicsCharts } from "@/components/running-dynamics-charts";
 import { getActivityDetail } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +35,9 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
       {data.streams_available ? (
         <>
           <ActivityDetailCharts data={data.series} />
+          {data.running_dynamics_available && (
+            <RunningDynamicsCharts data={data.running_dynamics} summary={data.running_dynamics_summary} />
+          )}
           <section className="splits-section">
             <div className="section-heading"><div><span className="eyebrow">Parciales</span><h2>Kilómetro por kilómetro.</h2></div></div>
             <div className="table-scroll">

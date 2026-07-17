@@ -429,3 +429,17 @@ class Database:
             "workout_count": int(workout_count["count"]),
             "metric_count": int(metric_count["count"]),
         }
+
+    def list_apple_health_metrics(self, metric_names: list[str]) -> list[dict[str, Any]]:
+        if not metric_names:
+            return []
+        placeholders = ",".join("?" for _ in metric_names)
+        with self.connect() as connection:
+            rows = connection.execute(
+                f"""SELECT metric_name, recorded_at, source, units, value_json
+                    FROM apple_health_metrics
+                    WHERE metric_name IN ({placeholders})
+                    ORDER BY recorded_at""",
+                metric_names,
+            ).fetchall()
+        return [dict(row) for row in rows]
