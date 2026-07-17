@@ -11,5 +11,8 @@ def test_dashboard_and_coach_status_are_available() -> None:
 
     assert dashboard.status_code == 200
     assert dashboard.json()["profile"]["running_days"] == 3
+    assert "apple_watch" in dashboard.json()["devices"]
+    assert "fitbit" in dashboard.json()["devices"]
+    assert "series" in dashboard.json()["devices"]["fitbit"]["heart_rate"]
     assert coach_status.status_code == 200
     assert "configured" in coach_status.json()

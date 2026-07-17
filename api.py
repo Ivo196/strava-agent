@@ -232,6 +232,7 @@ def dashboard() -> dict[str, Any]:
         "metrics": {key: round(float(value), 1) for key, value in metrics.items()},
         "readiness": {"status": status, "notes": notes},
         "recovery": _recovery_snapshot(),
+        "devices": _device_insights(rows, today),
         "weeks": [
             {
                 "week": row.week.isoformat(),
@@ -348,7 +349,7 @@ def _running_dynamics(activity: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _recovery_snapshot() -> dict[str, Any]:
+def _apple_recovery_snapshot() -> dict[str, Any]:
     names = [
         "heart_rate_variability",
         "resting_heart_rate",
@@ -399,13 +400,17 @@ def _recovery_snapshot() -> dict[str, Any]:
             "unit": "h",
             "date": sleep_latest["date"].date().isoformat(),
         }
-    result = {
+    return {
         "hrv": metric("heart_rate_variability", average_7d=True),
         "resting_hr": metric("resting_heart_rate", average_7d=True),
         "vo2_max": metric("vo2_max"),
         "sleep": sleep,
         "weight": metric("weight_&_body_mass"),
     }
+
+
+def _recovery_snapshot() -> dict[str, Any]:
+    result = _apple_recovery_snapshot()
     google = _google_recovery_snapshot()
     combined = {key: google.get(key) or value for key, value in result.items()}
     google_status = database.google_health_status()
@@ -487,6 +492,182 @@ def _google_recovery_snapshot() -> dict[str, Any]:
         "sleep": select("sleep"),
         "weight": select("weight"),
     }
+
+
+def _device_insights(rows: list[dict[str, Any]], today: date) -> dict[str, Any]:
+    apple_runs = [
+        row
+        for row in rows
+        if "apple" in str(row.get("device_name") or "").lower()
+        or json.loads(row.get("raw_json") or "{}").get("source") == "health_auto_export"
+    ]
+    apple_runs.sort(key=lambda row: str(row.get("start_date") or ""), reverse=True)
+    week_start = today - timedelta(days=today.weekday())
+    current_week = [
+        row
+        for row in apple_runs
+        if (recorded := _parse_health_datetime(row.get("start_date")))
+        and recorded.date() >= week_start
+    ]
+    latest_run = apple_runs[0] if apple_runs else None
+    latest_summary: dict[str, Any] | None = None
+    if latest_run:
+        distance_km = float(latest_run.get("distance_m") or 0) / 1000
+        moving_seconds = int(latest_run.get("moving_time_s") or 0)
+        dynamics = _running_dynamics(latest_run)
+        recorded = _parse_health_datetime(latest_run.get("start_date"))
+        latest_summary = {
+            "id": int(latest_run["id"]),
+            "date": recorded.date().isoformat() if recorded else str(latest_run.get("start_date") or "")[:10],
+            "distance_km": round(distance_km, 2),
+            "pace": format_pace(moving_seconds / 60 / distance_km) if distance_km else "—",
+            "average_heartrate": _rounded_or_none(latest_run.get("average_heartrate")),
+            "dynamics": dynamics["running_dynamics_summary"],
+        }
+
+    apple_status = database.apple_health_status()
+    fitbit = _fitbit_insights()
+    return {
+        "apple_watch": {
+            "status": "Activo" if apple_runs else "Sin datos",
+            "last_sync": (apple_status.get("last_sync") or {}).get("received_at"),
+            "workouts": len(apple_runs),
+            "week": {
+                "distance_km": round(
+                    sum(float(row.get("distance_m") or 0) for row in current_week) / 1000,
+                    1,
+                ),
+                "runs": len(current_week),
+            },
+            "latest_run": latest_summary,
+            "recovery": _apple_recovery_snapshot(),
+        },
+        "fitbit": fitbit,
+    }
+
+
+def _fitbit_insights() -> dict[str, Any]:
+    rows = database.list_google_health_data_points(
+        [
+            "heart-rate",
+            "daily-heart-rate-variability",
+            "daily-resting-heart-rate",
+            "daily-oxygen-saturation",
+            "daily-respiratory-rate",
+            "daily-sleep-temperature-derivations",
+            "daily-vo2-max",
+            "sleep",
+        ]
+    )
+    heart_rate_samples: list[tuple[datetime, str, str, float]] = []
+    for row in rows:
+        if row["data_type"] != "heart-rate" or row["source"] != "FITBIT":
+            continue
+        point = json.loads(row["value_json"])
+        source = point.get("dataSource") or {}
+        if source.get("recordingMethod") != "PASSIVELY_MEASURED":
+            continue
+        payload = point.get("heartRate") or {}
+        value = payload.get("beatsPerMinute")
+        recorded = _parse_health_datetime(row["recorded_at"])
+        if value is None or recorded is None:
+            continue
+        civil = ((payload.get("sampleTime") or {}).get("civilTime") or {})
+        civil_date = civil.get("date") or {}
+        civil_time = civil.get("time") or {}
+        local_date = (
+            f"{int(civil_date['year']):04d}-{int(civil_date['month']):02d}-{int(civil_date['day']):02d}"
+            if all(key in civil_date for key in ("year", "month", "day"))
+            else recorded.date().isoformat()
+        )
+        local_clock = (
+            f"{int(civil_time.get('hours', 0) if civil else recorded.hour):02d}:"
+            f"{int(civil_time.get('minutes', 0) if civil else recorded.minute):02d}"
+        )
+        heart_rate_samples.append((recorded, local_date, local_clock, float(value)))
+
+    heart_rate_samples.sort(key=lambda sample: sample[0])
+    latest_date = heart_rate_samples[-1][1] if heart_rate_samples else None
+    latest_day = [
+        sample for sample in heart_rate_samples if sample[1] == latest_date
+    ]
+    series: list[dict[str, Any]] = []
+    if latest_day:
+        bucket_size = max(1, math.ceil(len(latest_day) / 96))
+        for index in range(0, len(latest_day), bucket_size):
+            bucket = latest_day[index : index + bucket_size]
+            series.append(
+                {
+                    "time": bucket[-1][2],
+                    "bpm": round(sum(sample[3] for sample in bucket) / len(bucket)),
+                }
+            )
+    values = [sample[3] for sample in latest_day]
+    coverage_hours = (
+        (latest_day[-1][0] - latest_day[0][0]).total_seconds() / 3600
+        if len(latest_day) > 1
+        else 0
+    )
+    recovery = _fitbit_recovery_metrics(rows)
+    status = database.google_health_status()
+    recovery_ready = all(
+        recovery[key] is not None for key in ("sleep", "hrv", "resting_hr")
+    )
+    return {
+        "status": (
+            "Activo"
+            if recovery_ready
+            else "Calibrando"
+            if heart_rate_samples
+            else "Esperando datos"
+        ),
+        "first_seen": status["fitbit_sensor_first"],
+        "last_seen": status["fitbit_sensor_last"],
+        "sensor_samples": status["fitbit_sensor_points"],
+        "heart_rate": {
+            "date": latest_date,
+            "latest": round(latest_day[-1][3]) if latest_day else None,
+            "average": round(sum(values) / len(values), 1) if values else None,
+            "minimum": round(min(values)) if values else None,
+            "maximum": round(max(values)) if values else None,
+            "coverage_hours": round(coverage_hours, 1),
+            "series": series,
+        },
+        "recovery": recovery,
+    }
+
+
+def _fitbit_recovery_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    key_map = {
+        "daily-heart-rate-variability": "hrv",
+        "daily-resting-heart-rate": "resting_hr",
+        "daily-oxygen-saturation": "oxygen",
+        "daily-respiratory-rate": "respiratory_rate",
+        "daily-sleep-temperature-derivations": "temperature",
+        "daily-vo2-max": "vo2_max",
+        "sleep": "sleep",
+    }
+    result: dict[str, Any] = {key: None for key in key_map.values()}
+    for row in rows:
+        key = key_map.get(row["data_type"])
+        if key is None or row["source"] != "FITBIT":
+            continue
+        point = json.loads(row["value_json"])
+        normalized = normalized_recovery_value(row["data_type"], point)
+        if normalized is None:
+            continue
+        recorded = _parse_health_datetime(row["recorded_at"])
+        existing = result[key]
+        if existing and recorded and recorded <= _parse_health_datetime(existing["date"]):
+            continue
+        value, unit = normalized
+        result[key] = {
+            "value": round(value, 1),
+            "unit": unit,
+            "date": row["recorded_at"],
+            "method": (point.get("dataSource") or {}).get("recordingMethod", "UNKNOWN"),
+        }
+    return result
 
 
 def _parse_health_datetime(value: Any) -> datetime | None:

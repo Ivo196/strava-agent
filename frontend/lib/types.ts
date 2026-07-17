@@ -71,6 +71,70 @@ export type RecoveryMetric = {
   date: string;
 } | null;
 
+export type DeviceMetric = {
+  value: number;
+  unit: string;
+  date: string;
+  method?: string;
+} | null;
+
+export type DeviceInsights = {
+  apple_watch: {
+    status: string;
+    last_sync: string | null;
+    workouts: number;
+    week: {
+      distance_km: number;
+      runs: number;
+    };
+    latest_run: {
+      id: number;
+      date: string;
+      distance_km: number;
+      pace: string;
+      average_heartrate: number | null;
+      dynamics: {
+        power_w?: number;
+        speed_kmh?: number;
+        ground_contact_ms?: number;
+        stride_m?: number;
+        vertical_oscillation_cm?: number;
+      };
+    } | null;
+    recovery: {
+      hrv: RecoveryMetric;
+      resting_hr: RecoveryMetric;
+      vo2_max: RecoveryMetric;
+      sleep: RecoveryMetric;
+      weight: RecoveryMetric;
+    };
+  };
+  fitbit: {
+    status: string;
+    first_seen: string | null;
+    last_seen: string | null;
+    sensor_samples: number;
+    heart_rate: {
+      date: string | null;
+      latest: number | null;
+      average: number | null;
+      minimum: number | null;
+      maximum: number | null;
+      coverage_hours: number;
+      series: { time: string; bpm: number }[];
+    };
+    recovery: {
+      hrv: DeviceMetric;
+      resting_hr: DeviceMetric;
+      oxygen: DeviceMetric;
+      respiratory_rate: DeviceMetric;
+      temperature: DeviceMetric;
+      vo2_max: DeviceMetric;
+      sleep: DeviceMetric;
+    };
+  };
+};
+
 export type TrainingWeek = {
   number: number;
   start: string;
@@ -107,6 +171,7 @@ export type DashboardData = {
     hr_coverage: number;
   };
   readiness: { status: string; notes: string[] };
+  devices: DeviceInsights;
   recovery: {
     hrv: RecoveryMetric;
     resting_hr: RecoveryMetric;

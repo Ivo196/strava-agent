@@ -3,7 +3,7 @@ import { ArrowRight, ChevronRight, Gauge, Route } from "lucide-react";
 import { OfflineState } from "@/components/offline-state";
 import { TrainingNow } from "@/components/training-now";
 import { VolumeChart } from "@/components/volume-chart";
-import { RecoveryStrip } from "@/components/recovery-strip";
+import { DeviceInsights } from "@/components/device-insights";
 import { getDashboard } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -65,6 +65,8 @@ export default async function DashboardPage() {
         </article>
       </section>
 
+      <DeviceInsights devices={data.devices} />
+
       <section className="dashboard-grid">
         <article className="panel volume-panel">
           <div className="panel-heading">
@@ -82,8 +84,6 @@ export default async function DashboardPage() {
           <Link href="/coach">Preguntar al entrenador <ArrowRight size={15} /></Link>
         </article>
       </section>
-
-      <RecoveryStrip recovery={data.recovery} />
 
       <section className="recent-section">
         <div className="section-heading"><div><span className="eyebrow">Últimos entrenamientos</span><h2>Actividad reciente</h2></div><Link href="/activities">Ver todo</Link></div>
