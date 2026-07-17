@@ -63,3 +63,13 @@ def test_weekly_checkin_round_trip(tmp_path: Path) -> None:
     assert checkin is not None
     assert checkin["fatigue"] == 3
     assert checkin["knee_pain"] == 1
+
+
+def test_finds_matching_activity_from_another_source(tmp_path: Path) -> None:
+    database = Database(tmp_path / "coach.db")
+    database.upsert_activity(sample_activity())
+
+    match = database.find_matching_activity("2026-07-10T06:02:00+00:00", 10150)
+
+    assert match is not None
+    assert match["id"] == 123

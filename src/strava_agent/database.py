@@ -66,6 +66,38 @@ CREATE TABLE IF NOT EXISTS weekly_checkins (
     notes TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS apple_health_workouts (
+    workout_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    raw_json TEXT NOT NULL,
+    synced_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_apple_health_workouts_start_date
+ON apple_health_workouts(start_date);
+
+CREATE TABLE IF NOT EXISTS apple_health_metrics (
+    metric_name TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT '',
+    units TEXT NOT NULL DEFAULT '',
+    value_json TEXT NOT NULL,
+    synced_at TEXT NOT NULL,
+    PRIMARY KEY(metric_name, recorded_at, source)
+);
+
+CREATE INDEX IF NOT EXISTS idx_apple_health_metrics_recorded_at
+ON apple_health_metrics(recorded_at);
+
+CREATE TABLE IF NOT EXISTS apple_health_syncs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    received_at TEXT NOT NULL,
+    workouts_received INTEGER NOT NULL DEFAULT 0,
+    metrics_received INTEGER NOT NULL DEFAULT 0
+);
 """
 
 
@@ -279,3 +311,121 @@ class Database:
         with self.connect() as connection:
             row = connection.execute("SELECT COUNT(*) AS count FROM activities").fetchone()
         return int(row["count"])
+
+    def find_matching_activity(
+        self,
+        start_date: str,
+        distance_m: float,
+        *,
+        time_tolerance_seconds: int = 180,
+        distance_tolerance_m: float = 300,
+    ) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                """SELECT * FROM activities
+                   WHERE ABS((julianday(start_date) - julianday(?)) * 86400) <= ?
+                     AND ABS(distance_m - ?) <= ?
+                   ORDER BY ABS((julianday(start_date) - julianday(?)) * 86400)
+                   LIMIT 1""",
+                (
+                    start_date,
+                    time_tolerance_seconds,
+                    distance_m,
+                    distance_tolerance_m,
+                    start_date,
+                ),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def upsert_apple_health_workout(self, workout: dict[str, Any]) -> bool:
+        workout_id = str(workout["id"])
+        with self.connect() as connection:
+            existed = connection.execute(
+                "SELECT 1 FROM apple_health_workouts WHERE workout_id = ?",
+                (workout_id,),
+            ).fetchone() is not None
+            connection.execute(
+                """INSERT INTO apple_health_workouts(
+                       workout_id, name, start_date, end_date, raw_json, synced_at
+                   ) VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(workout_id) DO UPDATE SET
+                       name=excluded.name,
+                       start_date=excluded.start_date,
+                       end_date=excluded.end_date,
+                       raw_json=excluded.raw_json,
+                       synced_at=excluded.synced_at""",
+                (
+                    workout_id,
+                    str(workout.get("name") or "Workout"),
+                    str(workout.get("start") or ""),
+                    str(workout.get("end") or ""),
+                    json.dumps(workout),
+                    utc_now_iso(),
+                ),
+            )
+        return existed
+
+    def upsert_apple_health_metric(
+        self,
+        metric_name: str,
+        measurement: dict[str, Any],
+        *,
+        default_units: str = "",
+    ) -> bool:
+        recorded_at = str(
+            measurement.get("date")
+            or measurement.get("sleepEnd")
+            or measurement.get("sleepStart")
+            or ""
+        )
+        source = str(measurement.get("source") or "")
+        units = str(measurement.get("units") or default_units)
+        with self.connect() as connection:
+            existed = connection.execute(
+                """SELECT 1 FROM apple_health_metrics
+                   WHERE metric_name = ? AND recorded_at = ? AND source = ?""",
+                (metric_name, recorded_at, source),
+            ).fetchone() is not None
+            connection.execute(
+                """INSERT INTO apple_health_metrics(
+                       metric_name, recorded_at, source, units, value_json, synced_at
+                   ) VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(metric_name, recorded_at, source) DO UPDATE SET
+                       units=excluded.units,
+                       value_json=excluded.value_json,
+                       synced_at=excluded.synced_at""",
+                (
+                    metric_name,
+                    recorded_at,
+                    source,
+                    units,
+                    json.dumps(measurement),
+                    utc_now_iso(),
+                ),
+            )
+        return existed
+
+    def record_apple_health_sync(self, workouts_received: int, metrics_received: int) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT INTO apple_health_syncs(received_at, workouts_received, metrics_received)
+                   VALUES (?, ?, ?)""",
+                (utc_now_iso(), workouts_received, metrics_received),
+            )
+
+    def apple_health_status(self) -> dict[str, Any]:
+        with self.connect() as connection:
+            sync = connection.execute(
+                "SELECT * FROM apple_health_syncs ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+            workout_count = connection.execute(
+                "SELECT COUNT(*) AS count FROM apple_health_workouts"
+            ).fetchone()
+            metric_count = connection.execute(
+                "SELECT COUNT(*) AS count FROM apple_health_metrics"
+            ).fetchone()
+        return {
+            "last_sync": dict(sync) if sync else None,
+            "workout_count": int(workout_count["count"]),
+            "metric_count": int(metric_count["count"]),
+        }

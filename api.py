@@ -3,12 +3,13 @@ from __future__ import annotations
 import sys
 import json
 import math
+import secrets
 from dataclasses import asdict
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -17,6 +18,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from strava_agent.config import get_settings
+from strava_agent.apple_health import import_health_auto_export, result_dict
 from strava_agent.ai_coach import ask_coach, build_coach_context
 from strava_agent.database import Database
 from strava_agent.metrics import (
@@ -81,6 +83,47 @@ class WeeklyCheckinInput(BaseModel):
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api/apple-health/status")
+def apple_health_status() -> dict[str, Any]:
+    return {
+        "configured": bool(settings.apple_health_api_key),
+        "endpoint": "/api/import/apple-health",
+        **database.apple_health_status(),
+    }
+
+
+@app.post("/api/import/apple-health")
+async def import_apple_health(
+    request: Request,
+    x_api_key: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    if not settings.apple_health_api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="Configura APPLE_HEALTH_API_KEY en .env y reinicia la API.",
+        )
+    bearer = authorization.removeprefix("Bearer ").strip() if authorization else ""
+    supplied_key = x_api_key or bearer
+    if not supplied_key or not secrets.compare_digest(supplied_key, settings.apple_health_api_key):
+        raise HTTPException(status_code=401, detail="Clave de Apple Health inválida.")
+    body = bytearray()
+    async for chunk in request.stream():
+        body.extend(chunk)
+        if len(body) > 25_000_000:
+            raise HTTPException(status_code=413, detail="El envío supera el límite de 25 MB.")
+    try:
+        payload = json.loads(body)
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise HTTPException(status_code=400, detail="El cuerpo no es JSON válido.") from error
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="El cuerpo debe ser un objeto JSON.")
+    try:
+        return result_dict(import_health_auto_export(payload, database))
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @app.get("/api/dashboard")

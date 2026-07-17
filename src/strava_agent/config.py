@@ -29,6 +29,7 @@ class Settings:
     database_path: Path
     openai_api_key: str = ""
     openai_model: str = "gpt-5.6-luna"
+    apple_health_api_key: str = ""
 
     @property
     def ai_is_configured(self) -> bool:
@@ -42,4 +43,5 @@ def get_settings() -> Settings:
         database_path=DATABASE_PATH,
         openai_api_key=os.getenv("OPENAI_API_KEY", "").strip(),
         openai_model=os.getenv("OPENAI_MODEL", "gpt-5.6-luna").strip() or "gpt-5.6-luna",
+        apple_health_api_key=os.getenv("APPLE_HEALTH_API_KEY", "").strip(),
     )
