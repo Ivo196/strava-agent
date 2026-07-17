@@ -5,7 +5,8 @@ import type { RunningDynamicsPoint } from "@/lib/types";
 
 const axis = { fill: "var(--muted)", fontSize: 10 };
 const tooltipStyle = {
-  background: "#0b1119",
+  background: "var(--popover)",
+  color: "var(--ink)",
   border: "1px solid var(--line)",
   borderRadius: 10,
 };
@@ -20,10 +21,10 @@ const charts: {
   color: string;
   digits?: number;
 }[] = [
-  { key: "power_w", eyebrow: "Potencia", title: "Producción de esfuerzo", unit: "W", color: "var(--orange)" },
-  { key: "ground_contact_ms", eyebrow: "Contacto", title: "Tiempo sobre el suelo", unit: "ms", color: "#6ff7dc" },
-  { key: "stride_m", eyebrow: "Zancada", title: "Longitud por paso", unit: "m", color: "#90a6ff", digits: 2 },
-  { key: "vertical_oscillation_cm", eyebrow: "Oscilación", title: "Movimiento vertical", unit: "cm", color: "#f5a95d", digits: 1 },
+  { key: "power_w", eyebrow: "Potencia", title: "Producción de esfuerzo", unit: "W", color: "var(--viz-series-1)" },
+  { key: "ground_contact_ms", eyebrow: "Contacto", title: "Tiempo sobre el suelo", unit: "ms", color: "var(--viz-series-2)" },
+  { key: "stride_m", eyebrow: "Zancada", title: "Longitud por paso", unit: "m", color: "var(--viz-series-3)", digits: 2 },
+  { key: "vertical_oscillation_cm", eyebrow: "Oscilación", title: "Movimiento vertical", unit: "cm", color: "var(--viz-series-4)", digits: 1 },
 ];
 
 export function RunningDynamicsCharts({
@@ -63,7 +64,7 @@ export function RunningDynamicsCharts({
               <XAxis dataKey="elapsed_min" type="number" domain={["dataMin", "dataMax"]} tickFormatter={(value) => `${Math.round(Number(value))}′`} tick={axis} axisLine={false} tickLine={false} />
               <YAxis dataKey={chart.key} domain={["auto", "auto"]} tickFormatter={(value) => Number(value).toFixed(chart.digits ?? 0)} tick={axis} axisLine={false} tickLine={false} width={46} />
               <Tooltip labelFormatter={(value) => `Minuto ${Math.round(Number(value))}`} formatter={(value) => [`${Number(value).toFixed(chart.digits ?? 0)} ${chart.unit}`, chart.eyebrow]} contentStyle={tooltipStyle} />
-              <Line type="monotone" dataKey={chart.key} stroke={chart.color} strokeWidth={2} dot={false} connectNulls />
+              <Line type="monotone" dataKey={chart.key} stroke={chart.color} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} connectNulls />
             </LineChart>
           </article>
         ))}

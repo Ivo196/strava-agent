@@ -4,6 +4,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .test-tmp*/
+test-tmp*/
 .agents/
 .streamlit/secrets.toml
 data/

@@ -10,9 +10,9 @@ export default async function SettingsPage() {
   return (
     <div className="page-wrap">
       <header className="simple-header">
-        <span className="eyebrow">Configuración</span>
-        <h1>Tu perfil y tus datos.</h1>
-        <p>Sin ruido: solo la información necesaria para entrenarte mejor.</p>
+        <span className="eyebrow">Data center</span>
+        <h1>Datos y preferencias.</h1>
+        <p>Fuentes, unidades y contexto deportivo usados por PaceOS.</p>
       </header>
       <SettingsForm profile={data.profile} />
     </div>

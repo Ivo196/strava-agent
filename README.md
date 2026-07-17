@@ -1,6 +1,6 @@
-# Chicago Marathon Coach
+# PaceOS
 
-Visualizador local para preparar la Maratón de Chicago 2026 con Apple Health como fuente principal.
+Plataforma local de running intelligence con Apple Health como fuente principal, análisis por actividad, recuperación, dinámica de carrera, plan fijo y Coach AI.
 
 El repositorio contiene solamente el código. Las claves, la base de datos y los archivos personales de Strava quedan fuera de Git.
 
@@ -30,8 +30,8 @@ Configura `APPLE_HEALTH_API_KEY` en `.env` antes de iniciar la API. El receptor 
 
 Se recomiendan dos automatizaciones:
 
-1. **Chicago · Workouts**: `Workouts`, JSON v2, rutas y métricas incluidas, agrupación por minutos.
-2. **Chicago · Recovery**: `Health Metrics`, JSON v2, sueño agregado y agrupación diaria.
+1. **PaceOS · Workouts**: `Workouts`, JSON v2, rutas y métricas incluidas, agrupación por minutos.
+2. **PaceOS · Recovery**: `Health Metrics`, JSON v2, sueño agregado y agrupación diaria.
 
 Activa `Batch Requests` y utiliza `X-API-Key` como encabezado. La Raspberry debe tener una URL alcanzable desde el iPhone; para acceso fuera de la red local utiliza HTTPS.
 
@@ -88,7 +88,7 @@ npm run dev
 
 Abre <http://localhost:3000>.
 
-Después de una instalación nueva, entra en **Perfil** e importa tu propio ZIP de Strava. La base se crea localmente en `data/strava_agent.db` y nunca se sube al repositorio.
+Después de una instalación nueva, entra en **Datos** y conecta Apple Health o importa un ZIP histórico. La base se crea localmente en `data/strava_agent.db` y nunca se sube al repositorio.
 
 ## Uso con OpenClaw
 

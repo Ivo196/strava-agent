@@ -35,9 +35,9 @@ export function VolumeChart({ data }: { data: WeekPoint[] }) {
       <Tooltip
         cursor={{ fill: "var(--soft-orange)" }}
         formatter={(value) => [`${value} km`, "Distancia"]}
-        contentStyle={{ border: "1px solid var(--line)", borderRadius: 12, boxShadow: "0 10px 30px rgba(32, 35, 39, .08)" }}
+        contentStyle={{ background: "var(--popover)", color: "var(--ink)", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "var(--shadow)" }}
       />
-      <Bar dataKey="distance_km" fill="var(--orange)" radius={[6, 6, 2, 2]} maxBarSize={34} />
+      <Bar dataKey="distance_km" fill="var(--viz-series-1)" radius={[7, 7, 2, 2]} maxBarSize={34} />
     </BarChart>
   );
 }

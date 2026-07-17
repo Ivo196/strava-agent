@@ -11,8 +11,8 @@ export default async function ActivitiesPage() {
   return (
     <div className="page-wrap">
       <header className="simple-header">
-        <span className="eyebrow">Strava</span>
-        <h1>Historial de carreras.</h1>
+        <span className="eyebrow">Training log</span>
+        <h1>Historial de actividades.</h1>
         <p>Solo las variables que usamos para tomar decisiones de entrenamiento.</p>
       </header>
       {data.activities.length ? (
@@ -33,7 +33,7 @@ export default async function ActivitiesPage() {
             </tbody>
           </table>
         </div>
-      ) : <div className="empty-row">Todavía no hay actividades. Importa tu historial desde Perfil.</div>}
+      ) : <div className="empty-row">Todavía no hay actividades. Conecta Apple Health desde Datos.</div>}
     </div>
   );
 }

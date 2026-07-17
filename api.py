@@ -34,7 +34,7 @@ from strava_agent.training_plan import RACE_DATE, build_adaptive_plan
 
 settings = get_settings()
 database = Database(settings.database_path)
-app = FastAPI(title="Chicago Marathon Coach API", version="0.2.0")
+app = FastAPI(title="PaceOS API", version="0.3.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],

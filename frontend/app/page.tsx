@@ -14,22 +14,22 @@ export default async function DashboardPage() {
   const data = await getDashboard().catch(() => null);
   if (!data) return <OfflineState />;
 
-  const name = data.profile.display_name?.trim() || "Ivo";
+  const name = data.profile.display_name?.trim();
   const hasTrainingData = data.activity_count > 0;
   const goalSeconds = data.profile.goal_pace_seconds_km;
   const goalPace = goalSeconds ? `${Math.floor(goalSeconds / 60)}:${String(goalSeconds % 60).padStart(2, "0")}` : "—";
   const goalFinishMinutes = goalSeconds ? goalSeconds * 42.195 / 60 : null;
   const goalFinish = goalFinishMinutes
     ? `${Math.floor(goalFinishMinutes / 60)} h ${String(Math.floor(goalFinishMinutes % 60)).padStart(2, "0")} min`
-    : "Define tu meta en Perfil";
+    : "Meta sin configurar";
   const readinessWidth = ({ "Base inicial": 25, "En construcción": 55, "Base sólida": 85, Taper: 100 } as Record<string, number>)[data.readiness.status] ?? 35;
   return (
     <div className="page-wrap">
       <header className="page-header">
         <div>
-          <span className="eyebrow">Semana {data.next_week?.number ?? "—"} del plan</span>
-          <h1>Tu estado actual, {name}.</h1>
-          <p>Qué estás cumpliendo, dónde estás y qué conviene mejorar.</p>
+          <span className="eyebrow">Training intelligence · Semana {data.next_week?.number ?? "—"}</span>
+          <h1>{name ? `Estado de entrenamiento de ${name}.` : "Estado de entrenamiento."}</h1>
+          <p>Carga, consistencia, recuperación y próximos pasos en una sola lectura.</p>
         </div>
         <div className={hasTrainingData ? "connection connected" : "connection"}>
           <span />{hasTrainingData ? `${data.activity_count} actividades cargadas` : "Historial pendiente"}
@@ -38,7 +38,7 @@ export default async function DashboardPage() {
 
       {!hasTrainingData && (
         <div className="onboarding-banner">
-          <div><strong>Importa tu historial para empezar</strong><span>Es gratuito: descarga el ZIP de Strava y cárgalo en Perfil.</span></div>
+          <div><strong>Conecta tus datos para empezar</strong><span>Apple Health es la fuente principal; también puedes importar un archivo histórico.</span></div>
           <Link href="/settings">Importar historial <ArrowRight size={16} /></Link>
         </div>
       )}
@@ -75,7 +75,7 @@ export default async function DashboardPage() {
         </article>
 
         <article className="panel coach-panel">
-          <span className="eyebrow">Lectura del entrenador</span>
+          <span className="eyebrow">PaceOS Coach</span>
           <h2>{data.readiness.status}</h2>
           <div className="status-track"><span style={{ width: hasTrainingData ? `${readinessWidth}%` : "12%" }} /></div>
           <ul className="coach-notes">{data.readiness.notes.slice(0, 3).map((note) => <li key={note}>{note}</li>)}</ul>

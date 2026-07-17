@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ClipboardCheck } from "lucide-react";
-import { API_URL } from "@/lib/api";
 import { localIsoDate } from "@/lib/local-clock";
 
 export function WeeklyCheckin() {
@@ -25,7 +24,7 @@ export function WeeklyCheckin() {
       notes: String(formData.get("notes") ?? ""),
     };
     try {
-      const response = await fetch(`${API_URL}/api/checkin`, {
+      const response = await fetch("/api/backend/checkin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

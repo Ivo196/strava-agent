@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActivityDetailCharts } from "@/components/activity-detail-charts";
 import { RunningDynamicsCharts } from "@/components/running-dynamics-charts";
+import { LiveDateBadge } from "@/components/live-date-badge";
 import { getActivityDetail } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -18,10 +19,11 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
   return (
     <div className="page-wrap activity-detail-page">
       <Link className="back-link" href="/activities">← Volver al historial</Link>
+      <LiveDateBadge />
       <header className="simple-header activity-detail-header">
-        <span className="eyebrow">Análisis de carrera</span>
+        <span className="eyebrow">Activity intelligence</span>
         <h1>{activity.name}</h1>
-        <p>{dateFormat.format(new Date(`${activity.date}T12:00:00`))}</p>
+        <p><span className="activity-date-label">Fecha de la actividad</span>{dateFormat.format(new Date(`${activity.date}T12:00:00`))}</p>
       </header>
 
       <section className="activity-summary" aria-label="Resumen de la carrera">

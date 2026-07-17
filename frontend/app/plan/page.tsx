@@ -13,8 +13,8 @@ export default async function PlanPage() {
   return (
     <div className="page-wrap">
       <header className="simple-header">
-        <span className="eyebrow">Camino a Chicago</span>
-        <h1>Tu plan fijo, semana a semana.</h1>
+        <span className="eyebrow">Plan de carrera</span>
+        <h1>Calendario de entrenamiento.</h1>
         <p>El calendario no cambia al importar actividades. Tus datos sirven para evaluar cómo vas y qué puedes mejorar.</p>
       </header>
       <div className="locked-plan-note"><LockKeyhole size={18} /><div><strong>Plan bloqueado</strong><span>{data.policy} Cualquier cambio se hará únicamente si lo decidimos juntos.</span></div></div>

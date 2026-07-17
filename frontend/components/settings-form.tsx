@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { ArchiveRestore, Save } from "lucide-react";
-import { API_URL } from "@/lib/api";
 import type { Profile } from "@/lib/types";
 
 function parsePace(value: string): number | null {
@@ -43,7 +42,7 @@ export function SettingsForm({ profile }: { profile: Profile }) {
       training_notes: String(formData.get("training_notes") ?? ""),
     };
     try {
-      const response = await fetch(`${API_URL}/api/profile`, {
+      const response = await fetch("/api/backend/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -69,7 +68,7 @@ export function SettingsForm({ profile }: { profile: Profile }) {
     setBusy("archive");
     setMessage("");
     try {
-      const response = await fetch(`${API_URL}/api/import/strava-archive`, { method: "POST", body: formData });
+      const response = await fetch("/api/backend/import/strava-archive", { method: "POST", body: formData });
       const result = await response.json();
       if (!response.ok) throw new Error(result.detail ?? "No se pudo importar el archivo");
       setError(false);
@@ -85,8 +84,8 @@ export function SettingsForm({ profile }: { profile: Profile }) {
   return (
     <div className="settings-grid">
       <section className="settings-panel">
-        <h2>Perfil de entrenamiento</h2>
-        <p>La información necesaria para adaptar volumen, ritmos y recuperación. Todo queda guardado localmente.</p>
+        <div className="settings-heading"><div><span className="eyebrow">Atleta</span><h2>Contexto de entrenamiento</h2></div><span className="system-badge">Métrico · SI</span></div>
+        <p>La información necesaria para interpretar volumen, ritmos y recuperación. Distancias en kilómetros, elevación en metros y peso en kilogramos.</p>
         <form action={saveProfile}>
           <div className="form-grid">
             <div className="field full"><label htmlFor="display_name">Nombre</label><input id="display_name" name="display_name" defaultValue={profile.display_name ?? ""} /></div>
@@ -106,14 +105,19 @@ export function SettingsForm({ profile }: { profile: Profile }) {
       </section>
 
       <section className="settings-panel">
-        <span className="eyebrow">Actualización semanal</span>
-        <h2>Cargar entrenamientos</h2>
-        <p>Cada domingo, sube la nueva exportación de Strava. Actualizaremos tu progreso y la lectura del entrenador sin modificar el plan fijo.</p>
+        <span className="eyebrow">Fuentes de datos</span>
+        <h2>Apple Health conectado</h2>
+        <p>Health Auto Export envía automáticamente entrenamientos, recuperación y dinámica de carrera. El plan queda fijo; solo se actualiza el análisis.</p>
+        <div className="source-status"><span className="source-dot" /><div><strong>Sincronización automática activa</strong><small>JSON v2 · unidades normalizadas al sistema métrico</small></div></div>
+        <div className="legacy-import">
+          <span className="eyebrow">Importación histórica opcional</span>
+          <p>Usa un ZIP de Strava solo para completar actividades anteriores que no estén en Apple Health.</p>
         <form action={importArchive} className="archive-form">
           <div className="field"><label htmlFor="archive-file">ZIP de Strava</label><input id="archive-file" name="file" type="file" accept=".zip,application/zip" /></div>
           <button className="primary-button" disabled={Boolean(busy)}><ArchiveRestore size={15} />{busy === "archive" ? "Actualizando…" : "Actualizar entrenamientos"}</button>
         </form>
         <a className="export-help" href="https://www.strava.com/athlete/delete_your_account" target="_blank" rel="noreferrer">Solicitar descarga en Strava →</a>
+        </div>
         {message && <p className={error ? "form-message error" : "form-message"}>{message}</p>}
       </section>
     </div>

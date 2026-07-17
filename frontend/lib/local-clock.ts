@@ -1,10 +1,5 @@
-const configuredOffset = Number(process.env.NEXT_PUBLIC_DATE_OFFSET_DAYS ?? "0");
-const dateOffsetDays = Number.isFinite(configuredOffset) ? configuredOffset : 0;
-
 export function localNow(): Date {
-  const now = new Date();
-  now.setDate(now.getDate() + dateOffsetDays);
-  return now;
+  return new Date();
 }
 
 export function localIsoDate(now = localNow()): string {

@@ -4,7 +4,6 @@ import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import { ArrowUp, BrainCircuit, LockKeyhole, RotateCcw, ShieldCheck, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { API_URL } from "@/lib/api";
 import { localIsoDate } from "@/lib/local-clock";
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -55,7 +54,7 @@ export function CoachSession(props: CoachSessionProps) {
     setError("");
     setBusy(true);
     try {
-      const response = await fetch(`${API_URL}/api/coach/chat`, {
+      const response = await fetch("/api/backend/coach/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: clean, history: prior, local_date: localIsoDate() }),
@@ -94,7 +93,7 @@ export function CoachSession(props: CoachSessionProps) {
         <header className="coach-toolbar">
           <div className="coach-identity">
             <span className="coach-avatar"><BrainCircuit size={19} /></span>
-            <span><strong>Entrenador AI</strong><small><i /> Conectado a tus datos</small></span>
+            <span><strong>PaceOS Coach</strong><small><i /> Conectado a tus datos</small></span>
           </div>
           <button className="new-chat-button" type="button" onClick={resetConversation} disabled={busy}>
             <RotateCcw size={14} /> Nueva conversación

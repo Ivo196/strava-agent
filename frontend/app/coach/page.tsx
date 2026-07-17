@@ -14,8 +14,8 @@ export default async function CoachPage() {
   return (
     <div className="page-wrap">
       <header className="simple-header">
-        <span className="eyebrow">Sesión personalizada</span>
-        <h1>Coach AI.</h1>
+        <span className="eyebrow">Adaptive intelligence</span>
+        <h1>PaceOS Coach.</h1>
         <p>Analiza cómo vas, qué estás haciendo bien y qué puedes mejorar sin reescribir el plan fijo.</p>
       </header>
       <CoachSession

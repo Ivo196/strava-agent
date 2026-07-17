@@ -11,7 +11,7 @@ const navigation = [
   { href: "/plan", label: "Plan", icon: CalendarDays },
   { href: "/coach", label: "Coach AI", icon: Sparkles },
   { href: "/activities", label: "Historial", icon: Activity },
-  { href: "/settings", label: "Perfil", icon: Settings },
+  { href: "/settings", label: "Datos", icon: Settings },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -26,9 +26,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <Link className="brand" href="/" aria-label="Chicago Marathon Coach">
-          <span className="brand-mark">C</span>
-          <span><strong>Chicago</strong><small>Marathon 2026</small></span>
+        <Link className="brand" href="/" aria-label="PaceOS Running Intelligence">
+          <span className="brand-mark">P</span>
+          <span><strong>PaceOS</strong><small>Running Intelligence</small></span>
         </Link>
         <nav className="side-nav" aria-label="Navegación principal">
           {navigation.map(({ href, label, icon: Icon }) => {
@@ -44,7 +44,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="sidebar-today">
           <span>Hoy</span>
           <strong>{today || "Actualizando fecha…"}</strong>
-          <small>La agenda se ajusta automáticamente.</small>
+          <small>Sistema métrico internacional.</small>
         </div>
       </aside>
       <main className="main-content">{children}</main>
