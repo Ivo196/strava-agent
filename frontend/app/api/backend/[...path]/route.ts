@@ -4,7 +4,6 @@ const ALLOWED_PATHS = new Set([
   "checkin",
   "coach/chat",
   "profile",
-  "import/strava-archive",
   "google-health/status",
   "google-health/sync",
 ]);

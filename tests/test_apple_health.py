@@ -88,6 +88,7 @@ def test_imports_health_auto_export_and_is_idempotent(tmp_path: Path) -> None:
     assert activity["distance_m"] == pytest.approx(5000)
     assert activity["average_heartrate"] == pytest.approx(147.5)
     assert activity["streams_loaded"] == 1
+    assert database.list_apple_health_workouts()[0]["workout_id"] == "run-2026-07-17"
     status = database.apple_health_status()
     assert status["workout_count"] == 1
     assert status["metric_count"] == 1

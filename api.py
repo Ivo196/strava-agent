@@ -6,13 +6,12 @@ import json
 import math
 import secrets
 from contextlib import asynccontextmanager, suppress
-from dataclasses import asdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from threading import Lock
 from typing import Any, Literal
 
-from fastapi import BackgroundTasks, FastAPI, File, Header, HTTPException, Request, UploadFile
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
@@ -32,7 +31,6 @@ from strava_agent.metrics import (
     readiness_assessment,
     weekly_summary,
 )
-from strava_agent.importers import import_strava_archive
 from strava_agent.google_health import (
     GoogleHealthCredentials,
     GoogleHealthService,
@@ -574,12 +572,30 @@ def _google_recovery_snapshot() -> dict[str, Any]:
 
 
 def _device_insights(rows: list[dict[str, Any]], today: date) -> dict[str, Any]:
-    apple_runs = [
-        row
+    apple_runs_by_id = {
+        int(row["id"]): row
         for row in rows
         if "apple" in str(row.get("device_name") or "").lower()
         or json.loads(row.get("raw_json") or "{}").get("source") == "health_auto_export"
+    }
+    activity_times = [
+        (row, _parse_health_datetime(row.get("start_date")))
+        for row in rows
     ]
+    for workout in database.list_apple_health_workouts():
+        workout_start = _parse_health_datetime(workout.get("start_date"))
+        if workout_start is None:
+            continue
+        matches = [
+            (abs((activity_start - workout_start).total_seconds()), row)
+            for row, activity_start in activity_times
+            if activity_start is not None
+            and abs((activity_start - workout_start).total_seconds()) <= 180
+        ]
+        if matches:
+            _, matched = min(matches, key=lambda item: item[0])
+            apple_runs_by_id[int(matched["id"])] = matched
+    apple_runs = list(apple_runs_by_id.values())
     apple_runs.sort(key=lambda row: str(row.get("start_date") or ""), reverse=True)
     week_start = today - timedelta(days=today.weekday())
     current_week = [
@@ -962,19 +978,6 @@ def save_profile(profile: ProfileInput) -> dict[str, Any]:
         profile_data["goal_time_minutes"] = profile.goal_pace_seconds_km * 42.195 / 60
     database.save_profile(profile_data)
     return database.get_profile()
-
-
-@app.post("/api/import/strava-archive")
-async def import_strava_export(file: UploadFile = File(...)) -> dict[str, Any]:
-    if not (file.filename or "").lower().endswith(".zip"):
-        raise HTTPException(status_code=400, detail="Selecciona el ZIP completo enviado por Strava.")
-    archive_bytes = await file.read(500_000_001)
-    if len(archive_bytes) > 500_000_000:
-        raise HTTPException(status_code=413, detail="El ZIP supera el límite de 500 MB.")
-    try:
-        return asdict(import_strava_archive(archive_bytes, database))
-    except ValueError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 def _serialize_week(week: Any) -> dict[str, Any]:

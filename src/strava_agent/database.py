@@ -395,6 +395,13 @@ class Database:
             )
         return existed
 
+    def list_apple_health_workouts(self) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM apple_health_workouts ORDER BY start_date DESC"
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def upsert_apple_health_metric(
         self,
         metric_name: str,

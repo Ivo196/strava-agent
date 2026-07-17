@@ -4,7 +4,7 @@ Plataforma local de running intelligence con Apple Health como fuente principal,
 
 Google Health complementa Apple Health con los datos de recuperación de Fitbit: sueño, HRV, frecuencia cardiaca en reposo, SpO₂, respiración, temperatura, zonas cardiacas y VO₂ máx.
 
-El repositorio contiene solamente el código. Las claves, la base de datos y los archivos personales de Strava quedan fuera de Git.
+El repositorio contiene solamente el código. Las claves, la base de datos y los datos personales de salud quedan fuera de Git.
 
 ## Qué muestra
 
@@ -48,10 +48,6 @@ http://localhost:8000/api/google-health/callback
 ```
 
 Descarga el JSON del cliente en `data/google-health-client.json`. Esa carpeta está excluida de Git. En **Datos**, pulsa **Conectar con Google** y autoriza los permisos de solo lectura. La primera conexión carga el historial reciente y las siguientes sincronizaciones actualizan solamente la base local.
-
-## Importación anterior desde Strava
-
-La app conserva compatibilidad con el ZIP oficial de Strava. La importación lee `activities.csv`, evita duplicados y guarda los detalles FIT/GPX cuando están disponibles.
 
 ## Coach AI
 
@@ -100,7 +96,7 @@ npm run dev
 
 Abre <http://localhost:3000>.
 
-Después de una instalación nueva, entra en **Datos** y conecta Apple Health o importa un ZIP histórico. La base se crea localmente en `data/strava_agent.db` y nunca se sube al repositorio.
+Después de una instalación nueva, entra en **Datos**, configura Health Auto Export y conecta Google Health. La base se crea localmente en `data/strava_agent.db` y nunca se sube al repositorio.
 
 ## Uso con OpenClaw
 
@@ -109,7 +105,7 @@ OpenClaw puede clonar este repositorio y seguir la sección **Instalación inici
 ## Verificación
 
 ```powershell
-./.venv/Scripts/python.exe -m pytest -q --basetemp "$env:USERPROFILE/codex-pytest-strava" -p no:cacheprovider
+./.venv/Scripts/python.exe -m pytest -q --basetemp "$env:USERPROFILE/codex-pytest-paceos" -p no:cacheprovider
 Set-Location frontend
 npm run lint
 npm run build

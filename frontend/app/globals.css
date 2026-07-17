@@ -315,7 +315,6 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 500 clamp(32px, 4vw, 48px)/1.03
 .source-status strong, .source-status small { display: block; }
 .source-status strong { font-size: 12px; }
 .source-status small { margin-top: 4px; color: var(--muted); font-size: 9px; }
-.legacy-import { padding-top: 4px; }
 .connected-source { margin: 18px 0 24px; padding: 18px; border: 1px solid var(--line); border-radius: 13px; background: rgba(255,255,255,.018); }
 .connected-source > p { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
 .connected-source .settings-heading > svg { color: var(--orange); }
@@ -340,10 +339,6 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 500 clamp(32px, 4vw, 48px)/1.03
 .button-row button:disabled { opacity: .55; cursor: wait; }
 .form-message { margin-top: 12px; color: var(--green); font-size: 12px; }
 .form-message.error { color: #b33122; }
-.archive-form { display: grid; gap: 12px; margin-top: 16px; }
-.archive-form .primary-button { justify-self: start; }
-.export-help { display: inline-block; margin-top: 13px; color: var(--orange-deep); font-size: 12px; }
-
 .coach-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 18px; align-items: start; }
 .coach-chat { min-width: 0; min-height: 680px; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
 .coach-toolbar { min-height: 70px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--line); background: rgba(7, 11, 17, .62); }

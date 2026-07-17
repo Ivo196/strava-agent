@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, ArchiveRestore, RefreshCw, Save } from "lucide-react";
+import { Activity, RefreshCw, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { GoogleHealthStatus, Profile } from "@/lib/types";
 
@@ -58,29 +58,6 @@ export function SettingsForm({
       if (!response.ok) throw new Error("No se pudo guardar el perfil");
       setError(false);
       setMessage("Perfil guardado correctamente.");
-    } catch (reason) {
-      setError(true);
-      setMessage(reason instanceof Error ? reason.message : "Error inesperado");
-    } finally {
-      setBusy("");
-    }
-  }
-
-  async function importArchive(formData: FormData) {
-    const selected = formData.get("file");
-    if (!(selected instanceof File) || !selected.size) {
-      setError(true);
-      setMessage("Selecciona el ZIP descargado desde Strava.");
-      return;
-    }
-    setBusy("archive");
-    setMessage("");
-    try {
-      const response = await fetch("/api/backend/import/strava-archive", { method: "POST", body: formData });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.detail ?? "No se pudo importar el archivo");
-      setError(false);
-      setMessage(`${result.imported} carreras nuevas y ${result.updated} actualizadas. El visualizador ya está al día.`);
     } catch (reason) {
       setError(true);
       setMessage(reason instanceof Error ? reason.message : "Error inesperado");
@@ -183,15 +160,6 @@ export function SettingsForm({
                 : ""}
             </small>
           )}
-        </div>
-        <div className="legacy-import">
-          <span className="eyebrow">Importación histórica opcional</span>
-          <p>Usa un ZIP de Strava solo para completar actividades anteriores que no estén en Apple Health.</p>
-        <form action={importArchive} className="archive-form">
-          <div className="field"><label htmlFor="archive-file">ZIP de Strava</label><input id="archive-file" name="file" type="file" accept=".zip,application/zip" /></div>
-          <button className="primary-button" disabled={Boolean(busy)}><ArchiveRestore size={15} />{busy === "archive" ? "Actualizando…" : "Actualizar entrenamientos"}</button>
-        </form>
-        <a className="export-help" href="https://www.strava.com/athlete/delete_your_account" target="_blank" rel="noreferrer">Solicitar descarga en Strava →</a>
         </div>
         {message && <p className={error ? "form-message error" : "form-message"}>{message}</p>}
       </section>
