@@ -1,6 +1,6 @@
 "use client";
 
-import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { RunningDynamicsPoint } from "@/lib/types";
 
 const axis = { fill: "var(--muted)", fontSize: 10 };
@@ -59,13 +59,15 @@ export function RunningDynamicsCharts({
         {charts.map((chart) => (
           <article className="detail-chart panel" key={chart.key}>
             <div className="chart-title"><span className="eyebrow">{chart.eyebrow}</span><strong>{chart.title}</strong></div>
-            <LineChart accessibilityLayer data={data} responsive style={{ width: "100%", height: 190 }} margin={{ top: 14, right: 8, bottom: 0, left: -12 }}>
-              <CartesianGrid vertical={false} stroke="var(--line)" />
-              <XAxis dataKey="elapsed_min" type="number" domain={["dataMin", "dataMax"]} tickFormatter={(value) => `${Math.round(Number(value))}′`} tick={axis} axisLine={false} tickLine={false} />
-              <YAxis dataKey={chart.key} domain={["auto", "auto"]} tickFormatter={(value) => Number(value).toFixed(chart.digits ?? 0)} tick={axis} axisLine={false} tickLine={false} width={46} />
-              <Tooltip labelFormatter={(value) => `Minuto ${Math.round(Number(value))}`} formatter={(value) => [`${Number(value).toFixed(chart.digits ?? 0)} ${chart.unit}`, chart.eyebrow]} contentStyle={tooltipStyle} />
-              <Line type="monotone" dataKey={chart.key} stroke={chart.color} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} connectNulls />
-            </LineChart>
+            <ResponsiveContainer width="100%" height={190}>
+              <LineChart accessibilityLayer data={data} margin={{ top: 14, right: 8, bottom: 0, left: -12 }}>
+                <CartesianGrid vertical={false} stroke="var(--line)" />
+                <XAxis dataKey="elapsed_min" type="number" domain={["dataMin", "dataMax"]} tickFormatter={(value) => `${Math.round(Number(value))}′`} tick={axis} axisLine={false} tickLine={false} />
+                <YAxis dataKey={chart.key} domain={["auto", "auto"]} tickFormatter={(value) => Number(value).toFixed(chart.digits ?? 0)} tick={axis} axisLine={false} tickLine={false} width={46} />
+                <Tooltip labelFormatter={(value) => `Minuto ${Math.round(Number(value))}`} formatter={(value) => [`${Number(value).toFixed(chart.digits ?? 0)} ${chart.unit}`, chart.eyebrow]} contentStyle={tooltipStyle} />
+                <Line type="monotone" dataKey={chart.key} stroke={chart.color} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} connectNulls isAnimationActive={false} />
+              </LineChart>
+            </ResponsiveContainer>
           </article>
         ))}
       </div>
