@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Activity, ArchiveRestore, RefreshCw, Save } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { GoogleHealthStatus, Profile } from "@/lib/types";
 
 function parsePace(value: string): number | null {
@@ -23,6 +24,7 @@ export function SettingsForm({
   profile: Profile;
   googleHealth: GoogleHealthStatus | null;
 }) {
+  const router = useRouter();
   const [message, setMessage] = useState("");
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState("");
@@ -101,6 +103,7 @@ export function SettingsForm({
       setMessage(
         `Google Health actualizado: ${result.points_received} mediciones procesadas.${suffix}`,
       );
+      router.refresh();
     } catch (reason) {
       setError(true);
       setMessage(reason instanceof Error ? reason.message : "Error inesperado");
