@@ -62,17 +62,17 @@ class GoogleHealthCredentials:
 
 
 DATA_TYPES: dict[str, tuple[str, str, int]] = {
-    "daily-heart-rate-variability": ("dailyHeartRateVariability.date", "daily", 42),
-    "daily-resting-heart-rate": ("dailyRestingHeartRate.date", "daily", 42),
-    "daily-oxygen-saturation": ("dailyOxygenSaturation.date", "daily", 42),
-    "daily-respiratory-rate": ("dailyRespiratoryRate.date", "daily", 42),
+    "daily-heart-rate-variability": ("daily_heart_rate_variability.date", "daily", 42),
+    "daily-resting-heart-rate": ("daily_resting_heart_rate.date", "daily", 42),
+    "daily-oxygen-saturation": ("daily_oxygen_saturation.date", "daily", 42),
+    "daily-respiratory-rate": ("daily_respiratory_rate.date", "daily", 42),
     "daily-sleep-temperature-derivations": (
-        "dailySleepTemperatureDerivations.date",
+        "daily_sleep_temperature_derivations.date",
         "daily",
         42,
     ),
-    "daily-vo2-max": ("dailyVo2Max.date", "daily", 42),
-    "daily-heart-rate-zones": ("dailyHeartRateZones.date", "daily", 42),
+    "daily-vo2-max": ("daily_vo2_max.date", "daily", 42),
+    "daily-heart-rate-zones": ("daily_heart_rate_zones.date", "daily", 42),
     "sleep": ("sleep.interval.end_time", "physical", 42),
     "exercise": ("exercise.interval.civil_start_time", "civil", 42),
     "weight": ("weight.sample_time.physical_time", "physical", 365),
@@ -143,15 +143,18 @@ class GoogleHealthService:
         completed_types = 0
         errors: list[str] = []
         today = date.today()
+        is_incremental = self.database.google_health_status()["last_sync"] is not None
 
         for data_type, (field, kind, days) in DATA_TYPES.items():
-            start = today - timedelta(days=days)
+            lookback_days = min(days, 2) if is_incremental else days
+            start = today - timedelta(days=lookback_days)
             end = today + timedelta(days=1)
             params: dict[str, Any] = {
                 "pageSize": 25 if data_type in {"sleep", "exercise"} else 10000,
                 "filter": self._time_filter(field, kind, start, end),
             }
             try:
+                collected: list[tuple[str, str, str, dict[str, Any]]] = []
                 while True:
                     response = self.session.get(
                         f"{API_URL}/users/me/dataTypes/{data_type}/dataPoints",
@@ -168,21 +171,19 @@ class GoogleHealthService:
                         recorded_at = data_point_time(data_type, point)
                         source = data_point_source(point)
                         key = data_point_key(data_type, point, recorded_at, source)
-                        existed = self.database.upsert_google_health_data_point(
-                            data_type,
-                            key,
-                            recorded_at,
-                            source,
-                            point,
-                        )
-                        if existed:
-                            updated += 1
-                        else:
-                            imported += 1
+                        collected.append((key, recorded_at, source, point))
                     page_token = payload.get("nextPageToken")
                     if not page_token:
                         break
                     params["pageToken"] = page_token
+                batch_imported, batch_updated = (
+                    self.database.upsert_google_health_data_points_batch(
+                        data_type,
+                        collected,
+                    )
+                )
+                imported += batch_imported
+                updated += batch_updated
                 completed_types += 1
             except (requests.RequestException, ValueError) as error:
                 errors.append(f"{data_type}: {error}")

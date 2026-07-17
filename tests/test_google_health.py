@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -122,6 +122,20 @@ def test_sync_saves_available_google_health_points(tmp_path: Path) -> None:
     assert status["connected"] is True
     assert status["point_count"] == 1
     assert status["data_types"][0]["data_type"] == "daily-resting-heart-rate"
+    daily_request = next(
+        params
+        for url, params in service.session.gets
+        if "/daily-resting-heart-rate/" in url
+    )
+    assert "daily_resting_heart_rate.date" in daily_request["filter"]
+
+    service.sync()
+    incremental_request = [
+        params
+        for url, params in service.session.gets
+        if "/daily-resting-heart-rate/" in url
+    ][-1]
+    assert (date.today() - timedelta(days=2)).isoformat() in incremental_request["filter"]
 
 
 def test_normalizes_recovery_values() -> None:

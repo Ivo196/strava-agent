@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import FastAPI, File, Header, HTTPException, Request, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
@@ -128,6 +128,7 @@ def google_health_connect() -> RedirectResponse:
 
 @app.get("/api/google-health/callback")
 def google_health_callback(
+    background_tasks: BackgroundTasks,
     code: str | None = None,
     state: str | None = None,
     error: str | None = None,
@@ -140,13 +141,12 @@ def google_health_callback(
     service = _google_health_service()
     try:
         service.exchange_code(code, state)
-        result = service.sync()
     except ValueError as sync_error:
         detail = str(sync_error).lower()
         reason = "scope" if "scope" in detail or "permiso" in detail else "error"
         return RedirectResponse(f"{target}?google_health={reason}")
-    status = "connected" if not result["errors"] else "partial"
-    return RedirectResponse(f"{target}?google_health={status}")
+    background_tasks.add_task(service.sync)
+    return RedirectResponse(f"{target}?google_health=connected")
 
 
 @app.post("/api/google-health/sync")

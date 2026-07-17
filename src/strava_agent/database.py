@@ -538,6 +538,44 @@ class Database:
             )
         return existed
 
+    def upsert_google_health_data_points_batch(
+        self,
+        data_type: str,
+        points: list[tuple[str, str, str, dict[str, Any]]],
+    ) -> tuple[int, int]:
+        imported = updated = 0
+        synced_at = utc_now_iso()
+        with self.connect() as connection:
+            for point_key, recorded_at, source, point in points:
+                existed = connection.execute(
+                    """SELECT 1 FROM google_health_data_points
+                       WHERE data_type = ? AND point_key = ?""",
+                    (data_type, point_key),
+                ).fetchone() is not None
+                connection.execute(
+                    """INSERT INTO google_health_data_points(
+                           data_type, point_key, recorded_at, source, value_json, synced_at
+                       ) VALUES (?, ?, ?, ?, ?, ?)
+                       ON CONFLICT(data_type, point_key) DO UPDATE SET
+                           recorded_at=excluded.recorded_at,
+                           source=excluded.source,
+                           value_json=excluded.value_json,
+                           synced_at=excluded.synced_at""",
+                    (
+                        data_type,
+                        point_key,
+                        recorded_at,
+                        source,
+                        json.dumps(point),
+                        synced_at,
+                    ),
+                )
+                if existed:
+                    updated += 1
+                else:
+                    imported += 1
+        return imported, updated
+
     def record_google_health_sync(
         self,
         points_received: int,
