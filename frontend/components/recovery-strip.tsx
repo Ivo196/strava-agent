@@ -14,9 +14,9 @@ export function RecoveryStrip({ recovery }: { recovery: DashboardData["recovery"
   if (!visible.length) return null;
 
   return (
-    <section className="recovery-section" aria-label="Recuperación registrada por Apple Health">
+    <section className="recovery-section" aria-label="Recuperación consolidada">
       <div className="section-heading">
-        <div><span className="eyebrow">Apple Health</span><h2>Recuperación y capacidad</h2></div>
+        <div><span className="eyebrow">Salud consolidada</span><h2>Recuperación y capacidad</h2></div>
         <span className="unit-label">últimos siete días</span>
       </div>
       <div className="recovery-strip">

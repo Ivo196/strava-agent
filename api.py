@@ -407,7 +407,18 @@ def _recovery_snapshot() -> dict[str, Any]:
         "weight": metric("weight_&_body_mass"),
     }
     google = _google_recovery_snapshot()
-    return {key: google.get(key) or value for key, value in result.items()}
+    combined = {key: google.get(key) or value for key, value in result.items()}
+    google_status = database.google_health_status()
+    combined["_context"] = {
+        "fitbit_sensor_points": google_status["fitbit_sensor_points"],
+        "fitbit_sensor_first": google_status["fitbit_sensor_first"],
+        "note": (
+            "La pulsera Fitbit es nueva. Solo sus muestras pasivas desde la primera "
+            "fecha registrada cuentan como historial propio de Fitbit; los valores "
+            "anteriores pueden provenir de Apple Health o ser derivados por Google."
+        ),
+    }
+    return combined
 
 
 def _google_recovery_snapshot() -> dict[str, Any]:

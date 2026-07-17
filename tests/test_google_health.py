@@ -121,6 +121,8 @@ def test_sync_saves_available_google_health_points(tmp_path: Path) -> None:
     assert result["data_types_received"] > 10
     assert status["connected"] is True
     assert status["point_count"] == 1
+    assert status["fitbit_sensor_points"] == 0
+    assert status["consolidated_points"] == 1
     assert status["data_types"][0]["data_type"] == "daily-resting-heart-rate"
     daily_request = next(
         params
@@ -136,6 +138,45 @@ def test_sync_saves_available_google_health_points(tmp_path: Path) -> None:
         if "/daily-resting-heart-rate/" in url
     ][-1]
     assert (date.today() - timedelta(days=2)).isoformat() in incremental_request["filter"]
+
+
+def test_status_separates_passive_fitbit_samples_from_derived_data(
+    tmp_path: Path,
+) -> None:
+    database = Database(tmp_path / "coach.db")
+    database.upsert_google_health_data_point(
+        "heart-rate",
+        "fitbit-sensor-sample",
+        "2026-07-18T12:00:00Z",
+        "FITBIT",
+        {
+            "dataSource": {
+                "platform": "FITBIT",
+                "recordingMethod": "PASSIVELY_MEASURED",
+            },
+            "heartRate": {"beatsPerMinute": 62},
+        },
+    )
+    database.upsert_google_health_data_point(
+        "daily-vo2-max",
+        "google-derived-value",
+        "2026-07-18",
+        "FITBIT",
+        {
+            "dataSource": {
+                "platform": "FITBIT",
+                "recordingMethod": "DERIVED",
+            },
+            "dailyVo2Max": {"vo2MillilitersPerMinuteKilogram": 54.9},
+        },
+    )
+
+    status = database.google_health_status()
+
+    assert status["point_count"] == 2
+    assert status["fitbit_sensor_points"] == 1
+    assert status["fitbit_sensor_first"] == "2026-07-18T12:00:00Z"
+    assert status["consolidated_points"] == 1
 
 
 def test_normalizes_recovery_values() -> None:

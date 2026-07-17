@@ -130,6 +130,10 @@ export type GoogleHealthStatus = {
   configured: boolean;
   connected: boolean;
   point_count: number;
+  fitbit_sensor_points: number;
+  fitbit_sensor_first: string | null;
+  fitbit_sensor_last: string | null;
+  consolidated_points: number;
   last_sync: {
     received_at: string;
     points_received: number;

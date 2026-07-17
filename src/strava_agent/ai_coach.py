@@ -52,9 +52,17 @@ def build_coach_context(
         f"Carga últimos 7 días: {float(metrics.get('load_7d', 0)):.1f}; semana anterior: {float(metrics.get('load_previous_7d', 0)):.1f}",
         f"Cobertura de frecuencia cardíaca: {float(metrics.get('hr_coverage', 0)):.0f}%",
         "",
-        "RECUPERACIÓN DE APPLE HEALTH",
+        "RECUPERACIÓN CONSOLIDADA DE APPLE HEALTH Y GOOGLE HEALTH",
     ]
     recovery = recovery or {}
+    source_context = recovery.get("_context") or {}
+    if source_context.get("fitbit_sensor_first"):
+        lines.append(
+            "- Fitbit es una pulsera nueva: hay "
+            f"{source_context.get('fitbit_sensor_points', 0)} muestras pasivas desde "
+            f"{source_context['fitbit_sensor_first']}. No atribuir a Fitbit datos anteriores "
+            "ni considerar que ya existe una tendencia propia del dispositivo."
+        )
     for label, key in (
         ("HRV media 7 días", "hrv"),
         ("FC en reposo media 7 días", "resting_hr"),

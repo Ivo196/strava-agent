@@ -147,7 +147,7 @@ export function SettingsForm({
           </div>
           <p>
             {googleHealth?.connected
-              ? `${googleHealth.point_count} mediciones guardadas en ${googleHealth.data_types.length} tipos de datos.`
+              ? `${googleHealth.fitbit_sensor_points.toLocaleString("es-ES")} muestras del sensor Fitbit desde que se activó. ${googleHealth.consolidated_points.toLocaleString("es-ES")} registros adicionales fueron importados o derivados por Google.`
               : "Sueño, HRV, frecuencia cardiaca en reposo, SpO₂, respiración, temperatura, zonas y VO₂ máx."}
           </p>
           <div className="button-row">

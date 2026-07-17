@@ -604,6 +604,14 @@ class Database:
                    FROM google_health_data_points
                    GROUP BY data_type ORDER BY data_type"""
             ).fetchall()
+            fitbit_sensor = connection.execute(
+                """SELECT COUNT(*) AS count, MIN(recorded_at) AS first_at,
+                          MAX(recorded_at) AS last_at
+                   FROM google_health_data_points
+                   WHERE source = 'FITBIT'
+                     AND json_extract(value_json, '$.dataSource.recordingMethod')
+                         = 'PASSIVELY_MEASURED'"""
+            ).fetchone()
         last_sync = dict(sync) if sync else None
         if last_sync:
             last_sync["errors"] = json.loads(last_sync.pop("errors_json"))
@@ -611,6 +619,10 @@ class Database:
             "connected": self.get_google_health_tokens() is not None,
             "last_sync": last_sync,
             "point_count": int(total["count"]),
+            "fitbit_sensor_points": int(fitbit_sensor["count"]),
+            "fitbit_sensor_first": fitbit_sensor["first_at"],
+            "fitbit_sensor_last": fitbit_sensor["last_at"],
+            "consolidated_points": int(total["count"]) - int(fitbit_sensor["count"]),
             "data_types": [dict(row) for row in types],
         }
 
