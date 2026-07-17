@@ -125,3 +125,20 @@ export type CoachStatus = {
   model: string;
   privacy: string;
 };
+
+export type GoogleHealthStatus = {
+  configured: boolean;
+  connected: boolean;
+  point_count: number;
+  last_sync: {
+    received_at: string;
+    points_received: number;
+    data_types_received: number;
+    errors: string[];
+  } | null;
+  data_types: {
+    data_type: string;
+    count: number;
+    latest: string | null;
+  }[];
+};

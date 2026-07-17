@@ -2,6 +2,8 @@
 
 Plataforma local de running intelligence con Apple Health como fuente principal, análisis por actividad, recuperación, dinámica de carrera, plan fijo y Coach AI.
 
+Google Health complementa Apple Health con los datos de recuperación de Fitbit: sueño, HRV, frecuencia cardiaca en reposo, SpO₂, respiración, temperatura, zonas cardiacas y VO₂ máx.
+
 El repositorio contiene solamente el código. Las claves, la base de datos y los archivos personales de Strava quedan fuera de Git.
 
 ## Qué muestra
@@ -36,6 +38,16 @@ Se recomiendan dos automatizaciones:
 Activa `Batch Requests` y utiliza `X-API-Key` como encabezado. La Raspberry debe tener una URL alcanzable desde el iPhone; para acceso fuera de la red local utiliza HTTPS.
 
 El ZIP oficial de Apple Health sirve para cargar el historial inicial. La importación ZIP se añadirá separadamente para no mezclarla con los envíos automáticos.
+
+## Google Health y Fitbit
+
+Registra un cliente web en Google Cloud con Google Health API y agrega este callback:
+
+```text
+http://localhost:8000/api/google-health/callback
+```
+
+Descarga el JSON del cliente en `data/google-health-client.json`. Esa carpeta está excluida de Git. En **Datos**, pulsa **Conectar con Google** y autoriza los permisos de solo lectura. La primera conexión carga el historial reciente y las siguientes sincronizaciones actualizan solamente la base local.
 
 ## Importación anterior desde Strava
 

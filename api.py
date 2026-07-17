@@ -11,6 +11,7 @@ from typing import Any, Literal
 
 from fastapi import FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 
@@ -29,6 +30,11 @@ from strava_agent.metrics import (
     weekly_summary,
 )
 from strava_agent.importers import import_strava_archive
+from strava_agent.google_health import (
+    GoogleHealthCredentials,
+    GoogleHealthService,
+    normalized_recovery_value,
+)
 from strava_agent.training_plan import RACE_DATE, build_adaptive_plan
 
 
@@ -92,6 +98,63 @@ def apple_health_status() -> dict[str, Any]:
         "endpoint": "/api/import/apple-health",
         **database.apple_health_status(),
     }
+
+
+def _google_health_service() -> GoogleHealthService:
+    if not settings.google_health_is_configured:
+        raise HTTPException(
+            status_code=503,
+            detail="Agrega las credenciales de Google Health en data/google-health-client.json.",
+        )
+    try:
+        credentials = GoogleHealthCredentials.load(settings.google_health_credentials_file)
+    except ValueError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    return GoogleHealthService(credentials, database)
+
+
+@app.get("/api/google-health/status")
+def google_health_status() -> dict[str, Any]:
+    return {
+        "configured": settings.google_health_is_configured,
+        **database.google_health_status(),
+    }
+
+
+@app.get("/api/google-health/connect")
+def google_health_connect() -> RedirectResponse:
+    return RedirectResponse(_google_health_service().authorization_url())
+
+
+@app.get("/api/google-health/callback")
+def google_health_callback(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+) -> RedirectResponse:
+    target = f"{settings.paceos_frontend_url}/settings"
+    if error:
+        return RedirectResponse(f"{target}?google_health=denied")
+    if not code or not state:
+        return RedirectResponse(f"{target}?google_health=invalid")
+    service = _google_health_service()
+    try:
+        service.exchange_code(code, state)
+        result = service.sync()
+    except ValueError as sync_error:
+        detail = str(sync_error).lower()
+        reason = "scope" if "scope" in detail or "permiso" in detail else "error"
+        return RedirectResponse(f"{target}?google_health={reason}")
+    status = "connected" if not result["errors"] else "partial"
+    return RedirectResponse(f"{target}?google_health={status}")
+
+
+@app.post("/api/google-health/sync")
+def sync_google_health() -> dict[str, Any]:
+    try:
+        return _google_health_service().sync()
+    except ValueError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
 
 
 @app.post("/api/import/apple-health")
@@ -336,12 +399,82 @@ def _recovery_snapshot() -> dict[str, Any]:
             "unit": "h",
             "date": sleep_latest["date"].date().isoformat(),
         }
-    return {
+    result = {
         "hrv": metric("heart_rate_variability", average_7d=True),
         "resting_hr": metric("resting_heart_rate", average_7d=True),
         "vo2_max": metric("vo2_max"),
         "sleep": sleep,
         "weight": metric("weight_&_body_mass"),
+    }
+    google = _google_recovery_snapshot()
+    return {key: google.get(key) or value for key, value in result.items()}
+
+
+def _google_recovery_snapshot() -> dict[str, Any]:
+    data_types = [
+        "daily-heart-rate-variability",
+        "daily-resting-heart-rate",
+        "daily-vo2-max",
+        "run-vo2-max",
+        "vo2-max",
+        "sleep",
+        "weight",
+    ]
+    rows = database.list_google_health_data_points(data_types)
+    cutoff = datetime.now().astimezone() - timedelta(days=7)
+    grouped: dict[str, list[tuple[datetime, float, str]]] = {
+        "hrv": [],
+        "resting_hr": [],
+        "vo2_max": [],
+        "sleep": [],
+        "weight": [],
+    }
+    key_map = {
+        "daily-heart-rate-variability": "hrv",
+        "daily-resting-heart-rate": "resting_hr",
+        "daily-vo2-max": "vo2_max",
+        "run-vo2-max": "vo2_max",
+        "vo2-max": "vo2_max",
+        "sleep": "sleep",
+        "weight": "weight",
+    }
+    for row in rows:
+        recorded = _parse_health_datetime(row["recorded_at"])
+        if recorded is None:
+            continue
+        if recorded.tzinfo is None:
+            recorded = recorded.astimezone()
+        normalized = normalized_recovery_value(
+            row["data_type"],
+            json.loads(row["value_json"]),
+        )
+        if normalized:
+            value, unit = normalized
+            grouped[key_map[row["data_type"]]].append((recorded, value, unit))
+
+    def select(key: str, *, average_7d: bool = False) -> dict[str, Any] | None:
+        samples = grouped[key]
+        if not samples:
+            return None
+        recent = [sample for sample in samples if sample[0] >= cutoff]
+        if average_7d and recent:
+            value = sum(sample[1] for sample in recent) / len(recent)
+            recorded = max(sample[0] for sample in recent)
+            unit = recent[-1][2]
+        else:
+            recorded, value, unit = max(samples, key=lambda sample: sample[0])
+        return {
+            "value": round(value, 1),
+            "unit": unit,
+            "date": recorded.date().isoformat(),
+        }
+
+    return {
+        "hrv": select("hrv", average_7d=True),
+        "resting_hr": select("resting_hr", average_7d=True),
+        "vo2_max": select("vo2_max"),
+        "sleep": select("sleep"),
+        "weight": select("weight"),
     }
 
 

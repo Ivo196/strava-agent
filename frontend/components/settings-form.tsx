@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ArchiveRestore, Save } from "lucide-react";
-import type { Profile } from "@/lib/types";
+import { Activity, ArchiveRestore, RefreshCw, Save } from "lucide-react";
+import type { GoogleHealthStatus, Profile } from "@/lib/types";
 
 function parsePace(value: string): number | null {
   const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
@@ -16,7 +16,13 @@ function formatPace(seconds: number | null): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-export function SettingsForm({ profile }: { profile: Profile }) {
+export function SettingsForm({
+  profile,
+  googleHealth,
+}: {
+  profile: Profile;
+  googleHealth: GoogleHealthStatus | null;
+}) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState("");
@@ -81,6 +87,28 @@ export function SettingsForm({ profile }: { profile: Profile }) {
     }
   }
 
+  async function syncGoogleHealth() {
+    setBusy("google-health");
+    setMessage("");
+    try {
+      const response = await fetch("/api/backend/google-health/sync", { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail ?? "No se pudo sincronizar Google Health");
+      setError(false);
+      const suffix = result.errors?.length
+        ? ` ${result.errors.length} tipos todavía no entregaron datos.`
+        : "";
+      setMessage(
+        `Google Health actualizado: ${result.points_received} mediciones procesadas.${suffix}`,
+      );
+    } catch (reason) {
+      setError(true);
+      setMessage(reason instanceof Error ? reason.message : "Error inesperado");
+    } finally {
+      setBusy("");
+    }
+  }
+
   return (
     <div className="settings-grid">
       <section className="settings-panel">
@@ -106,9 +134,45 @@ export function SettingsForm({ profile }: { profile: Profile }) {
 
       <section className="settings-panel">
         <span className="eyebrow">Fuentes de datos</span>
-        <h2>Apple Health conectado</h2>
-        <p>Health Auto Export envía automáticamente entrenamientos, recuperación y dinámica de carrera. El plan queda fijo; solo se actualiza el análisis.</p>
+        <h2>Dispositivos conectados</h2>
+        <p>Apple Health conserva los entrenamientos y Google Health incorpora la recuperación medida por Fitbit. PaceOS prioriza la fuente adecuada y evita modificar el plan fijo.</p>
         <div className="source-status"><span className="source-dot" /><div><strong>Sincronización automática activa</strong><small>JSON v2 · unidades normalizadas al sistema métrico</small></div></div>
+        <div className="connected-source">
+          <div className="settings-heading">
+            <div>
+              <span className="eyebrow">Google Health · Fitbit</span>
+              <h2>{googleHealth?.connected ? "Pulsera conectada" : "Conectar recuperación"}</h2>
+            </div>
+            <Activity size={20} aria-hidden="true" />
+          </div>
+          <p>
+            {googleHealth?.connected
+              ? `${googleHealth.point_count} mediciones guardadas en ${googleHealth.data_types.length} tipos de datos.`
+              : "Sueño, HRV, frecuencia cardiaca en reposo, SpO₂, respiración, temperatura, zonas y VO₂ máx."}
+          </p>
+          <div className="button-row">
+            {googleHealth?.connected ? (
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={syncGoogleHealth}
+                disabled={busy === "google-health"}
+              >
+                <RefreshCw size={15} />
+                {busy === "google-health" ? "Sincronizando…" : "Actualizar Fitbit"}
+              </button>
+            ) : (
+              <a className="primary-button" href="/api/google-health/connect">
+                Conectar con Google
+              </a>
+            )}
+          </div>
+          {googleHealth?.last_sync && (
+            <small className="source-meta">
+              Última recepción: {new Date(googleHealth.last_sync.received_at).toLocaleString("es-ES")}
+            </small>
+          )}
+        </div>
         <div className="legacy-import">
           <span className="eyebrow">Importación histórica opcional</span>
           <p>Usa un ZIP de Strava solo para completar actividades anteriores que no estén en Apple Health.</p>

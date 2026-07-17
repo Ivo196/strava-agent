@@ -5,6 +5,8 @@ const ALLOWED_PATHS = new Set([
   "coach/chat",
   "profile",
   "import/strava-archive",
+  "google-health/status",
+  "google-health/sync",
 ]);
 
 async function proxy(request: Request, context: { params: Promise<{ path: string[] }> }) {

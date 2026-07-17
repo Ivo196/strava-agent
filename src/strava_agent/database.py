@@ -98,6 +98,36 @@ CREATE TABLE IF NOT EXISTS apple_health_syncs (
     workouts_received INTEGER NOT NULL DEFAULT 0,
     metrics_received INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS google_health_oauth (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    access_token TEXT NOT NULL,
+    refresh_token TEXT NOT NULL DEFAULT '',
+    token_expiry TEXT NOT NULL,
+    scopes TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS google_health_data_points (
+    data_type TEXT NOT NULL,
+    point_key TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT '',
+    value_json TEXT NOT NULL,
+    synced_at TEXT NOT NULL,
+    PRIMARY KEY(data_type, point_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_google_health_data_points_recorded_at
+ON google_health_data_points(recorded_at);
+
+CREATE TABLE IF NOT EXISTS google_health_syncs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    received_at TEXT NOT NULL,
+    points_received INTEGER NOT NULL DEFAULT 0,
+    data_types_received INTEGER NOT NULL DEFAULT 0,
+    errors_json TEXT NOT NULL DEFAULT '[]'
+);
 """
 
 
@@ -441,5 +471,121 @@ class Database:
                     WHERE metric_name IN ({placeholders})
                     ORDER BY recorded_at""",
                 metric_names,
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def save_google_health_tokens(self, token: dict[str, Any]) -> None:
+        current = self.get_google_health_tokens()
+        refresh_token = str(token.get("refresh_token") or (current or {}).get("refresh_token") or "")
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT INTO google_health_oauth(
+                       id, access_token, refresh_token, token_expiry, scopes, updated_at
+                   ) VALUES (1, ?, ?, ?, ?, ?)
+                   ON CONFLICT(id) DO UPDATE SET
+                       access_token=excluded.access_token,
+                       refresh_token=excluded.refresh_token,
+                       token_expiry=excluded.token_expiry,
+                       scopes=excluded.scopes,
+                       updated_at=excluded.updated_at""",
+                (
+                    str(token["access_token"]),
+                    refresh_token,
+                    str(token["token_expiry"]),
+                    str(token.get("scope") or (current or {}).get("scopes") or ""),
+                    utc_now_iso(),
+                ),
+            )
+
+    def get_google_health_tokens(self) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM google_health_oauth WHERE id = 1"
+            ).fetchone()
+        return dict(row) if row else None
+
+    def upsert_google_health_data_point(
+        self,
+        data_type: str,
+        point_key: str,
+        recorded_at: str,
+        source: str,
+        point: dict[str, Any],
+    ) -> bool:
+        with self.connect() as connection:
+            existed = connection.execute(
+                """SELECT 1 FROM google_health_data_points
+                   WHERE data_type = ? AND point_key = ?""",
+                (data_type, point_key),
+            ).fetchone() is not None
+            connection.execute(
+                """INSERT INTO google_health_data_points(
+                       data_type, point_key, recorded_at, source, value_json, synced_at
+                   ) VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(data_type, point_key) DO UPDATE SET
+                       recorded_at=excluded.recorded_at,
+                       source=excluded.source,
+                       value_json=excluded.value_json,
+                       synced_at=excluded.synced_at""",
+                (
+                    data_type,
+                    point_key,
+                    recorded_at,
+                    source,
+                    json.dumps(point),
+                    utc_now_iso(),
+                ),
+            )
+        return existed
+
+    def record_google_health_sync(
+        self,
+        points_received: int,
+        data_types_received: int,
+        errors: list[str],
+    ) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT INTO google_health_syncs(
+                       received_at, points_received, data_types_received, errors_json
+                   ) VALUES (?, ?, ?, ?)""",
+                (utc_now_iso(), points_received, data_types_received, json.dumps(errors)),
+            )
+
+    def google_health_status(self) -> dict[str, Any]:
+        with self.connect() as connection:
+            sync = connection.execute(
+                "SELECT * FROM google_health_syncs ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+            total = connection.execute(
+                "SELECT COUNT(*) AS count FROM google_health_data_points"
+            ).fetchone()
+            types = connection.execute(
+                """SELECT data_type, COUNT(*) AS count,
+                          MAX(recorded_at) AS latest
+                   FROM google_health_data_points
+                   GROUP BY data_type ORDER BY data_type"""
+            ).fetchall()
+        last_sync = dict(sync) if sync else None
+        if last_sync:
+            last_sync["errors"] = json.loads(last_sync.pop("errors_json"))
+        return {
+            "connected": self.get_google_health_tokens() is not None,
+            "last_sync": last_sync,
+            "point_count": int(total["count"]),
+            "data_types": [dict(row) for row in types],
+        }
+
+    def list_google_health_data_points(self, data_types: list[str]) -> list[dict[str, Any]]:
+        if not data_types:
+            return []
+        placeholders = ",".join("?" for _ in data_types)
+        with self.connect() as connection:
+            rows = connection.execute(
+                f"""SELECT data_type, recorded_at, source, value_json
+                    FROM google_health_data_points
+                    WHERE data_type IN ({placeholders})
+                    ORDER BY recorded_at""",
+                data_types,
             ).fetchall()
         return [dict(row) for row in rows]

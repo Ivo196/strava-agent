@@ -30,10 +30,16 @@ class Settings:
     openai_api_key: str = ""
     openai_model: str = "gpt-5.6-luna"
     apple_health_api_key: str = ""
+    google_health_credentials_file: Path = DATA_DIR / "google-health-client.json"
+    paceos_frontend_url: str = "http://localhost:3100"
 
     @property
     def ai_is_configured(self) -> bool:
         return bool(self.openai_api_key)
+
+    @property
+    def google_health_is_configured(self) -> bool:
+        return self.google_health_credentials_file.exists()
 
 
 def get_settings() -> Settings:
@@ -44,4 +50,11 @@ def get_settings() -> Settings:
         openai_api_key=os.getenv("OPENAI_API_KEY", "").strip(),
         openai_model=os.getenv("OPENAI_MODEL", "gpt-5.6-luna").strip() or "gpt-5.6-luna",
         apple_health_api_key=os.getenv("APPLE_HEALTH_API_KEY", "").strip(),
+        google_health_credentials_file=Path(
+            os.getenv(
+                "GOOGLE_HEALTH_CREDENTIALS_FILE",
+                str(DATA_DIR / "google-health-client.json"),
+            )
+        ),
+        paceos_frontend_url=os.getenv("PACEOS_FRONTEND_URL", "http://localhost:3100").rstrip("/"),
     )
