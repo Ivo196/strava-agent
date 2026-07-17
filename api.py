@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 import sys
 import json
 import math
 import secrets
+from contextlib import asynccontextmanager, suppress
 from dataclasses import asdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from threading import Lock
 from typing import Any, Literal
 
 from fastapi import BackgroundTasks, FastAPI, File, Header, HTTPException, Request, UploadFile
@@ -40,7 +43,77 @@ from strava_agent.training_plan import RACE_DATE, build_adaptive_plan
 
 settings = get_settings()
 database = Database(settings.database_path)
-app = FastAPI(title="PaceOS API", version="0.3.0")
+GOOGLE_HEALTH_SYNC_INTERVAL = timedelta(hours=6)
+GOOGLE_HEALTH_RETRY_INTERVAL = timedelta(minutes=15)
+google_health_scheduler_state: dict[str, Any] = {
+    "running": False,
+    "last_attempt": None,
+    "last_error": None,
+}
+google_health_sync_lock = Lock()
+
+
+def _next_google_health_sync(status: dict[str, Any] | None = None) -> datetime | None:
+    status = status or database.google_health_status()
+    if not settings.google_health_is_configured or not status["connected"]:
+        return None
+    last_sync = status.get("last_sync")
+    if not last_sync:
+        return datetime.now().astimezone()
+    recorded = datetime.fromisoformat(
+        str(last_sync["received_at"]).replace("Z", "+00:00")
+    )
+    if recorded.tzinfo is None:
+        recorded = recorded.astimezone()
+    return recorded + GOOGLE_HEALTH_SYNC_INTERVAL
+
+
+def _google_health_auto_sync_status() -> dict[str, Any]:
+    next_sync = _next_google_health_sync()
+    return {
+        "enabled": True,
+        "interval_hours": 6,
+        "next_sync": next_sync.isoformat() if next_sync else None,
+        **google_health_scheduler_state,
+    }
+
+
+async def _google_health_sync_loop() -> None:
+    while True:
+        status = database.google_health_status()
+        next_sync = _next_google_health_sync(status)
+        if next_sync is None:
+            await asyncio.sleep(300)
+            continue
+        now = datetime.now().astimezone()
+        delay = (next_sync - now).total_seconds()
+        if delay > 0:
+            await asyncio.sleep(delay)
+            continue
+        google_health_scheduler_state["running"] = True
+        google_health_scheduler_state["last_attempt"] = now.isoformat()
+        google_health_scheduler_state["last_error"] = None
+        try:
+            await asyncio.to_thread(_sync_google_health_now)
+        except Exception as error:
+            google_health_scheduler_state["last_error"] = str(error)
+            await asyncio.sleep(GOOGLE_HEALTH_RETRY_INTERVAL.total_seconds())
+        finally:
+            google_health_scheduler_state["running"] = False
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    scheduler = asyncio.create_task(_google_health_sync_loop())
+    try:
+        yield
+    finally:
+        scheduler.cancel()
+        with suppress(asyncio.CancelledError):
+            await scheduler
+
+
+app = FastAPI(title="PaceOS API", version="0.3.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -113,11 +186,17 @@ def _google_health_service() -> GoogleHealthService:
     return GoogleHealthService(credentials, database)
 
 
+def _sync_google_health_now() -> dict[str, Any]:
+    with google_health_sync_lock:
+        return _google_health_service().sync()
+
+
 @app.get("/api/google-health/status")
 def google_health_status() -> dict[str, Any]:
     return {
         "configured": settings.google_health_is_configured,
         **database.google_health_status(),
+        "auto_sync": _google_health_auto_sync_status(),
     }
 
 
@@ -145,14 +224,14 @@ def google_health_callback(
         detail = str(sync_error).lower()
         reason = "scope" if "scope" in detail or "permiso" in detail else "error"
         return RedirectResponse(f"{target}?google_health={reason}")
-    background_tasks.add_task(service.sync)
+    background_tasks.add_task(_sync_google_health_now)
     return RedirectResponse(f"{target}?google_health=connected")
 
 
 @app.post("/api/google-health/sync")
 def sync_google_health() -> dict[str, Any]:
     try:
-        return _google_health_service().sync()
+        return _sync_google_health_now()
     except ValueError as error:
         raise HTTPException(status_code=502, detail=str(error)) from error
 

@@ -205,6 +205,14 @@ export type GoogleHealthStatus = {
     data_types_received: number;
     errors: string[];
   } | null;
+  auto_sync: {
+    enabled: boolean;
+    interval_hours: number;
+    next_sync: string | null;
+    running: boolean;
+    last_attempt: string | null;
+    last_error: string | null;
+  };
   data_types: {
     data_type: string;
     count: number;

@@ -16,3 +16,13 @@ def test_dashboard_and_coach_status_are_available() -> None:
     assert "series" in dashboard.json()["devices"]["fitbit"]["heart_rate"]
     assert coach_status.status_code == 200
     assert "configured" in coach_status.json()
+
+
+def test_google_health_runs_automatically_every_six_hours() -> None:
+    client = TestClient(api.app)
+
+    status = client.get("/api/google-health/status")
+
+    assert status.status_code == 200
+    assert status.json()["auto_sync"]["enabled"] is True
+    assert status.json()["auto_sync"]["interval_hours"] == 6

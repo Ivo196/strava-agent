@@ -175,6 +175,14 @@ export function SettingsForm({
               Última recepción: {new Date(googleHealth.last_sync.received_at).toLocaleString("es-ES")}
             </small>
           )}
+          {googleHealth?.connected && googleHealth.auto_sync && (
+            <small className="source-meta auto-sync-meta">
+              Automática cada {googleHealth.auto_sync.interval_hours} horas
+              {googleHealth.auto_sync.next_sync
+                ? ` · Próxima: ${new Date(googleHealth.auto_sync.next_sync).toLocaleString("es-ES")}`
+                : ""}
+            </small>
+          )}
         </div>
         <div className="legacy-import">
           <span className="eyebrow">Importación histórica opcional</span>
