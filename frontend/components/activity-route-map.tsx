@@ -136,6 +136,12 @@ export function ActivityRouteMap({ route }: { route: ActivityRoutePoint[] }) {
   const segments = routeSegments(points);
   const markers = kilometerMarkers(points, projection.width);
   const activePoint = hover ?? finish;
+  const altitudeValues = points
+    .map((point) => point.altitudeM)
+    .filter((value): value is number => value !== null);
+  const minAltitude = altitudeValues.length ? Math.min(...altitudeValues) : null;
+  const maxAltitude = altitudeValues.length ? Math.max(...altitudeValues) : null;
+  const altitudeRange = minAltitude !== null && maxAltitude !== null ? Math.round(maxAltitude - minAltitude) : null;
 
   function updateHover(event: MouseEvent<SVGSVGElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -169,7 +175,13 @@ export function ActivityRouteMap({ route }: { route: ActivityRoutePoint[] }) {
           <span className="eyebrow">Mapa</span>
           <h2>Ruta de la carrera</h2>
         </div>
-        <span>{route.length} puntos · {finish.distanceKm.toFixed(2)} km</span>
+        <span>{finish.distanceKm.toFixed(2)} km</span>
+      </div>
+      <div className="route-map-metrics" aria-label="Resumen de la ruta">
+        <div><span>Puntos GPS</span><strong>{route.length}</strong></div>
+        <div><span>Tiempo</span><strong>{formatElapsed(finish.elapsedS)}</strong></div>
+        <div><span>Ritmo en cursor</span><strong>{formatPointPace(activePoint)}</strong></div>
+        <div><span>Altitud</span><strong>{altitudeRange !== null ? `${altitudeRange} m` : "—"}</strong></div>
       </div>
       <div className="route-map-stage">
         <svg
@@ -181,9 +193,9 @@ export function ActivityRouteMap({ route }: { route: ActivityRoutePoint[] }) {
           onMouseLeave={clearHover}
         >
           <rect className="route-map-background" x="0" y="0" width={projection.width} height={projection.height} rx="4" />
-          <path className="route-map-grid route-map-grid-horizontal" d={`M 0 ${projection.height * 0.25} H ${projection.width} M 0 ${projection.height * 0.5} H ${projection.width} M 0 ${projection.height * 0.75} H ${projection.width}`} />
-          <path className="route-map-grid" d={`M ${projection.width * 0.25} 0 V ${projection.height} M ${projection.width * 0.5} 0 V ${projection.height} M ${projection.width * 0.75} 0 V ${projection.height}`} />
+          <path className="route-map-grid route-map-grid-horizontal" d={`M 0 ${projection.height * 0.18} H ${projection.width} M 0 ${projection.height * 0.5} H ${projection.width} M 0 ${projection.height * 0.82} H ${projection.width}`} />
           <path className="route-map-shadow" d={path} />
+          <path className="route-map-casing" d={path} />
           {segments.map((segment) => (
             <path className={segment.className} d={segment.path} key={segment.key} />
           ))}
@@ -195,8 +207,6 @@ export function ActivityRouteMap({ route }: { route: ActivityRoutePoint[] }) {
           ))}
           {hover && (
             <g className="route-hover-layer">
-              <line className="route-hover-crosshair" x1={hover.x} x2={hover.x} y1="0" y2={projection.height} />
-              <line className="route-hover-crosshair" x1="0" x2={projection.width} y1={hover.y} y2={hover.y} />
               <circle className="route-hover-pulse" cx={hover.x} cy={hover.y} r="5.2" />
               <circle className="route-hover-dot" cx={hover.x} cy={hover.y} r="2.4" />
             </g>

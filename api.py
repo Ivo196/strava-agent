@@ -658,6 +658,7 @@ def _fitbit_insights() -> dict[str, Any]:
             "daily-sleep-temperature-derivations",
             "daily-vo2-max",
             "sleep",
+            "steps",
         ]
     )
     heart_rate_samples: list[tuple[datetime, str, str, float]] = []
@@ -710,6 +711,7 @@ def _fitbit_insights() -> dict[str, Any]:
         else 0
     )
     recovery = _fitbit_recovery_metrics(rows)
+    step_days = _fitbit_step_days(rows)
     status = database.google_health_status()
     recovery_ready = all(
         recovery[key] is not None for key in ("sleep", "hrv", "resting_hr")
@@ -734,8 +736,32 @@ def _fitbit_insights() -> dict[str, Any]:
             "coverage_hours": round(coverage_hours, 1),
             "series": series,
         },
+        "steps": {
+            "latest": step_days[-1] if step_days else None,
+            "days": step_days,
+            "goal": 10000,
+        },
         "recovery": recovery,
     }
+
+
+def _fitbit_step_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    totals: dict[str, int] = {}
+    for row in rows:
+        if row["data_type"] != "steps" or row["source"] != "FITBIT":
+            continue
+        point = json.loads(row["value_json"])
+        payload = point.get("steps") or {}
+        count = payload.get("count")
+        if count is None:
+            continue
+        recorded = _parse_health_datetime(row["recorded_at"])
+        day = recorded.date().isoformat() if recorded else str(row["recorded_at"])[:10]
+        totals[day] = totals.get(day, 0) + int(count)
+    return [
+        {"date": day, "count": count}
+        for day, count in sorted(totals.items())[-7:]
+    ]
 
 
 def _fitbit_recovery_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:

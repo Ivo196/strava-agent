@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import {
   Activity,
   ArrowRight,
+  BatteryCharging,
+  BedDouble,
   Footprints,
   Gauge,
   HeartPulse,
@@ -70,12 +73,76 @@ function HeartRateChart({ series }: { series: { time: string; bpm: number }[] })
   );
 }
 
+function metricValue(metric: RecoveryMetric | DeviceMetric) {
+  return metric?.value ?? null;
+}
+
+function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, value));
+}
+
+function ProgressSignal({
+  icon,
+  label,
+  value,
+  detail,
+  percent,
+  tone = "cyan",
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  detail: string;
+  percent: number;
+  tone?: "cyan" | "blue" | "amber";
+}) {
+  return (
+    <div className={`progress-signal progress-signal-${tone}`}>
+      <span className="progress-signal-icon">{icon}</span>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <small>{detail}</small>
+        <div className="progress-track" aria-hidden="true"><i style={{ width: `${clampPercent(percent)}%` }} /></div>
+      </div>
+    </div>
+  );
+}
+
+function StepBars({ days, goal }: { days: { date: string; count: number }[]; goal: number }) {
+  const labels = new Intl.DateTimeFormat("es", { weekday: "short" });
+  return (
+    <div className="step-bars" aria-label="Pasos por día Fitbit">
+      {days.length ? days.map((day) => {
+        const percent = clampPercent((day.count / goal) * 100);
+        return (
+          <div className="step-day" key={day.date}>
+            <div><i style={{ height: `${Math.max(8, percent)}%` }} /></div>
+            <strong>{Math.round(day.count / 100) / 10}k</strong>
+            <span>{labels.format(new Date(`${day.date}T12:00:00`))}</span>
+          </div>
+        );
+      }) : (
+        <div className="step-empty">Sin pasos todavía</div>
+      )}
+    </div>
+  );
+}
+
 export function DeviceInsights({ devices }: { devices: DeviceInsightsData }) {
   const apple = devices.apple_watch;
   const fitbit = devices.fitbit;
   const run = apple.latest_run;
   const dynamics = run?.dynamics ?? {};
   const heartRate = fitbit.heart_rate;
+  const sleepHours = metricValue(fitbit.recovery.sleep);
+  const restingHr = metricValue(fitbit.recovery.resting_hr);
+  const appleHrv = metricValue(apple.recovery.hrv);
+  const appleVo2 = metricValue(apple.recovery.vo2_max);
+  const sleepPercent = sleepHours ? (sleepHours / 8) * 100 : 0;
+  const restingPercent = restingHr ? ((70 - restingHr) / 30) * 100 : 0;
+  const stepsLatest = fitbit.steps.latest;
+  const stepsPercent = stepsLatest ? (stepsLatest.count / fitbit.steps.goal) * 100 : 0;
 
   return (
     <section className="device-section" aria-labelledby="device-insights-title">
@@ -108,6 +175,33 @@ export function DeviceInsights({ devices }: { devices: DeviceInsightsData }) {
               <strong>{run?.pace ?? "—"}</strong>
               <p>{run ? `${run.distance_km} km · ${run.average_heartrate ?? "—"} bpm` : "Esperando entrenamiento"}</p>
             </div>
+          </div>
+
+          <div className="apple-readiness-strip">
+            <ProgressSignal
+              icon={<Activity size={15} />}
+              label="Técnica"
+              value={run ? `${run.distance_km} km` : "Sin carrera"}
+              detail={run?.average_heartrate ? `${run.average_heartrate} bpm en la última salida` : "esperando nueva salida"}
+              percent={run ? Math.min(100, (run.distance_km / 12) * 100) : 0}
+              tone="blue"
+            />
+            <ProgressSignal
+              icon={<BatteryCharging size={15} />}
+              label="Motor"
+              value={appleVo2 ? `${appleVo2}` : "Calibrando"}
+              detail="VO₂ máx. Apple"
+              percent={appleVo2 ? (appleVo2 / 60) * 100 : 0}
+              tone="cyan"
+            />
+            <ProgressSignal
+              icon={<HeartPulse size={15} />}
+              label="Variabilidad"
+              value={appleHrv ? `${appleHrv} ms` : "Sin dato"}
+              detail="HRV reciente"
+              percent={appleHrv ? (appleHrv / 100) * 100 : 0}
+              tone="amber"
+            />
           </div>
 
           <div className="device-subheading"><span>Dinámica de la última carrera</span><small>medida por el reloj</small></div>
@@ -159,6 +253,36 @@ export function DeviceInsights({ devices }: { devices: DeviceInsightsData }) {
             <div><span>Rango</span><strong>{heartRate.minimum ?? "—"}–{heartRate.maximum ?? "—"}<small> bpm</small></strong></div>
             <div><span>Cobertura</span><strong>{heartRate.coverage_hours}<small> h</small></strong></div>
           </div>
+
+          <div className="fitbit-live-grid">
+            <ProgressSignal
+              icon={<BedDouble size={15} />}
+              label="Descanso"
+              value={sleepHours ? `${sleepHours} h` : "Primera noche"}
+              detail={sleepHours ? "objetivo 8 h" : "Fitbit necesita una noche completa"}
+              percent={sleepPercent}
+              tone="blue"
+            />
+            <ProgressSignal
+              icon={<HeartPulse size={15} />}
+              label="FC reposo"
+              value={restingHr ? `${restingHr} bpm` : "Calibrando"}
+              detail={restingHr ? "menor suele indicar recuperación" : "aparece con más noches"}
+              percent={restingPercent}
+              tone="cyan"
+            />
+            <ProgressSignal
+              icon={<Footprints size={15} />}
+              label="Pasos hoy"
+              value={stepsLatest ? stepsLatest.count.toLocaleString("es-ES") : "Sin pasos"}
+              detail={`meta ${fitbit.steps.goal.toLocaleString("es-ES")}`}
+              percent={stepsPercent}
+              tone="amber"
+            />
+          </div>
+
+          <div className="device-subheading"><span>Pasos por día</span><small>Fitbit · últimos 7 días</small></div>
+          <StepBars days={fitbit.steps.days} goal={fitbit.steps.goal} />
 
           <div className="device-subheading"><span>Recuperación de la pulsera</span><small>se completa al dormir</small></div>
           <div className="source-metrics fitbit-recovery">

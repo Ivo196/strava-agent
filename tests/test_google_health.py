@@ -130,6 +130,12 @@ def test_sync_saves_available_google_health_points(tmp_path: Path) -> None:
         if "/daily-resting-heart-rate/" in url
     )
     assert "daily_resting_heart_rate.date" in daily_request["filter"]
+    steps_request = next(
+        params
+        for url, params in service.session.gets
+        if "/steps/" in url
+    )
+    assert "steps.interval.start_time" in steps_request["filter"]
 
     service.sync()
     incremental_request = [

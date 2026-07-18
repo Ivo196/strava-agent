@@ -139,6 +139,11 @@ export type DeviceInsights = {
       coverage_hours: number;
       series: { time: string; bpm: number }[];
     };
+    steps: {
+      latest: { date: string; count: number } | null;
+      days: { date: string; count: number }[];
+      goal: number;
+    };
     recovery: {
       hrv: DeviceMetric;
       resting_hr: DeviceMetric;
