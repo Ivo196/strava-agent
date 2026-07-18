@@ -164,12 +164,13 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .recovery-card.sleep { border-top-color: var(--viz-series-4); }
 .chart-empty { height: 270px; display: grid; place-items: center; align-content: center; gap: 18px; color: var(--muted); font-size: 12px; }
 .empty-bars { width: 210px; height: 80px; opacity: .65; background: linear-gradient(to top, var(--soft-orange) 0 40%, transparent 40%) 0 100%/24px 100% repeat-x; clip-path: polygon(0 70%,12% 48%,24% 68%,36% 28%,48% 48%,60% 10%,72% 43%,84% 24%,100% 38%,100% 100%,0 100%); }
-.volume-chart-wrap { width: 100%; min-height: 270px; }
+.volume-chart-wrap { position: relative; width: 100%; min-height: 270px; }
 .volume-chart-svg { display: block; width: 100%; height: 270px; overflow: visible; }
 .chart-grid-line { stroke: rgba(148, 163, 184, .22); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .chart-axis-label, .chart-x-label { fill: var(--muted); font-size: 11px; }
 .chart-x-label { text-anchor: middle; text-transform: uppercase; }
-.chart-bar { fill: url(#volume-bar-fill); opacity: 1; }
+.chart-bar { fill: url(#volume-bar-fill); opacity: 1; transition: opacity .18s ease, filter .18s ease; }
+.chart-series-active .chart-bar { filter: drop-shadow(0 0 10px rgba(101,243,209,.32)); opacity: 1; }
 .chart-load-line { fill: none; stroke: var(--viz-series-2); stroke-width: 3.6; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .chart-load-dot { fill: #030712; stroke: var(--viz-series-2); stroke-width: 2.4; vector-effect: non-scaling-stroke; }
 .chart-average-line { stroke: var(--viz-series-3); stroke-width: 2; stroke-dasharray: 6 7; vector-effect: non-scaling-stroke; }
@@ -291,7 +292,8 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .route-map-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .route-map-heading h2 { margin: 6px 0 0; font: 500 19px/1.2 Inter, sans-serif; letter-spacing: -.025em; }
 .route-map-heading > span { padding: 6px 9px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; font-size: 9px; white-space: nowrap; }
-.route-map-canvas { display: block; width: 100%; height: 360px; border: 1px solid rgba(36,242,206,.2); border-radius: 8px; background: linear-gradient(145deg, rgba(4,11,22,.98), rgba(8,18,34,.94)); }
+.route-map-canvas { display: block; width: 100%; height: 420px; border: 1px solid rgba(36,242,206,.2); border-radius: 8px; background: linear-gradient(145deg, rgba(4,11,22,.98), rgba(8,18,34,.94)); cursor: crosshair; }
+.route-map-background { fill: rgba(3,7,18,.46); }
 .route-map-terrain { fill: url(#map-terrain); opacity: .22; }
 .route-map-terrain-low { opacity: .38; }
 .route-map-contour { fill: none; stroke: rgba(36, 242, 206, .16); stroke-width: .45; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; }
@@ -299,10 +301,14 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .route-map-grid-horizontal { stroke: rgba(91, 140, 255, .12); }
 .route-map-shadow, .route-map-line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .route-map-shadow { stroke: rgba(0,0,0,.6); stroke-width: 5.2; transform: translate(.6px, .8px); }
-.route-map-line { stroke: url(#route-stroke); stroke-width: 2.8; vector-effect: non-scaling-stroke; }
+.route-map-line { stroke: url(#route-stroke); stroke-width: 3.2; vector-effect: non-scaling-stroke; }
 .route-map-marker { stroke: #fff; stroke-width: .7; vector-effect: non-scaling-stroke; }
 .route-map-start { fill: var(--viz-series-1); }
 .route-map-finish { fill: var(--viz-series-2); }
+.route-hit-area, .chart-hit-area { fill: transparent; pointer-events: all; }
+.route-hover-pulse { fill: rgba(101,243,209,.18); stroke: rgba(101,243,209,.54); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.route-hover-dot { fill: #fff; stroke: var(--orange-deep); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.route-tooltip-text { font-size: 5px; letter-spacing: 0; }
 .route-map-legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 13px; color: var(--muted); font-size: 10px; }
 .route-map-legend span { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
 .route-map-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; }
@@ -317,10 +323,20 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .detail-chart-wide { grid-column: 1 / -1; }
 .chart-title { padding: 0 3px 5px; }
 .chart-title strong { display: block; margin-top: 6px; font-size: 14px; }
+.interactive-chart-frame { position: relative; }
+.interactive-svg-chart { cursor: crosshair; touch-action: pan-y; }
 .detail-svg-chart { display: block; width: 100%; height: auto; min-height: 210px; }
-.detail-line { fill: none; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 8px rgba(91,140,255,.16)); }
+.detail-line { fill: none; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 8px rgba(91,140,255,.16)); transition: opacity .18s ease, stroke-width .18s ease; }
+.detail-line-muted { opacity: .22; stroke-width: 7; filter: none; }
 .detail-area-fill { opacity: .18; }
 .chart-unit-label { fill: var(--muted); font-size: 10px; text-anchor: end; text-transform: uppercase; letter-spacing: .08em; }
+.chart-hover-layer { pointer-events: none; }
+.chart-hover-rule { stroke: rgba(226,232,240,.42); stroke-width: 1; stroke-dasharray: 4 5; vector-effect: non-scaling-stroke; }
+.chart-hover-dot { fill: #030712; stroke: var(--viz-series-2); stroke-width: 2.4; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 9px rgba(101,243,209,.45)); }
+.chart-tooltip-bg { fill: rgba(3,7,18,.94); stroke: rgba(226,232,240,.18); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.chart-tooltip-title { fill: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.chart-tooltip-value { fill: var(--ink); font-size: 12px; font-weight: 700; }
+.chart-tooltip-muted { fill: var(--muted); font-size: 10px; }
 .splits-section { margin-top: 30px; }
 .splits-table td:first-child { color: var(--orange-deep); }
 .dynamics-section { margin-top: 30px; }
@@ -573,7 +589,7 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
   .activity-summary div:last-child { border-bottom: 0; }
   .activity-route-map { padding: 18px; }
   .route-map-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
-  .route-map-canvas { height: 290px; }
+  .route-map-canvas { height: 320px; }
   .route-map-legend { display: grid; gap: 8px; }
   .activity-charts { grid-template-columns: 1fr; }
   .detail-chart-wide { grid-column: auto; }

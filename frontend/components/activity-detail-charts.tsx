@@ -1,6 +1,16 @@
+"use client";
+
+import { useState, type MouseEvent } from "react";
 import type { ActivitySeriesPoint } from "@/lib/types";
 
 type SeriesKey = "pace_min_km" | "heartrate" | "altitude_m";
+type HoverPoint = {
+  x: number;
+  y: number;
+  distance: number;
+  value: number;
+  label: string;
+};
 
 const chartMeta: Record<SeriesKey, { color: string; unit: string; reversed?: boolean; area?: boolean; formatter?: (value: number) => string }> = {
   pace_min_km: { color: "var(--viz-series-1)", unit: "min/km", reversed: true, formatter: paceLabel },
@@ -19,6 +29,7 @@ function pathFrom(points: { x: number; y: number }[]) {
 }
 
 function SeriesChart({ data, dataKey }: { data: ActivitySeriesPoint[]; dataKey: SeriesKey }) {
+  const [hover, setHover] = useState<HoverPoint | null>(null);
   const meta = chartMeta[dataKey];
   const samples = data.filter((point) => point[dataKey] != null);
   if (samples.length < 2) return <div className="chart-empty"><p>Sin muestras suficientes.</p></div>;
@@ -47,6 +58,9 @@ function SeriesChart({ data, dataKey }: { data: ActivitySeriesPoint[]; dataKey: 
     return {
       x: left + ((point.distance_km - minDistance) / distanceRange) * plotWidth,
       y: top + (meta.reversed ? ratio : 1 - ratio) * plotHeight,
+      distance: point.distance_km,
+      value,
+      label: meta.formatter ? meta.formatter(value) : Math.round(value).toString(),
     };
   });
   const line = pathFrom(points);
@@ -56,22 +70,51 @@ function SeriesChart({ data, dataKey }: { data: ActivitySeriesPoint[]; dataKey: 
     return { y: top + ratio * plotHeight, label: meta.formatter ? meta.formatter(value) : Math.round(value).toString() };
   });
 
+  function updateHover(event: MouseEvent<SVGSVGElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * width;
+    const nearest = points.reduce((best, point) => Math.abs(point.x - x) < Math.abs(best.x - x) ? point : best, points[0]);
+    setHover(nearest);
+  }
+
   return (
-    <svg className="detail-svg-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`Evolución de ${dataKey}`}>
-      {ticks.map((tick) => (
-        <g key={tick.y}>
-          <path className="chart-grid-line" d={`M ${left} ${tick.y.toFixed(1)} H ${left + plotWidth}`} />
-          <text className="chart-axis-label" x="2" y={tick.y + 4}>{tick.label}</text>
-        </g>
-      ))}
-      {meta.area && <path className="detail-area-fill" d={fill} style={{ fill: meta.color }} />}
-      <path className="detail-line" d={line} style={{ stroke: meta.color }} />
-      <circle className="chart-load-dot" cx={points[0].x} cy={points[0].y} r="3.5" />
-      <circle className="chart-load-dot" cx={points[points.length - 1].x} cy={points[points.length - 1].y} r="3.5" />
-      <text className="chart-x-label" x={left} y={height - 8}>{minDistance.toFixed(1)} km</text>
-      <text className="chart-x-label" x={left + plotWidth} y={height - 8}>{maxDistance.toFixed(1)} km</text>
-      <text className="chart-unit-label" x={left + plotWidth} y="14">{meta.unit}</text>
-    </svg>
+    <div className="interactive-chart-frame">
+      <svg
+        className="detail-svg-chart interactive-svg-chart"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={`Evolución de ${dataKey}`}
+        onMouseMove={updateHover}
+        onMouseLeave={() => setHover(null)}
+      >
+        {ticks.map((tick) => (
+          <g key={tick.y}>
+            <path className="chart-grid-line" d={`M ${left} ${tick.y.toFixed(1)} H ${left + plotWidth}`} />
+            <text className="chart-axis-label" x="2" y={tick.y + 4}>{tick.label}</text>
+          </g>
+        ))}
+        {meta.area && <path className="detail-area-fill" d={fill} style={{ fill: meta.color }} />}
+        <path className="detail-line detail-line-muted" d={line} style={{ stroke: meta.color }} />
+        <path className="detail-line" d={line} style={{ stroke: meta.color }} />
+        <circle className="chart-load-dot" cx={points[0].x} cy={points[0].y} r="3.5" />
+        <circle className="chart-load-dot" cx={points[points.length - 1].x} cy={points[points.length - 1].y} r="3.5" />
+        {hover && (
+          <g className="chart-hover-layer">
+            <path className="chart-hover-rule" d={`M ${hover.x.toFixed(1)} ${top} V ${top + plotHeight}`} />
+            <circle className="chart-hover-dot" cx={hover.x} cy={hover.y} r="5.8" style={{ stroke: meta.color }} />
+            <g transform={`translate(${Math.min(Math.max(hover.x + 12, left), width - right - 132)} ${hover.y < 78 ? hover.y + 18 : hover.y - 58})`}>
+              <rect className="chart-tooltip-bg" width="124" height="46" rx="7" />
+              <text className="chart-tooltip-title" x="10" y="17">{hover.distance.toFixed(2)} km</text>
+              <text className="chart-tooltip-value" x="10" y="35">{hover.label} {meta.unit}</text>
+            </g>
+          </g>
+        )}
+        <rect className="chart-hit-area" x={left} y={top} width={plotWidth} height={plotHeight} />
+        <text className="chart-x-label" x={left} y={height - 8}>{minDistance.toFixed(1)} km</text>
+        <text className="chart-x-label" x={left + plotWidth} y={height - 8}>{maxDistance.toFixed(1)} km</text>
+        <text className="chart-unit-label" x={left + plotWidth} y="14">{meta.unit}</text>
+      </svg>
+    </div>
   );
 }
 

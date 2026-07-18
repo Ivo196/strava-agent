@@ -1,6 +1,15 @@
+"use client";
+
+import { useState, type MouseEvent } from "react";
 import type { RunningDynamicsPoint } from "@/lib/types";
 
 type MetricKey = Exclude<keyof RunningDynamicsPoint, "elapsed_min">;
+type HoverPoint = {
+  x: number;
+  y: number;
+  minute: number;
+  value: number;
+};
 
 const charts: {
   key: MetricKey;
@@ -21,6 +30,7 @@ function pathFrom(points: { x: number; y: number }[]) {
 }
 
 function DynamicsMiniChart({ data, chart }: { data: RunningDynamicsPoint[]; chart: (typeof charts)[number] }) {
+  const [hover, setHover] = useState<HoverPoint | null>(null);
   const samples = data.filter((point) => point[chart.key] != null);
   if (samples.length < 2) return <div className="chart-empty"><p>Sin muestras suficientes.</p></div>;
   const width = 460;
@@ -44,17 +54,48 @@ function DynamicsMiniChart({ data, chart }: { data: RunningDynamicsPoint[]; char
   const points = samples.map((point) => ({
     x: left + ((point.elapsed_min - minMinute) / minuteRange) * plotWidth,
     y: top + plotHeight - ((Number(point[chart.key]) - low) / range) * plotHeight,
+    minute: point.elapsed_min,
+    value: Number(point[chart.key]),
   }));
 
+  function updateHover(event: MouseEvent<SVGSVGElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * width;
+    const nearest = points.reduce((best, point) => Math.abs(point.x - x) < Math.abs(best.x - x) ? point : best, points[0]);
+    setHover(nearest);
+  }
+
   return (
-    <svg className="detail-svg-chart dynamics-svg-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={chart.title}>
-      <path className="chart-grid-line" d={`M ${left} ${top} H ${left + plotWidth} M ${left} ${top + plotHeight / 2} H ${left + plotWidth} M ${left} ${top + plotHeight} H ${left + plotWidth}`} />
-      <path className="detail-line" d={pathFrom(points)} style={{ stroke: chart.color }} />
-      <text className="chart-axis-label" x="2" y={top + 4}>{high.toFixed(chart.digits ?? 0)}</text>
-      <text className="chart-axis-label" x="2" y={top + plotHeight + 4}>{low.toFixed(chart.digits ?? 0)}</text>
-      <text className="chart-x-label" x={left} y={height - 8}>{Math.round(minMinute)}′</text>
-      <text className="chart-x-label" x={left + plotWidth} y={height - 8}>{Math.round(maxMinute)}′</text>
-    </svg>
+    <div className="interactive-chart-frame">
+      <svg
+        className="detail-svg-chart dynamics-svg-chart interactive-svg-chart"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={chart.title}
+        onMouseMove={updateHover}
+        onMouseLeave={() => setHover(null)}
+      >
+        <path className="chart-grid-line" d={`M ${left} ${top} H ${left + plotWidth} M ${left} ${top + plotHeight / 2} H ${left + plotWidth} M ${left} ${top + plotHeight} H ${left + plotWidth}`} />
+        <path className="detail-line detail-line-muted" d={pathFrom(points)} style={{ stroke: chart.color }} />
+        <path className="detail-line" d={pathFrom(points)} style={{ stroke: chart.color }} />
+        {hover && (
+          <g className="chart-hover-layer">
+            <path className="chart-hover-rule" d={`M ${hover.x.toFixed(1)} ${top} V ${top + plotHeight}`} />
+            <circle className="chart-hover-dot" cx={hover.x} cy={hover.y} r="5.4" style={{ stroke: chart.color }} />
+            <g transform={`translate(${Math.min(Math.max(hover.x + 10, left), width - right - 112)} ${hover.y < 72 ? hover.y + 16 : hover.y - 54})`}>
+              <rect className="chart-tooltip-bg" width="104" height="42" rx="7" />
+              <text className="chart-tooltip-title" x="9" y="16">{hover.minute.toFixed(1)} min</text>
+              <text className="chart-tooltip-value" x="9" y="32">{hover.value.toFixed(chart.digits ?? 0)} {chart.unit}</text>
+            </g>
+          </g>
+        )}
+        <rect className="chart-hit-area" x={left} y={top} width={plotWidth} height={plotHeight} />
+        <text className="chart-axis-label" x="2" y={top + 4}>{high.toFixed(chart.digits ?? 0)}</text>
+        <text className="chart-axis-label" x="2" y={top + plotHeight + 4}>{low.toFixed(chart.digits ?? 0)}</text>
+        <text className="chart-x-label" x={left} y={height - 8}>{Math.round(minMinute)}′</text>
+        <text className="chart-x-label" x={left + plotWidth} y={height - 8}>{Math.round(maxMinute)}′</text>
+      </svg>
+    </div>
   );
 }
 

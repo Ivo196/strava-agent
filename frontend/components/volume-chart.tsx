@@ -1,4 +1,15 @@
+"use client";
+
+import { useState, type MouseEvent } from "react";
+
 type WeekPoint = { week: string; distance_km: number; training_load: number; runs: number };
+type HoverWeek = WeekPoint & {
+  label: string;
+  x: number;
+  barY: number;
+  barHeight: number;
+  loadY: number;
+};
 
 const shortDate = new Intl.DateTimeFormat("es", { day: "numeric", month: "short" });
 
@@ -7,6 +18,7 @@ function pointsPath(points: { x: number; y: number }[]) {
 }
 
 export function VolumeChart({ data }: { data: WeekPoint[] }) {
+  const [hover, setHover] = useState<HoverWeek | null>(null);
   const chartData = data.map((point) => ({
     ...point,
     label: shortDate.format(new Date(`${point.week}T12:00:00`)),
@@ -34,19 +46,40 @@ export function VolumeChart({ data }: { data: WeekPoint[] }) {
   const average = chartData.reduce((total, point) => total + point.distance_km, 0) / chartData.length;
   const step = plotWidth / chartData.length;
   const barWidth = Math.min(44, step * 0.52);
-  const loadPoints = chartData.map((point, index) => ({
-    x: left + step * index + step / 2,
-    y: top + plotHeight - (point.training_load / maxLoad) * plotHeight,
-  }));
+  const enhancedData = chartData.map((point, index) => {
+    const x = left + step * index + step / 2;
+    const barHeight = (point.distance_km / maxDistance) * plotHeight;
+    return {
+      ...point,
+      x,
+      barY: top + plotHeight - barHeight,
+      barHeight,
+      loadY: top + plotHeight - (point.training_load / maxLoad) * plotHeight,
+    };
+  });
+  const loadPoints = enhancedData.map((point) => ({ x: point.x, y: point.loadY }));
   const averageY = top + plotHeight - (average / maxDistance) * plotHeight;
   const yTicks = [0, 0.5, 1].map((ratio) => ({
     value: Math.round(maxDistance * ratio),
     y: top + plotHeight - ratio * plotHeight,
   }));
 
+  function updateHover(event: MouseEvent<SVGSVGElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * width;
+    const nearest = enhancedData.reduce((best, point) => Math.abs(point.x - x) < Math.abs(best.x - x) ? point : best, enhancedData[0]);
+    setHover(nearest);
+  }
+
   return (
     <div className="volume-chart-wrap" role="img" aria-label="Volumen semanal en kilómetros, carga de entrenamiento y media semanal">
-      <svg className="volume-chart-svg" viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
+      <svg
+        className="volume-chart-svg interactive-svg-chart"
+        viewBox={`0 0 ${width} ${height}`}
+        aria-hidden="true"
+        onMouseMove={updateHover}
+        onMouseLeave={() => setHover(null)}
+      >
         <defs>
           <linearGradient id="volume-bar-fill" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="var(--viz-series-1)" />
@@ -67,13 +100,11 @@ export function VolumeChart({ data }: { data: WeekPoint[] }) {
           </g>
         ))}
         <path className="chart-average-line" d={`M ${left} ${averageY.toFixed(1)} H ${width - right}`} />
-        {chartData.map((point, index) => {
+        {enhancedData.map((point, index) => {
           const x = left + step * index + (step - barWidth) / 2;
-          const barHeight = (point.distance_km / maxDistance) * plotHeight;
-          const y = top + plotHeight - barHeight;
           return (
-            <g key={point.week}>
-              <rect className="chart-bar" x={x} y={y} width={barWidth} height={barHeight} rx="5" />
+            <g className={hover?.week === point.week ? "chart-series-active" : undefined} key={point.week}>
+              <rect className="chart-bar" x={x} y={point.barY} width={barWidth} height={point.barHeight} rx="5" />
               <text className="chart-x-label" x={left + step * index + step / 2} y={height - 16}>{point.label}</text>
             </g>
           );
@@ -82,6 +113,19 @@ export function VolumeChart({ data }: { data: WeekPoint[] }) {
         {loadPoints.map((point, index) => (
           <circle className="chart-load-dot" cx={point.x} cy={point.y} r="4" key={chartData[index].week} />
         ))}
+        {hover && (
+          <g className="chart-hover-layer">
+            <path className="chart-hover-rule" d={`M ${hover.x.toFixed(1)} ${top} V ${top + plotHeight}`} />
+            <circle className="chart-hover-dot" cx={hover.x} cy={hover.loadY} r="5.8" />
+            <g transform={`translate(${Math.min(Math.max(hover.x + 12, left), width - right - 132)} ${Math.min(hover.barY + 12, top + plotHeight - 58)})`}>
+              <rect className="chart-tooltip-bg" width="126" height="58" rx="7" />
+              <text className="chart-tooltip-title" x="10" y="17">{hover.label}</text>
+              <text className="chart-tooltip-value" x="10" y="35">{hover.distance_km.toFixed(1)} km · {hover.runs} runs</text>
+              <text className="chart-tooltip-muted" x="10" y="50">Carga {Math.round(hover.training_load)}</text>
+            </g>
+          </g>
+        )}
+        <rect className="chart-hit-area" x={left} y={top} width={plotWidth} height={plotHeight} />
       </svg>
       <div className="chart-legend" aria-hidden="true">
         <span><i className="legend-bar" />Distancia</span>
