@@ -16,7 +16,7 @@ export function getActivities() {
   return apiGet<{ activities: Activity[] }>("/api/activities");
 }
 
-export function getActivityDetail(id: number) {
+export function getActivityDetail(id: string) {
   return apiGet<ActivityDetail>(`/api/activities/${id}`);
 }
 

@@ -13,7 +13,7 @@ export type Profile = {
 };
 
 export type Activity = {
-  id: number;
+  id: string;
   name: string;
   date: string;
   distance_km: number;
@@ -95,7 +95,7 @@ export type DeviceInsights = {
       runs: number;
     };
     latest_run: {
-      id: number;
+      id: string;
       date: string;
       distance_km: number;
       pace: string;

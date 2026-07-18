@@ -1,15 +1,4 @@
-"use client";
-
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { RunningDynamicsPoint } from "@/lib/types";
-
-const axis = { fill: "var(--muted)", fontSize: 10 };
-const tooltipStyle = {
-  background: "var(--popover)",
-  color: "var(--ink)",
-  border: "1px solid var(--line)",
-  borderRadius: 10,
-};
 
 type MetricKey = Exclude<keyof RunningDynamicsPoint, "elapsed_min">;
 
@@ -26,6 +15,48 @@ const charts: {
   { key: "stride_m", eyebrow: "Zancada", title: "Longitud por paso", unit: "m", color: "var(--viz-series-3)", digits: 2 },
   { key: "vertical_oscillation_cm", eyebrow: "Oscilación", title: "Movimiento vertical", unit: "cm", color: "var(--viz-series-4)", digits: 1 },
 ];
+
+function pathFrom(points: { x: number; y: number }[]) {
+  return points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
+}
+
+function DynamicsMiniChart({ data, chart }: { data: RunningDynamicsPoint[]; chart: (typeof charts)[number] }) {
+  const samples = data.filter((point) => point[chart.key] != null);
+  if (samples.length < 2) return <div className="chart-empty"><p>Sin muestras suficientes.</p></div>;
+  const width = 460;
+  const height = 190;
+  const top = 18;
+  const right = 16;
+  const bottom = 30;
+  const left = 42;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const values = samples.map((point) => Number(point[chart.key]));
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const padding = (max - min || 1) * 0.14;
+  const low = min - padding;
+  const high = max + padding;
+  const range = high - low || 1;
+  const minMinute = Math.min(...samples.map((point) => point.elapsed_min));
+  const maxMinute = Math.max(...samples.map((point) => point.elapsed_min));
+  const minuteRange = maxMinute - minMinute || 1;
+  const points = samples.map((point) => ({
+    x: left + ((point.elapsed_min - minMinute) / minuteRange) * plotWidth,
+    y: top + plotHeight - ((Number(point[chart.key]) - low) / range) * plotHeight,
+  }));
+
+  return (
+    <svg className="detail-svg-chart dynamics-svg-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={chart.title}>
+      <path className="chart-grid-line" d={`M ${left} ${top} H ${left + plotWidth} M ${left} ${top + plotHeight / 2} H ${left + plotWidth} M ${left} ${top + plotHeight} H ${left + plotWidth}`} />
+      <path className="detail-line" d={pathFrom(points)} style={{ stroke: chart.color }} />
+      <text className="chart-axis-label" x="2" y={top + 4}>{high.toFixed(chart.digits ?? 0)}</text>
+      <text className="chart-axis-label" x="2" y={top + plotHeight + 4}>{low.toFixed(chart.digits ?? 0)}</text>
+      <text className="chart-x-label" x={left} y={height - 8}>{Math.round(minMinute)}′</text>
+      <text className="chart-x-label" x={left + plotWidth} y={height - 8}>{Math.round(maxMinute)}′</text>
+    </svg>
+  );
+}
 
 export function RunningDynamicsCharts({
   data,
@@ -59,15 +90,7 @@ export function RunningDynamicsCharts({
         {charts.map((chart) => (
           <article className="detail-chart panel" key={chart.key}>
             <div className="chart-title"><span className="eyebrow">{chart.eyebrow}</span><strong>{chart.title}</strong></div>
-            <ResponsiveContainer width="100%" height={190}>
-              <LineChart accessibilityLayer data={data} margin={{ top: 14, right: 8, bottom: 0, left: -12 }}>
-                <CartesianGrid vertical={false} stroke="var(--line)" />
-                <XAxis dataKey="elapsed_min" type="number" domain={["dataMin", "dataMax"]} tickFormatter={(value) => `${Math.round(Number(value))}′`} tick={axis} axisLine={false} tickLine={false} />
-                <YAxis dataKey={chart.key} domain={["auto", "auto"]} tickFormatter={(value) => Number(value).toFixed(chart.digits ?? 0)} tick={axis} axisLine={false} tickLine={false} width={46} />
-                <Tooltip labelFormatter={(value) => `Minuto ${Math.round(Number(value))}`} formatter={(value) => [`${Number(value).toFixed(chart.digits ?? 0)} ${chart.unit}`, chart.eyebrow]} contentStyle={tooltipStyle} />
-                <Line type="monotone" dataKey={chart.key} stroke={chart.color} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} connectNulls isAnimationActive={false} />
-              </LineChart>
-            </ResponsiveContainer>
+            <DynamicsMiniChart data={data} chart={chart} />
           </article>
         ))}
       </div>

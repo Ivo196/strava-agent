@@ -288,7 +288,7 @@ def dashboard() -> dict[str, Any]:
     recent = frame.sort_values("start_date", ascending=False).head(5)
     activities = [
         {
-            "id": int(row.id),
+            "id": str(row.id),
             "name": row.name,
             "date": row.start_date.date().isoformat(),
             "distance_km": round(float(row.distance_km), 2),
@@ -331,7 +331,7 @@ def activities() -> dict[str, Any]:
     frame = activities_frame(database.list_activities()).sort_values("start_date", ascending=False)
     items = [
         {
-            "id": int(row.id),
+            "id": str(row.id),
             "name": row.name,
             "date": row.start_date.date().isoformat(),
             "distance_km": round(float(row.distance_km), 2),
@@ -360,7 +360,7 @@ def activity_detail(activity_id: int) -> dict[str, Any]:
     dynamics = _running_dynamics(activity)
     return {
         "activity": {
-            "id": int(activity["id"]),
+            "id": str(activity["id"]),
             "name": activity["name"],
             "date": str(activity["start_date"])[:10],
             "distance_km": round(distance_km, 2),
@@ -616,7 +616,7 @@ def _device_insights(rows: list[dict[str, Any]], today: date) -> dict[str, Any]:
         dynamics = _running_dynamics(latest_run)
         recorded = _parse_health_datetime(latest_run.get("start_date"))
         latest_summary = {
-            "id": int(latest_run["id"]),
+            "id": str(latest_run["id"]),
             "date": recorded.date().isoformat() if recorded else str(latest_run.get("start_date") or "")[:10],
             "distance_km": round(distance_km, 2),
             "pace": format_pace(moving_seconds / 60 / distance_km) if distance_km else "—",
@@ -973,7 +973,7 @@ def coach_chat(payload: CoachChatInput) -> dict[str, str]:
     recent = frame.sort_values("start_date", ascending=False).head(8)
     recent_activities = [
         {
-            "id": int(row.id),
+            "id": str(row.id),
             "date": row.start_date.date().isoformat(),
             "distance_km": round(float(row.distance_km), 2),
             "pace": format_pace(float(row.pace_min_km)),

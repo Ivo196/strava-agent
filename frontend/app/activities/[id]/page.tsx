@@ -11,9 +11,8 @@ const dateFormat = new Intl.DateTimeFormat("es", { weekday: "long", day: "numeri
 
 export default async function ActivityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const activityId = Number(id);
-  if (!Number.isSafeInteger(activityId)) notFound();
-  const data = await getActivityDetail(activityId).catch(() => null);
+  if (!/^\d+$/.test(id)) notFound();
+  const data = await getActivityDetail(id).catch(() => null);
   if (!data) notFound();
   const activity = data.activity;
 

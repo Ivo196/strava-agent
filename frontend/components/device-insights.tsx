@@ -11,18 +11,7 @@ import {
   Timer,
   Watch,
 } from "lucide-react";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import type { DeviceInsights as DeviceInsightsData, DeviceMetric, RecoveryMetric } from "@/lib/types";
-
-const axis = { fill: "var(--muted)", fontSize: 9 };
 
 function Metric({
   label,
@@ -42,6 +31,42 @@ function Metric({
         <strong className="metric-pending">{pending}</strong>
       )}
     </div>
+  );
+}
+
+function sparkPath(points: { x: number; y: number }[]) {
+  return points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
+}
+
+function HeartRateChart({ series }: { series: { time: string; bpm: number }[] }) {
+  const width = 520;
+  const height = 190;
+  const top = 18;
+  const right = 14;
+  const bottom = 28;
+  const left = 34;
+  const values = series.map((point) => point.bpm);
+  const min = Math.min(...values) - 5;
+  const max = Math.max(...values) + 5;
+  const range = max - min || 1;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const points = series.map((point, index) => ({
+    x: left + (index / Math.max(series.length - 1, 1)) * plotWidth,
+    y: top + plotHeight - ((point.bpm - min) / range) * plotHeight,
+  }));
+  const fillPath = `${sparkPath(points)} L ${left + plotWidth} ${top + plotHeight} L ${left} ${top + plotHeight} Z`;
+
+  return (
+    <svg className="fitbit-sparkline" viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
+      <path className="chart-grid-line" d={`M ${left} ${top + plotHeight} H ${left + plotWidth} M ${left} ${top + plotHeight / 2} H ${left + plotWidth} M ${left} ${top} H ${left + plotWidth}`} />
+      <path className="sparkline-fill" d={fillPath} />
+      <path className="sparkline-line" d={sparkPath(points)} />
+      <text className="chart-axis-label" x="2" y={top + 4}>{Math.round(max)}</text>
+      <text className="chart-axis-label" x="2" y={top + plotHeight + 4}>{Math.round(min)}</text>
+      <text className="chart-x-label" x={left} y={height - 6}>{series[0]?.time}</text>
+      <text className="chart-x-label" x={left + plotWidth} y={height - 6}>{series[series.length - 1]?.time}</text>
+    </svg>
   );
 }
 
@@ -123,19 +148,7 @@ export function DeviceInsights({ devices }: { devices: DeviceInsightsData }) {
 
           {heartRate.series.length ? (
             <div className="fitbit-chart" role="img" aria-label={`Pulso Fitbit del ${heartRate.date}, entre ${heartRate.minimum} y ${heartRate.maximum} pulsaciones por minuto`}>
-              <ResponsiveContainer width="100%" height={190}>
-                <LineChart accessibilityLayer data={heartRate.series} margin={{ top: 12, right: 8, bottom: 0, left: -16 }}>
-                  <CartesianGrid vertical={false} stroke="var(--line)" />
-                  <XAxis dataKey="time" minTickGap={34} tick={axis} axisLine={false} tickLine={false} />
-                  <YAxis domain={["dataMin - 5", "dataMax + 5"]} tick={axis} axisLine={false} tickLine={false} width={42} />
-                  <Tooltip
-                    formatter={(value) => [`${value} bpm`, "Pulso"]}
-                    labelFormatter={(value) => String(value)}
-                    contentStyle={{ background: "var(--popover)", color: "var(--ink)", border: "1px solid var(--line)", borderRadius: 12 }}
-                  />
-                  <Line type="monotone" dataKey="bpm" stroke="var(--viz-series-2)" strokeWidth={2.3} dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
-                </LineChart>
-              </ResponsiveContainer>
+              <HeartRateChart series={heartRate.series} />
             </div>
           ) : (
             <div className="fitbit-empty"><HeartPulse size={22} /><span>El gráfico aparecerá con las primeras muestras de pulso.</span></div>
