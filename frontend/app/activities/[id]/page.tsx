@@ -9,6 +9,11 @@ import { getActivityDetail } from "@/lib/api";
 export const dynamic = "force-dynamic";
 const dateFormat = new Intl.DateTimeFormat("es", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
+function splitHeartRate(split: { average_heartrate: number | null; heartrate_source: "stream" | "workout_average" | null }) {
+  if (!split.average_heartrate) return "—";
+  return `${split.heartrate_source === "workout_average" ? "~" : ""}${split.average_heartrate} bpm`;
+}
+
 export default async function ActivityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!/^\d+$/.test(id)) notFound();
@@ -46,9 +51,23 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
             <div className="section-heading"><div><span className="eyebrow">Parciales</span><h2>Kilómetro por kilómetro.</h2></div></div>
             <div className="table-scroll">
               <table className="data-table splits-table">
-                <thead><tr><th>Tramo</th><th>Distancia</th><th>Ritmo</th><th>FC media</th><th>Subida</th></tr></thead>
-                <tbody>{data.splits.map((split) => <tr key={`${split.kilometer}-${split.label}`}><td><strong>{split.label}</strong></td><td>{split.distance_km} km</td><td>{split.pace}</td><td>{split.average_heartrate ? `${split.average_heartrate} bpm` : "—"}</td><td>+{split.elevation_gain_m} m</td></tr>)}</tbody>
+                <thead><tr><th>Tramo</th><th>Distancia</th><th>Ritmo</th><th>FC media</th><th>Potencia</th><th>Contacto</th><th>Zancada</th><th>Subida</th></tr></thead>
+                <tbody>{data.splits.map((split) => (
+                  <tr key={`${split.kilometer}-${split.label}`}>
+                    <td><strong>{split.label}</strong></td>
+                    <td>{split.distance_km} km</td>
+                    <td>{split.pace}</td>
+                    <td>{splitHeartRate(split)}</td>
+                    <td>{split.average_power_w ? `${split.average_power_w} W` : "—"}</td>
+                    <td>{split.ground_contact_ms ? `${split.ground_contact_ms} ms` : "—"}</td>
+                    <td>{split.stride_m ? `${split.stride_m} m` : "—"}</td>
+                    <td>+{split.elevation_gain_m} m</td>
+                  </tr>
+                ))}</tbody>
               </table>
+              {data.splits.some((split) => split.heartrate_source === "workout_average") && (
+                <p className="table-note">~ FC estimada con el promedio del workout porque Apple Health no incluyó una serie de pulso por segundo en este export.</p>
+              )}
             </div>
           </section>
         </>

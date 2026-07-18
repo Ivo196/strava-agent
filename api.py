@@ -355,7 +355,7 @@ def activity_detail(activity_id: int) -> dict[str, Any]:
     distance_km = float(activity["distance_m"]) / 1000
     moving_time = int(activity["moving_time_s"])
     streams = json.loads(activity["streams_json"]) if activity.get("streams_json") else None
-    detail = _activity_series(streams) if streams else {"series": [], "splits": []}
+    detail = _activity_series(streams, activity) if streams else {"series": [], "splits": []}
     route = _activity_route(streams) if streams else []
     dynamics = _running_dynamics(activity)
     return {
@@ -779,7 +779,7 @@ def _parse_health_datetime(value: Any) -> datetime | None:
         return None
 
 
-def _activity_series(streams: dict[str, Any]) -> dict[str, Any]:
+def _activity_series(streams: dict[str, Any], activity: dict[str, Any]) -> dict[str, Any]:
     distance = _stream_data(streams, "distance")
     elapsed = _stream_data(streams, "time")
     speed = _stream_data(streams, "velocity_smooth")
@@ -806,6 +806,8 @@ def _activity_series(streams: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
+    dynamics = _activity_dynamics_samples(activity)
+    activity_average_hr = _rounded_or_none(activity.get("average_heartrate"))
     splits = []
     start_index = 0
     split_number = 1
@@ -819,9 +821,15 @@ def _activity_series(streams: dict[str, Any]) -> dict[str, Any]:
         normalized_pace_seconds = split_seconds * 1000 / split_distance
         split_hr = [_value_at(heartrate, i) for i in range(start_index, end_index + 1)]
         split_hr = [float(value) for value in split_hr if value is not None]
+        split_dynamics = _average_dynamics_for_window(
+            dynamics,
+            float(elapsed[start_index]),
+            float(elapsed[end_index]),
+        )
         split_altitude = [_value_at(altitude, i) for i in range(start_index, end_index + 1)]
         split_altitude = [float(value) for value in split_altitude if value is not None]
         elevation_gain = sum(max(0, second - first) for first, second in zip(split_altitude, split_altitude[1:]))
+        average_heartrate = round(sum(split_hr) / len(split_hr)) if split_hr else activity_average_hr
         splits.append(
             {
                 "kilometer": split_number,
@@ -829,8 +837,10 @@ def _activity_series(streams: dict[str, Any]) -> dict[str, Any]:
                 "distance_km": round(split_distance / 1000, 2),
                 "pace": _format_pace_seconds(normalized_pace_seconds),
                 "pace_seconds": round(normalized_pace_seconds),
-                "average_heartrate": round(sum(split_hr) / len(split_hr)) if split_hr else None,
+                "average_heartrate": average_heartrate,
+                "heartrate_source": "stream" if split_hr else "workout_average" if average_heartrate is not None else None,
                 "elevation_gain_m": round(elevation_gain),
+                **split_dynamics,
             }
         )
         start_index = end_index
@@ -839,6 +849,49 @@ def _activity_series(streams: dict[str, Any]) -> dict[str, Any]:
         if end_index == length - 1:
             break
     return {"series": series, "splits": splits}
+
+
+def _activity_dynamics_samples(activity: dict[str, Any]) -> list[dict[str, Any]]:
+    start = _parse_health_datetime(activity.get("start_date"))
+    if start is None:
+        return []
+    duration = int(activity.get("elapsed_time_s") or activity.get("moving_time_s") or 0)
+    end = start + timedelta(seconds=duration + 180)
+    rows = database.list_apple_health_metrics(list(RUNNING_DYNAMICS))
+    samples: list[dict[str, Any]] = []
+    for row in rows:
+        recorded = _parse_health_datetime(row["recorded_at"])
+        if recorded is None or recorded < start or recorded > end:
+            continue
+        measurement = json.loads(row["value_json"])
+        value = measurement.get("qty", measurement.get("Avg"))
+        if value is None:
+            continue
+        samples.append(
+            {
+                "elapsed_s": max(0, (recorded - start).total_seconds()),
+                RUNNING_DYNAMICS[row["metric_name"]]: float(value),
+            }
+        )
+    return samples
+
+
+def _average_dynamics_for_window(samples: list[dict[str, Any]], start_s: float, end_s: float) -> dict[str, Any]:
+    values: dict[str, list[float]] = {target: [] for target in RUNNING_DYNAMICS.values()}
+    for sample in samples:
+        elapsed_s = float(sample["elapsed_s"])
+        if elapsed_s < start_s or elapsed_s > end_s:
+            continue
+        for key in values:
+            if key in sample:
+                values[key].append(float(sample[key]))
+    return {
+        "average_power_w": round(sum(values["power_w"]) / len(values["power_w"])) if values["power_w"] else None,
+        "average_speed_kmh": round(sum(values["speed_kmh"]) / len(values["speed_kmh"]), 1) if values["speed_kmh"] else None,
+        "ground_contact_ms": round(sum(values["ground_contact_ms"]) / len(values["ground_contact_ms"])) if values["ground_contact_ms"] else None,
+        "stride_m": round(sum(values["stride_m"]) / len(values["stride_m"]), 2) if values["stride_m"] else None,
+        "vertical_oscillation_cm": round(sum(values["vertical_oscillation_cm"]) / len(values["vertical_oscillation_cm"]), 1) if values["vertical_oscillation_cm"] else None,
+    }
 
 
 def _activity_route(streams: dict[str, Any]) -> list[dict[str, float]]:

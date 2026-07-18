@@ -38,7 +38,13 @@ export type ActivitySplit = {
   pace: string;
   pace_seconds: number;
   average_heartrate: number | null;
+  heartrate_source: "stream" | "workout_average" | null;
   elevation_gain_m: number;
+  average_power_w: number | null;
+  average_speed_kmh: number | null;
+  ground_contact_ms: number | null;
+  stride_m: number | null;
+  vertical_oscillation_cm: number | null;
 };
 
 export type ActivityRoutePoint = {

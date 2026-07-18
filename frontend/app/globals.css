@@ -319,6 +319,7 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .data-table td strong, .data-table td span { display: block; }
 .data-table td span { margin-top: 4px; color: var(--muted); font-size: 11px; }
 .table-scroll { overflow-x: auto; }
+.table-note { margin: 10px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .activity-table-link { display: block; }
 .activity-table-link:hover strong, .detail-link:hover { color: var(--orange); }
@@ -387,6 +388,7 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .chart-tooltip-muted { fill: var(--muted); font-size: 10px; }
 .splits-section { margin-top: 30px; }
 .splits-table td:first-child { color: var(--orange-deep); }
+.splits-table { min-width: 760px; }
 .dynamics-section { margin-top: 30px; }
 .dynamics-summary { display: grid; grid-template-columns: repeat(5, 1fr); margin: 13px 0 16px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .dynamics-summary div { padding: 14px 15px; border-right: 1px solid var(--line); }
