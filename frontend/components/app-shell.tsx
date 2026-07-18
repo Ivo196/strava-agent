@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Activity, CalendarDays, ChartNoAxesColumnIncreasing, Settings, Sparkles } from "lucide-react";
+import { LiveDataRefresh } from "@/components/live-data-refresh";
 import { localNow } from "@/lib/local-clock";
 
 const navigation = [
@@ -46,6 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <strong>{today || "Actualizando fecha…"}</strong>
           <small>Sistema métrico internacional.</small>
         </div>
+        <LiveDataRefresh />
       </aside>
       <main className="main-content">{children}</main>
       <nav className="mobile-nav" aria-label="Navegación móvil">
