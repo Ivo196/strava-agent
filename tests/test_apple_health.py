@@ -1,5 +1,6 @@
 from pathlib import Path
 from dataclasses import replace
+import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -111,6 +112,45 @@ def test_activity_detail_includes_route_map_points(tmp_path: Path, monkeypatch: 
         {"latitude": 41.88, "longitude": -87.63, "distance_km": 0.0, "elapsed_s": 0, "altitude_m": 180.0},
         {"latitude": 41.925, "longitude": -87.63, "distance_km": 5.004, "elapsed_s": 1800, "altitude_m": 185.0},
     ]
+
+
+def test_activity_detail_builds_heart_rate_stream_from_apple_metrics(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = Database(tmp_path / "coach.db")
+    import_health_auto_export(health_payload(), database)
+    activity = database.list_activities()[0]
+    streams = json.loads(activity["streams_json"])
+    streams.pop("heartrate", None)
+    with database.connect() as connection:
+        connection.execute("UPDATE activities SET streams_json = ? WHERE id = ?", (json.dumps(streams), activity["id"]))
+    database.upsert_apple_health_metric(
+        "heart_rate",
+        {
+            "date": "2026-07-17T07:00:00+02:00",
+            "qty": 141,
+            "source": "Apple Watch",
+            "units": "count/min",
+        },
+    )
+    database.upsert_apple_health_metric(
+        "heart_rate",
+        {
+            "date": "2026-07-17T07:30:00+02:00",
+            "qty": 156,
+            "source": "Apple Watch",
+            "units": "count/min",
+        },
+    )
+    monkeypatch.setattr(api, "database", database)
+    client = TestClient(api.app)
+
+    response = client.get(f"/api/activities/{activity['id']}")
+
+    assert response.status_code == 200
+    detail = response.json()
+    assert [point["heartrate"] for point in detail["series"]] == [141, 156]
+    assert detail["splits"][0]["heartrate_source"] == "stream"
 
 
 def test_rejects_payload_without_supported_data(tmp_path: Path) -> None:

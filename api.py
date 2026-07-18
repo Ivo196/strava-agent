@@ -5,6 +5,7 @@ import sys
 import json
 import math
 import secrets
+from bisect import bisect_left
 from contextlib import asynccontextmanager, suppress
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -355,6 +356,7 @@ def activity_detail(activity_id: int) -> dict[str, Any]:
     distance_km = float(activity["distance_m"]) / 1000
     moving_time = int(activity["moving_time_s"])
     streams = json.loads(activity["streams_json"]) if activity.get("streams_json") else None
+    streams = _streams_with_apple_health_heart_rate(activity, streams) if streams else None
     detail = _activity_series(streams, activity) if streams else {"series": [], "splits": []}
     route = _activity_route(streams) if streams else []
     dynamics = _running_dynamics(activity)
@@ -776,7 +778,57 @@ def _parse_health_datetime(value: Any) -> datetime | None:
     try:
         return datetime.fromisoformat(text.replace("Z", "+00:00"))
     except ValueError:
+        pass
+    for fmt in ("%Y-%m-%d %H:%M:%S %z", "%Y-%m-%d %H:%M:%S %Z"):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _streams_with_apple_health_heart_rate(activity: dict[str, Any], streams: dict[str, Any]) -> dict[str, Any]:
+    if _stream_data(streams, "heartrate"):
+        return streams
+    elapsed = _stream_data(streams, "time")
+    if not elapsed:
+        return streams
+    start = _parse_health_datetime(activity.get("start_date"))
+    if start is None:
+        return streams
+    duration = int(activity.get("elapsed_time_s") or activity.get("moving_time_s") or 0)
+    end = start + timedelta(seconds=duration + 180)
+    samples: list[tuple[float, float]] = []
+    for row in database.list_apple_health_metrics(["heart_rate"]):
+        recorded = _parse_health_datetime(row["recorded_at"])
+        if recorded is None or recorded < start - timedelta(seconds=90) or recorded > end:
+            continue
+        measurement = json.loads(row["value_json"])
+        value = measurement.get("qty", measurement.get("Avg"))
+        if value is None:
+            continue
+        samples.append(((recorded - start).total_seconds(), float(value)))
+    if not samples:
+        return streams
+    samples.sort(key=lambda sample: sample[0])
+    sample_times = [sample[0] for sample in samples]
+    heartrate = [_nearest_heart_rate_sample(float(seconds), samples, sample_times) for seconds in elapsed]
+    enriched = dict(streams)
+    enriched["heartrate"] = {"data": heartrate}
+    return enriched
+
+
+def _nearest_heart_rate_sample(elapsed_s: float, samples: list[tuple[float, float]], sample_times: list[float]) -> int | None:
+    index = bisect_left(sample_times, elapsed_s)
+    candidates = []
+    if index < len(samples):
+        candidates.append(samples[index])
+    if index > 0:
+        candidates.append(samples[index - 1])
+    nearest = min(candidates, key=lambda sample: abs(sample[0] - elapsed_s))
+    if abs(nearest[0] - elapsed_s) > 45:
         return None
+    return round(nearest[1])
 
 
 def _activity_series(streams: dict[str, Any], activity: dict[str, Any]) -> dict[str, Any]:

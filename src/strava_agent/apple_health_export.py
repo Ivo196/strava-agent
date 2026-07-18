@@ -30,6 +30,7 @@ class AppleHealthExportImportResult:
 
 
 RECORD_METRICS = {
+    "HKQuantityTypeIdentifierHeartRate": "heart_rate",
     "HKQuantityTypeIdentifierHeartRateVariabilitySDNN": "heart_rate_variability",
     "HKQuantityTypeIdentifierRestingHeartRate": "resting_heart_rate",
     "HKQuantityTypeIdentifierVO2Max": "vo2_max",
