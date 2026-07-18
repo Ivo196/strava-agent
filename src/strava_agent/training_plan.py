@@ -163,7 +163,7 @@ def _three_day_targets(weeks_left: int) -> tuple[str, float, float]:
         1: ("Taper", 18.0, 10.0),
         2: ("Taper", 28.0, 16.0),
         3: ("Taper", 36.0, 20.0),
-        4: ("Específica", 50.0, 30.0),
+        4: ("Específica", 52.0, 30.0),
         5: ("Específica", 44.0, 26.0),
         6: ("Recuperación", 34.0, 18.0),
         7: ("Construcción", 40.0, 22.0),

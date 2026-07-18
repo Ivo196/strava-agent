@@ -44,7 +44,7 @@ def test_current_week_does_not_rewrite_remaining_run() -> None:
     assert plan[0].long_run_km == 10.0
     assert max(week.long_run_km for week in plan[:-1]) == 30.0
     assert [week.phase for week in plan[-4:-1]] == ["Taper", "Taper", "Taper"]
-    assert max(week.target_km for week in plan[:-1]) == 50.0
+    assert max(week.target_km for week in plan[:-1]) == 52.0
 
 
 def test_weekly_checkin_updates_status_without_changing_plan() -> None:
