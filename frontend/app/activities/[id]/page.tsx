@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActivityDetailCharts } from "@/components/activity-detail-charts";
+import { ActivityRouteMap } from "@/components/activity-route-map";
 import { RunningDynamicsCharts } from "@/components/running-dynamics-charts";
 import { LiveDateBadge } from "@/components/live-date-badge";
 import { getActivityDetail } from "@/lib/api";
@@ -33,6 +34,8 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
         <div><span>Pulso medio</span><strong>{activity.average_heartrate ? `${activity.average_heartrate} bpm` : "—"}</strong></div>
         <div><span>Desnivel</span><strong>{activity.elevation_gain_m ?? 0} m</strong></div>
       </section>
+
+      {data.route_available && <ActivityRouteMap route={data.route} />}
 
       {data.streams_available ? (
         <>

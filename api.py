@@ -356,6 +356,7 @@ def activity_detail(activity_id: int) -> dict[str, Any]:
     moving_time = int(activity["moving_time_s"])
     streams = json.loads(activity["streams_json"]) if activity.get("streams_json") else None
     detail = _activity_series(streams) if streams else {"series": [], "splits": []}
+    route = _activity_route(streams) if streams else []
     dynamics = _running_dynamics(activity)
     return {
         "activity": {
@@ -372,6 +373,8 @@ def activity_detail(activity_id: int) -> dict[str, Any]:
             "calories": _rounded_or_none(activity["calories"]),
         },
         "streams_available": bool(detail["series"]),
+        "route_available": bool(route),
+        "route": route,
         **dynamics,
         **detail,
     }
@@ -838,9 +841,41 @@ def _activity_series(streams: dict[str, Any]) -> dict[str, Any]:
     return {"series": series, "splits": splits}
 
 
+def _activity_route(streams: dict[str, Any]) -> list[dict[str, float]]:
+    latlng = _stream_data(streams, "latlng")
+    points: list[dict[str, float]] = []
+    for point in latlng:
+        if not isinstance(point, list | tuple) or len(point) < 2:
+            continue
+        latitude = _coerce_coordinate(point[0], minimum=-90, maximum=90)
+        longitude = _coerce_coordinate(point[1], minimum=-180, maximum=180)
+        if latitude is None or longitude is None:
+            continue
+        points.append({"latitude": round(latitude, 6), "longitude": round(longitude, 6)})
+
+    if len(points) < 2:
+        return []
+
+    sample_step = max(1, math.ceil(len(points) / 700))
+    sampled = points[::sample_step]
+    if sampled[-1] != points[-1]:
+        sampled.append(points[-1])
+    return sampled
+
+
 def _stream_data(streams: dict[str, Any], key: str) -> list[Any]:
     value = streams.get(key) or {}
     return value.get("data", []) if isinstance(value, dict) else []
+
+
+def _coerce_coordinate(value: Any, *, minimum: float, maximum: float) -> float | None:
+    try:
+        coordinate = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(coordinate) or coordinate < minimum or coordinate > maximum:
+        return None
+    return coordinate
 
 
 def _value_at(values: list[Any], index: int) -> Any:

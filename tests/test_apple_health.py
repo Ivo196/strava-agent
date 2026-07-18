@@ -95,6 +95,24 @@ def test_imports_health_auto_export_and_is_idempotent(tmp_path: Path) -> None:
     assert status["last_sync"]["workouts_received"] == 1
 
 
+def test_activity_detail_includes_route_map_points(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    database = Database(tmp_path / "coach.db")
+    import_health_auto_export(health_payload(), database)
+    activity = database.list_activities()[0]
+    monkeypatch.setattr(api, "database", database)
+    client = TestClient(api.app)
+
+    response = client.get(f"/api/activities/{activity['id']}")
+
+    assert response.status_code == 200
+    detail = response.json()
+    assert detail["route_available"] is True
+    assert detail["route"] == [
+        {"latitude": 41.88, "longitude": -87.63},
+        {"latitude": 41.925, "longitude": -87.63},
+    ]
+
+
 def test_rejects_payload_without_supported_data(tmp_path: Path) -> None:
     database = Database(tmp_path / "coach.db")
 

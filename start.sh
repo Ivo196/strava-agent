@@ -15,9 +15,12 @@ if ! curl --silent --fail http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
 fi
 
 if ! curl --silent --fail http://127.0.0.1:3100 >/dev/null 2>&1; then
-  nohup node frontend/node_modules/next/dist/bin/next start -p 3100 \
-    >.run/web.out.log 2>.run/web.err.log &
-  echo "$!" > .run/web.pid
+  (
+    cd frontend
+    nohup npm run start -- -p 3100 \
+      >../.run/web.out.log 2>../.run/web.err.log &
+    echo "$!" > ../.run/web.pid
+  )
 fi
 
 for _ in {1..30}; do

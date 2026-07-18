@@ -41,6 +41,11 @@ export type ActivitySplit = {
   elevation_gain_m: number;
 };
 
+export type ActivityRoutePoint = {
+  latitude: number;
+  longitude: number;
+};
+
 export type ActivityDetail = {
   activity: Activity & {
     moving_time: string;
@@ -49,6 +54,8 @@ export type ActivityDetail = {
     calories: number | null;
   };
   streams_available: boolean;
+  route_available: boolean;
+  route: ActivityRoutePoint[];
   running_dynamics_available: boolean;
   running_dynamics: RunningDynamicsPoint[];
   running_dynamics_summary: Partial<Omit<RunningDynamicsPoint, "elapsed_min">>;
