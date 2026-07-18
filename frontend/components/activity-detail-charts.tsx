@@ -118,7 +118,28 @@ function SeriesChart({ data, dataKey }: { data: ActivitySeriesPoint[]; dataKey: 
   );
 }
 
-export function ActivityDetailCharts({ data }: { data: ActivitySeriesPoint[] }) {
+function HeartRateFallback({ average, max }: { average: number | null; max: number | null }) {
+  if (!average && !max) return <div className="chart-empty"><p>Sin muestras suficientes.</p></div>;
+  return (
+    <div className="chart-empty heart-summary-fallback">
+      <div className="heart-rate-summary">
+        <div><span>Media</span><strong>{average ?? "—"}<small> bpm</small></strong></div>
+        <div><span>Máxima</span><strong>{max ?? "—"}<small> bpm</small></strong></div>
+        <div><span>Serie</span><strong>Resumen<small> workout</small></strong></div>
+      </div>
+      <p>Apple Health trajo pulso medio/máximo, pero no una curva de frecuencia cardíaca por segundo para graficar.</p>
+    </div>
+  );
+}
+
+export function ActivityDetailCharts({
+  data,
+  heartRateSummary,
+}: {
+  data: ActivitySeriesPoint[];
+  heartRateSummary: { average: number | null; max: number | null };
+}) {
+  const hasHeartRateSeries = data.filter((point) => point.heartrate != null).length >= 2;
   return (
     <div className="activity-charts" aria-label="Evolución de la carrera por distancia">
       <section className="detail-chart panel">
@@ -128,7 +149,11 @@ export function ActivityDetailCharts({ data }: { data: ActivitySeriesPoint[] }) 
 
       <section className="detail-chart panel">
         <div className="chart-title"><span className="eyebrow">Frecuencia cardíaca</span><strong>Respuesta del esfuerzo</strong></div>
-        <SeriesChart data={data} dataKey="heartrate" />
+        {hasHeartRateSeries ? (
+          <SeriesChart data={data} dataKey="heartrate" />
+        ) : (
+          <HeartRateFallback average={heartRateSummary.average} max={heartRateSummary.max} />
+        )}
       </section>
 
       <section className="detail-chart detail-chart-wide panel">

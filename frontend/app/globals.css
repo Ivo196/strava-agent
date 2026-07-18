@@ -177,6 +177,9 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .recovery-card.strong { border-top-color: var(--viz-series-3); }
 .recovery-card.sleep { border-top-color: var(--viz-series-4); }
 .chart-empty { height: 270px; display: grid; place-items: center; align-content: center; gap: 18px; color: var(--muted); font-size: 12px; }
+.heart-summary-fallback { place-items: stretch; padding: 0 6px; text-align: left; }
+.heart-summary-fallback .heart-rate-summary { width: 100%; }
+.heart-summary-fallback p { max-width: 440px; margin: 0 auto; color: var(--muted); font-size: 11px; line-height: 1.55; text-align: center; }
 .empty-bars { width: 210px; height: 80px; opacity: .65; background: linear-gradient(to top, var(--soft-orange) 0 40%, transparent 40%) 0 100%/24px 100% repeat-x; clip-path: polygon(0 70%,12% 48%,24% 68%,36% 28%,48% 48%,60% 10%,72% 43%,84% 24%,100% 38%,100% 100%,0 100%); }
 .volume-chart-wrap { position: relative; width: 100%; min-height: 270px; }
 .volume-chart-svg { display: block; width: 100%; height: 270px; overflow: visible; }

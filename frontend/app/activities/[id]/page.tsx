@@ -43,7 +43,10 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
 
       {data.streams_available ? (
         <>
-          <ActivityDetailCharts data={data.series} />
+          <ActivityDetailCharts
+            data={data.series}
+            heartRateSummary={{ average: activity.average_heartrate, max: activity.max_heartrate }}
+          />
           {data.running_dynamics_available && (
             <RunningDynamicsCharts data={data.running_dynamics} summary={data.running_dynamics_summary} />
           )}
