@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type MouseEvent } from "react";
+import { useRef, useState, type MouseEvent } from "react";
 
 type WeekPoint = { week: string; distance_km: number; training_load: number; runs: number };
 type HoverWeek = WeekPoint & {
@@ -19,6 +19,8 @@ function pointsPath(points: { x: number; y: number }[]) {
 
 export function VolumeChart({ data }: { data: WeekPoint[] }) {
   const [hover, setHover] = useState<HoverWeek | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const lastHoverRef = useRef<HoverWeek | null>(null);
   const chartData = data.map((point) => ({
     ...point,
     label: shortDate.format(new Date(`${point.week}T12:00:00`)),
@@ -68,7 +70,20 @@ export function VolumeChart({ data }: { data: WeekPoint[] }) {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * width;
     const nearest = enhancedData.reduce((best, point) => Math.abs(point.x - x) < Math.abs(best.x - x) ? point : best, enhancedData[0]);
-    setHover(nearest);
+    if (lastHoverRef.current === nearest) return;
+    lastHoverRef.current = nearest;
+    if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+    frameRef.current = window.requestAnimationFrame(() => {
+      setHover(nearest);
+      frameRef.current = null;
+    });
+  }
+
+  function clearHover() {
+    lastHoverRef.current = null;
+    if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+    frameRef.current = null;
+    setHover(null);
   }
 
   return (
@@ -78,7 +93,7 @@ export function VolumeChart({ data }: { data: WeekPoint[] }) {
         viewBox={`0 0 ${width} ${height}`}
         aria-hidden="true"
         onMouseMove={updateHover}
-        onMouseLeave={() => setHover(null)}
+        onMouseLeave={clearHover}
       >
         <defs>
           <linearGradient id="volume-bar-fill" x1="0" x2="0" y1="0" y2="1">

@@ -27,8 +27,10 @@ function latestRecovery(metrics: { hrv: RecoveryMetric; resting_hr: RecoveryMetr
   ];
 }
 
-export default async function DashboardPage() {
-  const data = await getDashboard().catch(() => null);
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ today?: string }> }) {
+  const { today } = await searchParams;
+  const simulatedToday = today && /^\d{4}-\d{2}-\d{2}$/.test(today) ? today : undefined;
+  const data = await getDashboard(simulatedToday).catch(() => null);
   if (!data) return <OfflineState />;
 
   const name = data.profile.display_name?.trim();

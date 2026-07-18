@@ -267,22 +267,22 @@ async def import_apple_health(
 
 
 @app.get("/api/dashboard")
-def dashboard() -> dict[str, Any]:
+def dashboard(today: date | None = None) -> dict[str, Any]:
     rows = database.list_activities()
     frame = activities_frame(rows)
-    today = date.today()
-    metrics = dashboard_metrics(frame, today=today)
+    analysis_date = today or date.today()
+    metrics = dashboard_metrics(frame, today=analysis_date)
     weeks = weekly_summary(frame).tail(16)
     profile = database.get_profile()
     checkin = database.latest_weekly_checkin()
-    days_to_race = max((RACE_DATE - today).days, 0)
+    days_to_race = max((RACE_DATE - analysis_date).days, 0)
     status, notes = readiness_assessment(metrics, days_to_race)
     plan = build_adaptive_plan(
         metrics,
         running_days=int(profile.get("running_days") or 4),
         goal_pace_seconds_km=profile.get("goal_pace_seconds_km"),
         checkin=checkin,
-        today=today,
+        today=analysis_date,
     )
 
     recent = frame.sort_values("start_date", ascending=False).head(5)
@@ -309,7 +309,7 @@ def dashboard() -> dict[str, Any]:
         "metrics": {key: round(float(value), 1) for key, value in metrics.items()},
         "readiness": {"status": status, "notes": notes},
         "recovery": _recovery_snapshot(),
-        "devices": _device_insights(rows, today),
+        "devices": _device_insights(rows, analysis_date),
         "weeks": [
             {
                 "week": row.week.isoformat(),
@@ -322,7 +322,7 @@ def dashboard() -> dict[str, Any]:
         "recent_activities": activities,
         "next_week": next_week,
         "upcoming_weeks": [_serialize_week(week) for week in plan[:2]],
-        "daily_agenda": _daily_agenda(plan, today),
+        "daily_agenda": _daily_agenda(plan, analysis_date),
     }
 
 
@@ -968,10 +968,10 @@ def _format_duration(seconds: int) -> str:
 
 
 @app.get("/api/plan")
-def plan() -> dict[str, Any]:
+def plan(today: date | None = None) -> dict[str, Any]:
     frame = activities_frame(database.list_activities())
-    today = date.today()
-    metrics = dashboard_metrics(frame, today=today)
+    analysis_date = today or date.today()
+    metrics = dashboard_metrics(frame, today=analysis_date)
     profile = database.get_profile()
     checkin = database.latest_weekly_checkin()
     weeks = build_adaptive_plan(
@@ -979,18 +979,19 @@ def plan() -> dict[str, Any]:
         running_days=int(profile.get("running_days") or 4),
         goal_pace_seconds_km=profile.get("goal_pace_seconds_km"),
         checkin=checkin,
+        today=analysis_date,
     )
     return {
         "fixed": True,
         "policy": "El calendario avanza con la fecha actual y marca cumplimiento; los datos reales actualizan el estado del atleta, no reescriben sesiones sin confirmación.",
-        "current_date": today.isoformat(),
+        "current_date": analysis_date.isoformat(),
         "current_week_number": weeks[0].number if weeks else None,
-        "current_week_start": (today - timedelta(days=today.weekday())).isoformat(),
-        "current_week_end": (today - timedelta(days=today.weekday()) + timedelta(days=6)).isoformat(),
+        "current_week_start": (analysis_date - timedelta(days=analysis_date.weekday())).isoformat(),
+        "current_week_end": (analysis_date - timedelta(days=analysis_date.weekday()) + timedelta(days=6)).isoformat(),
         "profile": profile,
         "weeks": [_serialize_week(week) for week in weeks],
-        "daily_agenda": _daily_agenda(weeks, today),
-        "calendar": _plan_calendar(weeks, today, frame),
+        "daily_agenda": _daily_agenda(weeks, analysis_date),
+        "calendar": _plan_calendar(weeks, analysis_date, frame),
     }
 
 

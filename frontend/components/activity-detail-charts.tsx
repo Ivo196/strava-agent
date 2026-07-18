@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type MouseEvent } from "react";
+import { useRef, useState, type MouseEvent } from "react";
 import type { ActivitySeriesPoint } from "@/lib/types";
 
 type SeriesKey = "pace_min_km" | "heartrate" | "altitude_m";
@@ -30,6 +30,8 @@ function pathFrom(points: { x: number; y: number }[]) {
 
 function SeriesChart({ data, dataKey }: { data: ActivitySeriesPoint[]; dataKey: SeriesKey }) {
   const [hover, setHover] = useState<HoverPoint | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const lastHoverRef = useRef<HoverPoint | null>(null);
   const meta = chartMeta[dataKey];
   const samples = data.filter((point) => point[dataKey] != null);
   if (samples.length < 2) return <div className="chart-empty"><p>Sin muestras suficientes.</p></div>;
@@ -74,7 +76,20 @@ function SeriesChart({ data, dataKey }: { data: ActivitySeriesPoint[]; dataKey: 
     const rect = event.currentTarget.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * width;
     const nearest = points.reduce((best, point) => Math.abs(point.x - x) < Math.abs(best.x - x) ? point : best, points[0]);
-    setHover(nearest);
+    if (lastHoverRef.current === nearest) return;
+    lastHoverRef.current = nearest;
+    if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+    frameRef.current = window.requestAnimationFrame(() => {
+      setHover(nearest);
+      frameRef.current = null;
+    });
+  }
+
+  function clearHover() {
+    lastHoverRef.current = null;
+    if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+    frameRef.current = null;
+    setHover(null);
   }
 
   return (
@@ -85,7 +100,7 @@ function SeriesChart({ data, dataKey }: { data: ActivitySeriesPoint[]; dataKey: 
         role="img"
         aria-label={`Evolución de ${dataKey}`}
         onMouseMove={updateHover}
-        onMouseLeave={() => setHover(null)}
+        onMouseLeave={clearHover}
       >
         {ticks.map((tick) => (
           <g key={tick.y}>

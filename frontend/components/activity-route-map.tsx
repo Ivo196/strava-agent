@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type MouseEvent } from "react";
+import { useMemo, useRef, useState, type MouseEvent } from "react";
 import type { ActivityRoutePoint } from "@/lib/types";
 
 type ProjectedPoint = {
@@ -18,6 +18,12 @@ type RouteProjection = {
   width: number;
   height: number;
   points: ProjectedPoint[];
+};
+
+type RouteSegment = {
+  key: string;
+  className: string;
+  path: string;
 };
 
 function projectRoute(route: ActivityRoutePoint[]): RouteProjection {
@@ -84,8 +90,19 @@ function formatPointPace(point: ProjectedPoint) {
   return `${formatElapsed(Math.round(point.elapsedS / point.distanceKm))} /km`;
 }
 
-function segmentClass(point: ProjectedPoint) {
-  return `route-map-segment route-map-segment-${Math.floor(point.distanceKm) % 6}`;
+function routeSegments(points: ProjectedPoint[]) {
+  const groups = new Map<number, ProjectedPoint[]>();
+  points.forEach((point) => {
+    const km = Math.floor(point.distanceKm);
+    const group = groups.get(km);
+    if (group) group.push(point);
+    else groups.set(km, [point]);
+  });
+  return Array.from(groups.entries()).map<RouteSegment>(([km, segmentPoints]) => ({
+    key: `km-${km}`,
+    className: `route-map-segment route-map-segment-${km % 6}`,
+    path: routePath(segmentPoints),
+  }));
 }
 
 function kilometerMarkers(points: ProjectedPoint[], width: number) {
@@ -93,21 +110,21 @@ function kilometerMarkers(points: ProjectedPoint[], width: number) {
   return Array.from({ length: maxKm }, (_, index) => {
     const km = index + 1;
     const point = points.find((candidate) => candidate.distanceKm >= km) ?? points[points.length - 1];
-    const labelOnLeft = point.x > width * 0.72;
-    const anchor: "end" | "start" = labelOnLeft ? "end" : "start";
-    const stagger = index % 2 === 0 ? -4.5 : 5.2;
+    const pushLeft = point.x > width * 0.72 ? -1.2 : 1.2;
+    const pushVertical = index % 2 === 0 ? -1.2 : 1.2;
     return {
       km,
       point,
-      labelX: labelOnLeft ? -4.2 : 4.2,
-      labelY: stagger,
-      anchor,
+      x: pushLeft,
+      y: pushVertical,
     };
   });
 }
 
 export function ActivityRouteMap({ route }: { route: ActivityRoutePoint[] }) {
   const [hover, setHover] = useState<ProjectedPoint | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const lastHoverRef = useRef<ProjectedPoint | null>(null);
   const projection = useMemo(() => projectRoute(route), [route]);
   if (route.length < 2) return null;
   const points = projection.points;
@@ -116,6 +133,7 @@ export function ActivityRouteMap({ route }: { route: ActivityRoutePoint[] }) {
   const startCoordinate = route[0];
   const finishCoordinate = route[route.length - 1];
   const path = routePath(points);
+  const segments = routeSegments(points);
   const markers = kilometerMarkers(points, projection.width);
   const activePoint = hover ?? finish;
 
@@ -128,7 +146,20 @@ export function ActivityRouteMap({ route }: { route: ActivityRoutePoint[] }) {
       const pointDistance = (point.x - x) ** 2 + (point.y - y) ** 2;
       return pointDistance < bestDistance ? point : best;
     }, points[0]);
-    setHover(nearest);
+    if (lastHoverRef.current === nearest) return;
+    lastHoverRef.current = nearest;
+    if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+    frameRef.current = window.requestAnimationFrame(() => {
+      setHover(nearest);
+      frameRef.current = null;
+    });
+  }
+
+  function clearHover() {
+    lastHoverRef.current = null;
+    if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+    frameRef.current = null;
+    setHover(null);
   }
 
   return (
@@ -147,33 +178,19 @@ export function ActivityRouteMap({ route }: { route: ActivityRoutePoint[] }) {
           role="img"
           aria-label="Trazado de la actividad por kilómetros"
           onMouseMove={updateHover}
-          onMouseLeave={() => setHover(null)}
+          onMouseLeave={clearHover}
         >
-          <defs>
-            <filter id="route-glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="1.5" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
           <rect className="route-map-background" x="0" y="0" width={projection.width} height={projection.height} rx="4" />
           <path className="route-map-grid route-map-grid-horizontal" d={`M 0 ${projection.height * 0.25} H ${projection.width} M 0 ${projection.height * 0.5} H ${projection.width} M 0 ${projection.height * 0.75} H ${projection.width}`} />
           <path className="route-map-grid" d={`M ${projection.width * 0.25} 0 V ${projection.height} M ${projection.width * 0.5} 0 V ${projection.height} M ${projection.width * 0.75} 0 V ${projection.height}`} />
           <path className="route-map-shadow" d={path} />
-          {points.slice(1).map((point, index) => (
-            <path
-              className={segmentClass(point)}
-              d={routePath([points[index], point])}
-              filter="url(#route-glow)"
-              key={`${point.distanceKm}-${index}`}
-            />
+          {segments.map((segment) => (
+            <path className={segment.className} d={segment.path} key={segment.key} />
           ))}
-          {markers.map(({ km, point, labelX, labelY, anchor }) => (
-            <g className="route-km-marker" key={km} transform={`translate(${point.x} ${point.y})`}>
-              <circle r="2.7" />
-              <text textAnchor={anchor} x={labelX} y={labelY}>Km {km}</text>
+          {markers.map(({ km, point, x, y }) => (
+            <g className="route-km-marker" key={km} transform={`translate(${point.x + x} ${point.y + y})`}>
+              <circle r="3.5" />
+              <text textAnchor="middle" x="0" y="1.25">{km}</text>
             </g>
           ))}
           {hover && (

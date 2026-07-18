@@ -351,7 +351,7 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .route-map-grid-horizontal { stroke: rgba(91, 140, 255, .12); }
 .route-map-shadow, .route-map-segment { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .route-map-shadow { stroke: rgba(0,0,0,.6); stroke-width: 5.2; transform: translate(.6px, .8px); }
-.route-map-segment { stroke-width: 3.4; vector-effect: non-scaling-stroke; transition: stroke-width .16s ease, filter .16s ease; }
+.route-map-segment { stroke-width: 3.4; vector-effect: non-scaling-stroke; }
 .route-map-segment-0 { stroke: var(--viz-series-1); }
 .route-map-segment-1 { stroke: var(--viz-series-2); }
 .route-map-segment-2 { stroke: var(--viz-series-3); }
@@ -363,8 +363,8 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .route-map-finish { fill: var(--viz-series-2); }
 .route-hit-area, .chart-hit-area { fill: transparent; pointer-events: all; }
 .route-km-marker { pointer-events: none; }
-.route-km-marker circle { fill: rgba(3,7,18,.94); stroke: rgba(255,255,255,.82); stroke-width: .65; vector-effect: non-scaling-stroke; }
-.route-km-marker text { fill: #fff; paint-order: stroke; stroke: rgba(3,7,18,.88); stroke-width: 2.4px; font-size: 3.3px; font-weight: 800; letter-spacing: 0; }
+.route-km-marker circle { fill: rgba(3,7,18,.96); stroke: rgba(255,255,255,.82); stroke-width: .75; vector-effect: non-scaling-stroke; }
+.route-km-marker text { fill: #fff; font-size: 3.5px; font-weight: 800; letter-spacing: 0; }
 .route-hover-crosshair { stroke: rgba(255,255,255,.18); stroke-width: .25; stroke-dasharray: 1.4 1.6; vector-effect: non-scaling-stroke; }
 .route-hover-pulse { fill: rgba(101,243,209,.18); stroke: rgba(101,243,209,.54); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .route-hover-dot { fill: #fff; stroke: var(--orange-deep); stroke-width: 1.2; vector-effect: non-scaling-stroke; }

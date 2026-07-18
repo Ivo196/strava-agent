@@ -8,8 +8,12 @@ async function apiGet<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function getDashboard() {
-  return apiGet<DashboardData>("/api/dashboard");
+function withToday(path: string, today?: string) {
+  return today ? `${path}?today=${encodeURIComponent(today)}` : path;
+}
+
+export function getDashboard(today?: string) {
+  return apiGet<DashboardData>(withToday("/api/dashboard", today));
 }
 
 export function getActivities() {
@@ -20,8 +24,8 @@ export function getActivityDetail(id: string) {
   return apiGet<ActivityDetail>(`/api/activities/${id}`);
 }
 
-export function getPlan() {
-  return apiGet<PlanData>("/api/plan");
+export function getPlan(today?: string) {
+  return apiGet<PlanData>(withToday("/api/plan", today));
 }
 
 export function getProfile() {

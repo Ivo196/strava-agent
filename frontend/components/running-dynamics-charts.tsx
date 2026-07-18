@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type MouseEvent } from "react";
+import { useRef, useState, type MouseEvent } from "react";
 import type { RunningDynamicsPoint } from "@/lib/types";
 
 type MetricKey = Exclude<keyof RunningDynamicsPoint, "elapsed_min">;
@@ -31,6 +31,8 @@ function pathFrom(points: { x: number; y: number }[]) {
 
 function DynamicsMiniChart({ data, chart }: { data: RunningDynamicsPoint[]; chart: (typeof charts)[number] }) {
   const [hover, setHover] = useState<HoverPoint | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const lastHoverRef = useRef<HoverPoint | null>(null);
   const samples = data.filter((point) => point[chart.key] != null);
   if (samples.length < 2) return <div className="chart-empty"><p>Sin muestras suficientes.</p></div>;
   const width = 460;
@@ -62,7 +64,20 @@ function DynamicsMiniChart({ data, chart }: { data: RunningDynamicsPoint[]; char
     const rect = event.currentTarget.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * width;
     const nearest = points.reduce((best, point) => Math.abs(point.x - x) < Math.abs(best.x - x) ? point : best, points[0]);
-    setHover(nearest);
+    if (lastHoverRef.current === nearest) return;
+    lastHoverRef.current = nearest;
+    if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+    frameRef.current = window.requestAnimationFrame(() => {
+      setHover(nearest);
+      frameRef.current = null;
+    });
+  }
+
+  function clearHover() {
+    lastHoverRef.current = null;
+    if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+    frameRef.current = null;
+    setHover(null);
   }
 
   return (
@@ -73,7 +88,7 @@ function DynamicsMiniChart({ data, chart }: { data: RunningDynamicsPoint[]; char
         role="img"
         aria-label={chart.title}
         onMouseMove={updateHover}
-        onMouseLeave={() => setHover(null)}
+        onMouseLeave={clearHover}
       >
         <path className="chart-grid-line" d={`M ${left} ${top} H ${left + plotWidth} M ${left} ${top + plotHeight / 2} H ${left + plotWidth} M ${left} ${top + plotHeight} H ${left + plotWidth}`} />
         <path className="detail-line detail-line-muted" d={pathFrom(points)} style={{ stroke: chart.color }} />

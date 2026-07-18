@@ -21,6 +21,20 @@ def test_dashboard_and_coach_status_are_available() -> None:
     assert "configured" in coach_status.json()
 
 
+def test_dashboard_and_plan_accept_simulated_today() -> None:
+    client = TestClient(api.app)
+
+    dashboard = client.get("/api/dashboard?today=2026-08-24")
+    plan = client.get("/api/plan?today=2026-08-24")
+
+    assert dashboard.status_code == 200
+    assert dashboard.json()["days_to_race"] == 48
+    assert plan.status_code == 200
+    assert plan.json()["current_date"] == "2026-08-24"
+    assert plan.json()["current_week_start"] == "2026-08-24"
+    assert plan.json()["daily_agenda"][0]["relative_label"] == "Hoy"
+
+
 def test_google_health_runs_automatically_every_six_hours() -> None:
     client = TestClient(api.app)
 

@@ -30,8 +30,10 @@ function DayIcon({ category }: { category: DailyAgendaItem["category"] }) {
   return <MoonStar size={17} />;
 }
 
-export default async function PlanPage() {
-  const data = await getPlan().catch(() => null);
+export default async function PlanPage({ searchParams }: { searchParams: Promise<{ today?: string }> }) {
+  const { today } = await searchParams;
+  const simulatedToday = today && /^\d{4}-\d{2}-\d{2}$/.test(today) ? today : undefined;
+  const data = await getPlan(simulatedToday).catch(() => null);
   if (!data) return <OfflineState />;
   const currentWeek = data.weeks.find((week) => week.number === data.current_week_number) ?? data.weeks[0];
   const calendarWeeks = groupCalendarWeeks(data.calendar);
