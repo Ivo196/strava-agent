@@ -41,7 +41,7 @@ export function WeeklyCheckin() {
 
   return (
     <details className="checkin-card">
-      <summary><ClipboardCheck size={17} /><span><strong>Cierre semanal</strong><small>Completa esto el domingo después de importar tus carreras.</small></span></summary>
+      <summary><ClipboardCheck size={17} /><span><strong>Cierre semanal</strong><small>Completa esto el domingo cuando ya estén sincronizadas tus carreras.</small></span></summary>
       <form action={submit}>
         <div className="checkin-grid">
           <label>Fatiga (1–5)<select name="fatigue" defaultValue="2"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>

@@ -43,7 +43,7 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      <TrainingNow weeks={data.upcoming_weeks} completedDates={data.recent_activities.map((activity) => activity.date)} />
+      <TrainingNow agenda={data.daily_agenda} completedDates={data.recent_activities.map((activity) => activity.date)} />
 
       <section className="metric-grid" aria-label="Resumen del entrenamiento">
         <article className="metric-card">

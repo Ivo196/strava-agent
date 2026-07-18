@@ -1,4 +1,4 @@
-import type { Activity, ActivityDetail, CoachStatus, DashboardData, GoogleHealthStatus, Profile, TrainingWeek } from "./types";
+import type { Activity, ActivityDetail, CoachStatus, DailyAgendaItem, DashboardData, GoogleHealthStatus, Profile, TrainingWeek } from "./types";
 
 export const API_URL = process.env.API_URL ?? "http://127.0.0.1:8000";
 
@@ -21,7 +21,7 @@ export function getActivityDetail(id: number) {
 }
 
 export function getPlan() {
-  return apiGet<{ fixed: boolean; policy: string; weeks: TrainingWeek[] }>("/api/plan");
+  return apiGet<{ fixed: boolean; policy: string; weeks: TrainingWeek[]; daily_agenda: DailyAgendaItem[] }>("/api/plan");
 }
 
 export function getProfile() {

@@ -153,6 +153,18 @@ export type TrainingWeek = {
   completion_percentage: number | null;
 };
 
+export type DailyAgendaItem = {
+  date: string;
+  day: string;
+  relative_label: string;
+  category: "run" | "strength" | "bike" | "rest";
+  title: string;
+  detail: string;
+  week_number: number;
+  phase: string;
+  week_target_km: number;
+};
+
 export type DashboardData = {
   activity_count: number;
   days_to_race: number;
@@ -183,6 +195,7 @@ export type DashboardData = {
   recent_activities: Activity[];
   next_week: TrainingWeek | null;
   upcoming_weeks: TrainingWeek[];
+  daily_agenda: DailyAgendaItem[];
 };
 
 export type CoachStatus = {

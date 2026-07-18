@@ -1,11 +1,19 @@
-import { ChevronDown, LockKeyhole } from "lucide-react";
+import { Bike, ChevronDown, Dumbbell, Footprints, LockKeyhole, MoonStar } from "lucide-react";
 import { OfflineState } from "@/components/offline-state";
 import { getPlan } from "@/lib/api";
 import { WeeklyCheckin } from "@/components/weekly-checkin";
+import type { DailyAgendaItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 const dayMonth = new Intl.DateTimeFormat("es", { day: "numeric", month: "short" });
+
+function DayIcon({ category }: { category: DailyAgendaItem["category"] }) {
+  if (category === "run") return <Footprints size={17} />;
+  if (category === "strength") return <Dumbbell size={17} />;
+  if (category === "bike") return <Bike size={17} />;
+  return <MoonStar size={17} />;
+}
 
 export default async function PlanPage() {
   const data = await getPlan().catch(() => null);
@@ -18,6 +26,19 @@ export default async function PlanPage() {
         <p>El calendario no cambia al importar actividades. Tus datos sirven para evaluar cómo vas y qué puedes mejorar.</p>
       </header>
       <div className="locked-plan-note"><LockKeyhole size={18} /><div><strong>Plan bloqueado</strong><span>{data.policy} Cualquier cambio se hará únicamente si lo decidimos juntos.</span></div></div>
+      <section className="daily-week-panel" aria-label="Agenda de los próximos siete días">
+        <div className="section-heading"><div><span className="eyebrow">Día por día</span><h2>Próximos 7 días</h2></div></div>
+        <div className="daily-week-grid">
+          {data.daily_agenda.map((item) => (
+            <article key={item.date} className={`daily-week-item daily-week-${item.category}`}>
+              <div className="daily-week-icon"><DayIcon category={item.category} /></div>
+              <small>{item.relative_label} · {dayMonth.format(new Date(`${item.date}T12:00:00`))}</small>
+              <strong>{item.title}</strong>
+              <p>{item.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
       <WeeklyCheckin />
       <div className="week-list">
         {data.weeks.map((week, index) => (

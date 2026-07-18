@@ -1,90 +1,66 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { CalendarCheck, ChevronRight } from "lucide-react";
-import type { TrainingWeek } from "@/lib/types";
-import { localNow } from "@/lib/local-clock";
-
-const dayIndex: Record<string, number> = {
-  domingo: 7,
-  lunes: 1,
-  martes: 2,
-  miércoles: 3,
-  miercoles: 3,
-  jueves: 4,
-  viernes: 5,
-  sábado: 6,
-  sabado: 6,
-};
+import { Bike, Check, ChevronRight, Dumbbell, Footprints, MoonStar } from "lucide-react";
+import type { DailyAgendaItem } from "@/lib/types";
 
 const fullDate = new Intl.DateTimeFormat("es-ES", {
   weekday: "long",
   day: "numeric",
   month: "long",
+  timeZone: "Europe/Paris",
 });
 
-function sessionDay(session: string): number | null {
-  const label = session.split(":", 1)[0].trim().toLocaleLowerCase("es-ES");
-  return dayIndex[label] ?? null;
+function AgendaIcon({ category }: { category: DailyAgendaItem["category"] }) {
+  if (category === "run") return <Footprints size={24} />;
+  if (category === "strength") return <Dumbbell size={24} />;
+  if (category === "bike") return <Bike size={24} />;
+  return <MoonStar size={24} />;
 }
 
-export function TrainingNow({ weeks, completedDates = [] }: { weeks: TrainingWeek[]; completedDates?: string[] }) {
-  const [now, setNow] = useState<Date | null>(null);
+export function TrainingNow({
+  agenda,
+  completedDates = [],
+}: {
+  agenda: DailyAgendaItem[];
+  completedDates?: string[];
+}) {
+  const primary = agenda[0];
+  const following = agenda.slice(1, 3);
+  const primaryComplete = primary?.category === "run" && completedDates.includes(primary.date);
 
-  useEffect(() => {
-    const refresh = () => setNow(localNow());
-    refresh();
-    const timer = window.setInterval(refresh, 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const upcoming = useMemo(() => {
-    if (!now) return [];
-    return weeks.flatMap((week, weekIndex) =>
-      week.sessions
-        .filter((session) => {
-          if (weekIndex > 0) return true;
-          const index = sessionDay(session);
-          const currentDay = now.getDay() || 7;
-          if (index === null || index > currentDay) return true;
-          if (index < currentDay) return false;
-          const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-          return !completedDates.includes(todayKey);
-        })
-        .map((session) => ({ session, week })),
-    ).slice(0, 3);
-  }, [completedDates, now, weeks]);
-
-  const primary = upcoming[0];
-  const following = upcoming.slice(1);
+  if (!primary) return null;
 
   return (
     <>
       <div className="live-date" aria-live="polite">
         <span className="eyebrow">Hoy</span>
-        <strong>{now ? fullDate.format(now) : "Actualizando fecha…"}</strong>
+        <strong>{fullDate.format(new Date(`${primary.date}T12:00:00+02:00`))}</strong>
       </div>
-      <section className="today-card">
-        <div className="today-icon"><CalendarCheck size={24} /></div>
+      <section className={`today-card agenda-${primary.category}`}>
+        <div className="today-icon"><AgendaIcon category={primary.category} /></div>
         <div className="today-copy">
-          <span>Próxima sesión</span>
-          <h2>{primary?.session ?? "No hay otra sesión programada esta semana"}</h2>
-          <p>{primary ? `${primary.week.phase} · ${primary.week.target_km} km esta semana` : "Revisaremos el siguiente bloque del plan"}</p>
+          <span>{primaryComplete ? "Sesión completada" : "Lo que toca hoy"}</span>
+          <h2>{primary.title}</h2>
+          <p>{primary.detail} · Semana {primary.week_number}: {primary.week_target_km} km</p>
         </div>
-        <Link href="/plan" className="round-link" aria-label="Ver plan completo"><ChevronRight /></Link>
+        {primaryComplete ? (
+          <span className="agenda-complete" aria-label="Entrenamiento completado"><Check size={18} /></span>
+        ) : (
+          <Link href="/plan" className="round-link" aria-label="Ver plan completo"><ChevronRight /></Link>
+        )}
       </section>
 
-      {following.length > 0 && (
-        <section className="next-steps" aria-label="Siguientes pasos del entrenamiento">
-          <span className="eyebrow">Después</span>
-          <div>
-            {following.map(({ session }, index) => (
-              <article key={`${session}-${index}`}><small>Próximo {index + 2}</small><strong>{session}</strong></article>
-            ))}
-          </div>
-        </section>
-      )}
+      <section className="next-steps" aria-label="Agenda de los próximos días">
+        <span className="eyebrow">Después</span>
+        <div>
+          {following.map((item) => (
+            <article key={item.date} className={`next-step next-step-${item.category}`}>
+              <small>{item.relative_label} · {item.day}</small>
+              <div className="next-step-title"><AgendaIcon category={item.category} /><strong>{item.title}</strong></div>
+              <p>{item.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
     </>
   );
 }
