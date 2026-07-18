@@ -8,7 +8,8 @@ El repositorio contiene solamente el código. Las claves, la base de datos y los
 
 ## Qué muestra
 
-- La próxima sesión y los dos pasos siguientes.
+- Qué hacer hoy, mañana y pasado: carrera, fuerza, bicicleta o descanso.
+- La agenda integrada de los próximos siete días.
 - Volumen actual, promedio semanal y tirada más larga.
 - Evolución por semanas e historial de carreras.
 - Plan fijo hasta el 11 de octubre de 2026, separado del seguimiento real.
@@ -61,46 +62,106 @@ APPLE_HEALTH_API_KEY=una_clave_larga_y_aleatoria
 
 La API de OpenAI se factura por separado y la clave permanece en el backend local.
 
-## Ejecutar
+## Instalación reproducible
 
-### Instalación inicial
+El repositorio es público y no requiere una credencial de GitHub para clonarlo:
 
-Requisitos: Python 3.11 o superior y Node.js 20 o superior.
+```text
+https://github.com/Ivo196/strava-agent
+```
 
-En Windows PowerShell:
+### Requisitos
+
+- Git.
+- Python 3.11 o superior.
+- Node.js 20 o superior con npm.
+- Windows PowerShell 5+ o Linux/macOS/Raspberry Pi con Bash y `curl`.
+
+### Windows
+
+En PowerShell:
 
 ```powershell
 git clone https://github.com/Ivo196/strava-agent.git
 Set-Location strava-agent
-./setup.ps1
+powershell -ExecutionPolicy Bypass -File ./setup.ps1
+powershell -ExecutionPolicy Bypass -File ./start.ps1
 ```
 
-El script crea el entorno virtual, instala backend y frontend, y genera `.env` desde el ejemplo sin incluir ninguna clave.
-
-Para activar Coach AI, completa `OPENAI_API_KEY` dentro de `.env`. La aplicación funciona sin esa clave; solamente el chat estará desactivado.
-
-### Iniciar la aplicación
-
-Backend:
+Abre <http://localhost:3100>. Para detenerlo:
 
 ```powershell
-./.venv/Scripts/python.exe -m uvicorn api:app --reload --port 8000
+powershell -ExecutionPolicy Bypass -File ./stop.ps1
 ```
 
-Frontend:
+### Linux, macOS o Raspberry Pi
 
-```powershell
-Set-Location frontend
-npm run dev
+```bash
+git clone https://github.com/Ivo196/strava-agent.git
+cd strava-agent
+./setup.sh
+./start.sh
 ```
 
-Abre <http://localhost:3000>.
+Abre `http://IP-DEL-EQUIPO:3100`. Para detenerlo:
 
-Después de una instalación nueva, entra en **Datos**, configura Health Auto Export y conecta Google Health. La base se crea localmente en `data/strava_agent.db` y nunca se sube al repositorio.
+```bash
+./stop.sh
+```
+
+Los scripts:
+
+- crean el entorno virtual;
+- instalan backend y frontend;
+- compilan Next.js en modo producción;
+- crean `.env` con una clave aleatoria para Health Auto Export;
+- arrancan API en el puerto `8000` y web en el `3100`;
+- guardan PID y logs locales en `.run/`, que está fuera de Git.
+
+Para activar Coach AI, completa `OPENAI_API_KEY` dentro de `.env` antes de arrancar. La aplicación funciona sin esa clave; solamente el chat estará desactivado.
+
+## Qué configurar después de instalar
+
+### Instalación limpia
+
+1. Abre `.env` y, si quieres Coach AI, agrega `OPENAI_API_KEY`.
+2. Copia el valor local de `APPLE_HEALTH_API_KEY` en el encabezado `X-API-Key` de las automatizaciones de Health Auto Export.
+3. Cambia la URL de esas automatizaciones a `http://IP-DEL-EQUIPO:8000/api/import/apple-health`.
+4. Copia el JSON OAuth de Google en `data/google-health-client.json`.
+5. En Google Cloud agrega como redirect URI `http://localhost:8000/api/google-health/callback` para uso en la misma computadora.
+6. Abre **Datos** y conecta Fitbit/Google Health.
+
+La base nueva se crea en `data/strava_agent.db`. Apple Health y Fitbit volverán a poblarla al sincronizar.
+
+### Migrar exactamente esta instalación
+
+GitHub no contiene datos médicos ni secretos. Para conservar el historial y las conexiones actuales, copia por un canal privado desde la máquina anterior:
+
+- `.env`
+- la carpeta `data/`
+
+Colócalos en la raíz del repositorio nuevo **después de clonarlo y antes de arrancar**. Nunca los agregues a Git, a un issue o a un mensaje público.
 
 ## Uso con OpenClaw
 
-OpenClaw puede clonar este repositorio y seguir la sección **Instalación inicial**. Si el repositorio es privado, debe disponer de una credencial de GitHub con acceso de lectura.
+OpenClaw necesita acceso a la herramienta de shell/`exec`, Git y salida de red hacia GitHub. El repositorio es público, por lo que no necesita token.
+
+Mensaje recomendado para OpenClaw en Windows:
+
+```text
+Clona https://github.com/Ivo196/strava-agent.git en una carpeta local llamada paceos.
+Lee el README completo. Comprueba Git, Python 3.11+ y Node.js 20+.
+En Windows ejecuta setup.ps1 y start.ps1 con ExecutionPolicy Bypass.
+En Linux/Raspberry ejecuta setup.sh y start.sh. No publiques ni confirmes en Git .env,
+data/, credenciales, tokens ni archivos de salud. Verifica que respondan
+http://127.0.0.1:8000/api/health y http://127.0.0.1:3100.
+Al terminar, dime la ruta de instalación, la URL local y qué configuración
+manual falta para Apple Health, Google Health y Coach AI.
+```
+
+En Linux/Raspberry reemplaza `setup.ps1` y `start.ps1` por `setup.sh` y `start.sh`.
+
+OpenClaw no debe inventar claves ni pedirte que las pegues en el chat. Puede generar la instalación limpia; las credenciales privadas se agregan localmente.
 
 ## Verificación
 
