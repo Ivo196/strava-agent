@@ -36,6 +36,7 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
         <div><span>Tiempo</span><strong>{activity.moving_time}</strong></div>
         <div><span>Ritmo medio</span><strong>{activity.pace}</strong></div>
         <div><span>Pulso medio</span><strong>{activity.average_heartrate ? `${activity.average_heartrate} bpm` : "—"}</strong></div>
+        <div><span>Calorías</span><strong>{activity.calories ? `${activity.calories} kcal` : "—"}</strong></div>
         <div><span>Desnivel</span><strong>{activity.elevation_gain_m ?? 0} m</strong></div>
       </section>
 

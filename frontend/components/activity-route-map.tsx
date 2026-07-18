@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type MouseEvent } from "react";
+import { useMemo, useState } from "react";
 import type { ActivityRoutePoint } from "@/lib/types";
 
 type ProjectedPoint = {
@@ -122,9 +122,7 @@ function kilometerMarkers(points: ProjectedPoint[], width: number) {
 }
 
 export function ActivityRouteMap({ route }: { route: ActivityRoutePoint[] }) {
-  const [hover, setHover] = useState<ProjectedPoint | null>(null);
-  const frameRef = useRef<number | null>(null);
-  const lastHoverRef = useRef<ProjectedPoint | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(route.length - 1);
   const projection = useMemo(() => projectRoute(route), [route]);
   if (route.length < 2) return null;
   const points = projection.points;
@@ -135,38 +133,15 @@ export function ActivityRouteMap({ route }: { route: ActivityRoutePoint[] }) {
   const path = routePath(points);
   const segments = routeSegments(points);
   const markers = kilometerMarkers(points, projection.width);
-  const activePoint = hover ?? finish;
+  const activeIndex = Math.min(selectedIndex, points.length - 1);
+  const activePoint = points[activeIndex] ?? finish;
+  const completedPath = routePath(points.slice(0, activeIndex + 1));
   const altitudeValues = points
     .map((point) => point.altitudeM)
     .filter((value): value is number => value !== null);
   const minAltitude = altitudeValues.length ? Math.min(...altitudeValues) : null;
   const maxAltitude = altitudeValues.length ? Math.max(...altitudeValues) : null;
   const altitudeRange = minAltitude !== null && maxAltitude !== null ? Math.round(maxAltitude - minAltitude) : null;
-
-  function updateHover(event: MouseEvent<SVGSVGElement>) {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * projection.width;
-    const y = ((event.clientY - rect.top) / rect.height) * projection.height;
-    const nearest = points.reduce((best, point) => {
-      const bestDistance = (best.x - x) ** 2 + (best.y - y) ** 2;
-      const pointDistance = (point.x - x) ** 2 + (point.y - y) ** 2;
-      return pointDistance < bestDistance ? point : best;
-    }, points[0]);
-    if (lastHoverRef.current === nearest) return;
-    lastHoverRef.current = nearest;
-    if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
-    frameRef.current = window.requestAnimationFrame(() => {
-      setHover(nearest);
-      frameRef.current = null;
-    });
-  }
-
-  function clearHover() {
-    lastHoverRef.current = null;
-    if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
-    frameRef.current = null;
-    setHover(null);
-  }
 
   return (
     <section className="activity-route-map panel" aria-label="Mapa de la ruta">
@@ -189,8 +164,6 @@ export function ActivityRouteMap({ route }: { route: ActivityRoutePoint[] }) {
           viewBox={`0 0 ${projection.width} ${projection.height}`}
           role="img"
           aria-label="Trazado de la actividad por kilómetros"
-          onMouseMove={updateHover}
-          onMouseLeave={clearHover}
         >
           <rect className="route-map-background" x="0" y="0" width={projection.width} height={projection.height} rx="4" />
           <path className="route-map-grid route-map-grid-horizontal" d={`M 0 ${projection.height * 0.18} H ${projection.width} M 0 ${projection.height * 0.5} H ${projection.width} M 0 ${projection.height * 0.82} H ${projection.width}`} />
@@ -199,28 +172,42 @@ export function ActivityRouteMap({ route }: { route: ActivityRoutePoint[] }) {
           {segments.map((segment) => (
             <path className={segment.className} d={segment.path} key={segment.key} />
           ))}
+          {activeIndex > 0 && <path className="route-map-progress" d={completedPath} />}
           {markers.map(({ km, point, x, y }) => (
             <g className="route-km-marker" key={km} transform={`translate(${point.x + x} ${point.y + y})`}>
               <circle r="3.5" />
               <text textAnchor="middle" x="0" y="1.25">{km}</text>
             </g>
           ))}
-          {hover && (
-            <g className="route-hover-layer">
-              <circle className="route-hover-pulse" cx={hover.x} cy={hover.y} r="5.2" />
-              <circle className="route-hover-dot" cx={hover.x} cy={hover.y} r="2.4" />
-            </g>
-          )}
-          <rect className="route-hit-area" x="0" y="0" width={projection.width} height={projection.height} />
+          <g className="route-selected-layer">
+            <circle className="route-selected-pulse" cx={activePoint.x} cy={activePoint.y} r="5.2" />
+            <circle className="route-selected-dot" cx={activePoint.x} cy={activePoint.y} r="2.4" />
+          </g>
           <circle className="route-map-marker route-map-start" cx={start.x} cy={start.y} r="2.5" />
           <circle className="route-map-marker route-map-finish" cx={finish.x} cy={finish.y} r="2.5" />
         </svg>
-        <div className="route-hover-card" aria-live="polite">
-          <span>{hover ? "Punto bajo cursor" : "Llegada"}</span>
+        <div className="route-detail-card" aria-live="polite">
+          <span>Punto seleccionado</span>
           <strong>{activePoint.distanceKm.toFixed(2)} km · {formatElapsed(activePoint.elapsedS)}</strong>
           <small>{formatPointPace(activePoint)} · {activePoint.altitudeM ?? "—"} m</small>
           <small>{formatCoordinate(activePoint.latitude, "lat")}, {formatCoordinate(activePoint.longitude, "lon")}</small>
         </div>
+      </div>
+      <div className="route-map-slider">
+        <div className="route-slider-labels">
+          <span>Salida</span>
+          <strong>{Math.round(activePoint.progress * 100)}%</strong>
+          <span>Llegada</span>
+        </div>
+        <input
+          aria-label="Recorrer detalle de la ruta"
+          max={points.length - 1}
+          min={0}
+          onChange={(event) => setSelectedIndex(Number(event.currentTarget.value))}
+          step={1}
+          type="range"
+          value={activeIndex}
+        />
       </div>
       <div className="route-map-legend">
         <span><i className="route-map-dot route-map-dot-start" />Salida · {formatCoordinate(startCoordinate.latitude, "lat")}, {formatCoordinate(startCoordinate.longitude, "lon")}</span>
