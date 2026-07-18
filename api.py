@@ -916,9 +916,14 @@ def plan() -> dict[str, Any]:
     )
     return {
         "fixed": True,
-        "policy": "Los datos reales actualizan el estado del atleta, nunca las sesiones planificadas.",
+        "policy": "El calendario avanza con la fecha actual y marca cumplimiento; los datos reales actualizan el estado del atleta, no reescriben sesiones sin confirmación.",
+        "current_date": today.isoformat(),
+        "current_week_number": weeks[0].number if weeks else None,
+        "current_week_start": (today - timedelta(days=today.weekday())).isoformat(),
+        "current_week_end": (today - timedelta(days=today.weekday()) + timedelta(days=6)).isoformat(),
         "weeks": [_serialize_week(week) for week in weeks],
         "daily_agenda": _daily_agenda(weeks, today),
+        "calendar": _plan_calendar(weeks, today, frame),
     }
 
 
@@ -1040,64 +1045,102 @@ def _serialize_week(week: Any) -> dict[str, Any]:
 
 def _daily_agenda(plan: list[Any], today: date, days: int = 7) -> list[dict[str, Any]]:
     """Convierte el plan fijo en instrucciones concretas para cada día."""
-    day_names = ("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
     relative_names = ("Hoy", "Mañana", "Pasado mañana")
     agenda: list[dict[str, Any]] = []
 
     for offset in range(days):
         target = today + timedelta(days=offset)
-        day_name = day_names[target.weekday()]
-        week = next((item for item in plan if item.start <= target <= item.end), None)
-        if week is None:
+        item = _planned_day(plan, target)
+        if item is None:
             continue
+        item["relative_label"] = relative_names[offset] if offset < len(relative_names) else item["day"]
+        agenda.append(item)
+    return agenda
 
-        session = _session_for_day(week, day_name)
-        if session is not None:
-            session_index, instruction = session
-            lowered = instruction.casefold()
-            if "descanso" in lowered or "sin tirada" in lowered or "no correr" in lowered:
-                category = "rest"
-            elif "bicicleta" in lowered:
-                category = "bike"
-            else:
-                category = "run"
-            detail = (
-                week.session_objectives[session_index]
-                if session_index < len(week.session_objectives)
-                else f"Sesión de la semana {week.number} del plan fijo."
-            )
-            title = _sentence_case(instruction)
-        elif target.weekday() in (2, 4):
-            category = "strength"
-            title = "Gimnasio · fuerza de piernas"
-            detail = _recommendation_for_day(week.strength_recommendation, day_name)
-        elif target.weekday() == 0:
-            category = "bike"
-            title = "Bicicleta suave opcional"
-            detail = _recommendation_for_day(week.bike_recommendation, day_name)
-        else:
-            category = "rest"
-            if target.weekday() == 5:
-                title = "Descanso previo a la tirada larga"
-                detail = "Movilidad suave y buena hidratación. Nada de fuerza pesada para llegar fresco al domingo."
-            else:
-                title = "Descanso y movilidad"
-                detail = "Recuperación completa; una sesión perdida no se acumula en este día."
 
-        agenda.append(
+def _plan_calendar(plan: list[Any], today: date, frame: Any, days: int = 28) -> list[dict[str, Any]]:
+    week_start = today - timedelta(days=today.weekday())
+    completed_dates = _completed_activity_dates(frame)
+    calendar: list[dict[str, Any]] = []
+
+    for offset in range(days):
+        target = week_start + timedelta(days=offset)
+        item = _planned_day(plan, target)
+        if item is None:
+            continue
+        item.update(
             {
-                "date": target.isoformat(),
-                "day": day_name,
-                "relative_label": relative_names[offset] if offset < len(relative_names) else day_name,
-                "category": category,
-                "title": title,
-                "detail": detail,
-                "week_number": week.number,
-                "phase": week.phase,
-                "week_target_km": week.target_km,
+                "relative_label": "Hoy" if target == today else item["day"],
+                "is_today": target == today,
+                "is_past": target < today,
+                "is_current_week": week_start <= target <= week_start + timedelta(days=6),
+                "completed": item["category"] == "run" and target.isoformat() in completed_dates,
             }
         )
-    return agenda
+        calendar.append(item)
+    return calendar
+
+
+def _planned_day(plan: list[Any], target: date) -> dict[str, Any] | None:
+    day_names = ("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
+    day_name = day_names[target.weekday()]
+    week = next((item for item in plan if item.start <= target <= item.end), None)
+    if week is None:
+        return None
+
+    session = _session_for_day(week, day_name)
+    if session is not None:
+        session_index, instruction = session
+        lowered = instruction.casefold()
+        if "descanso" in lowered or "sin tirada" in lowered or "no correr" in lowered:
+            category = "rest"
+        elif "bicicleta" in lowered:
+            category = "bike"
+        else:
+            category = "run"
+        detail = (
+            week.session_objectives[session_index]
+            if session_index < len(week.session_objectives)
+            else f"Sesión de la semana {week.number} del plan fijo."
+        )
+        title = _sentence_case(instruction)
+    elif target.weekday() in (2, 4):
+        category = "strength"
+        title = "Gimnasio · fuerza de piernas"
+        detail = _recommendation_for_day(week.strength_recommendation, day_name)
+    elif target.weekday() == 0:
+        category = "bike"
+        title = "Bicicleta suave opcional"
+        detail = _recommendation_for_day(week.bike_recommendation, day_name)
+    else:
+        category = "rest"
+        if target.weekday() == 5:
+            title = "Descanso previo a la tirada larga"
+            detail = "Movilidad suave y buena hidratación. Nada de fuerza pesada para llegar fresco al domingo."
+        else:
+            title = "Descanso y movilidad"
+            detail = "Recuperación completa; una sesión perdida no se acumula en este día."
+
+    return {
+        "date": target.isoformat(),
+        "day": day_name,
+        "relative_label": day_name,
+        "category": category,
+        "title": title,
+        "detail": detail,
+        "week_number": week.number,
+        "phase": week.phase,
+        "week_target_km": week.target_km,
+    }
+
+
+def _completed_activity_dates(frame: Any) -> set[str]:
+    if getattr(frame, "empty", True):
+        return set()
+    try:
+        return {value.date().isoformat() for value in frame["start_date"].dropna()}
+    except Exception:
+        return set()
 
 
 def _session_for_day(week: Any, day_name: str) -> tuple[int, str] | None:

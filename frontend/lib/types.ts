@@ -172,6 +172,25 @@ export type DailyAgendaItem = {
   week_target_km: number;
 };
 
+export type PlanCalendarDay = DailyAgendaItem & {
+  is_today: boolean;
+  is_past: boolean;
+  is_current_week: boolean;
+  completed: boolean;
+};
+
+export type PlanData = {
+  fixed: boolean;
+  policy: string;
+  current_date: string;
+  current_week_number: number | null;
+  current_week_start: string;
+  current_week_end: string;
+  weeks: TrainingWeek[];
+  daily_agenda: DailyAgendaItem[];
+  calendar: PlanCalendarDay[];
+};
+
 export type DashboardData = {
   activity_count: number;
   days_to_race: number;
