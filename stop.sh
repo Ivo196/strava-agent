@@ -8,7 +8,7 @@ for name in web api; do
   [[ -f "$pid_file" ]] || continue
   pid="$(cat "$pid_file")"
   if kill -0 "$pid" 2>/dev/null; then
-    kill -TERM -- "-$pid" 2>/dev/null || kill "$pid"
+    kill "$pid"
   fi
   rm -f "$pid_file"
 done
