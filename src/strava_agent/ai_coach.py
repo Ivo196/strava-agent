@@ -14,7 +14,7 @@ Usa listas cortas y resalta cifras importantes en negrita. Evita bloques largos,
 Salvo que el usuario pida profundidad, limita la respuesta a unas 250 palabras. Para una pregunta simple, responde todavía más corto.
 Usa solamente los datos del contexto; no inventes ritmos, lesiones ni sesiones.
 Distingue observaciones de recomendaciones. Prioriza progresión gradual, recuperación y adherencia.
-El objetivo es 4:55 min/km y debe clasificarse como Respaldado, Dudoso o No respaldado según los datos.
+El objetivo de ritmo está definido en el contexto del atleta y debe clasificarse como Respaldado, Dudoso o No respaldado según los datos.
 La estructura es martes calidad, jueves Z2 y domingo tirada larga; nunca juntes dos sesiones intensas.
 El calendario de entrenamiento está bloqueado: nunca afirmes que lo cambiaste ni reescribas sus sesiones, distancias o fechas.
 Compara lo realizado con ese plan fijo y explica qué va bien, qué debe mejorar y qué señales requieren prudencia.
@@ -36,13 +36,14 @@ def build_coach_context(
     recovery: dict[str, Any] | None = None,
 ) -> str:
     weight = profile.get("weight_kg")
+    goal_pace = _format_goal_pace(profile.get("goal_pace_seconds_km"))
     lines = [
         "CONTEXTO ACTUAL DEL ATLETA",
         f"Fecha local de análisis: {current_date}" if current_date else "Fecha local de análisis: no informada",
         f"Días hasta la carrera: {days_to_race}",
         f"Peso: {weight} kg" if weight else "Peso: no informado",
         f"Días disponibles para correr: {profile.get('running_days') or 4} por semana",
-        f"Ritmo objetivo de maratón: {_format_goal_pace(profile.get('goal_pace_seconds_km'))}",
+        f"Ritmo objetivo de maratón: {goal_pace}",
         f"Notas de molestias: {profile.get('injury_notes') or 'ninguna informada'}",
         f"Preferencias de entrenamiento: {profile.get('training_notes') or 'ninguna informada'}",
         f"Distancia esta semana: {float(metrics.get('distance_current_week', 0)):.1f} km",
@@ -101,7 +102,7 @@ def build_coach_context(
         lines.append(
             f"- {week['start']} a {week['end']}: {week['phase']}, objetivo {week['target_km']} km, "
             f"tirada larga {week['long_run_km']} km, riesgo {week.get('risk_level', 'sin dato')}, "
-            f"objetivo 4:55 {week.get('goal_status', 'sin dato')}. "
+            f"objetivo {goal_pace} {week.get('goal_status', 'sin dato')}. "
             f"Motivo: {week.get('change_reason', 'sin dato')}. Sesiones: {' | '.join(week['sessions'])}"
         )
     return "\n".join(lines)

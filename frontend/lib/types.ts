@@ -195,6 +195,7 @@ export type PlanData = {
   current_week_number: number | null;
   current_week_start: string;
   current_week_end: string;
+  profile: Profile;
   weeks: TrainingWeek[];
   daily_agenda: DailyAgendaItem[];
   calendar: PlanCalendarDay[];

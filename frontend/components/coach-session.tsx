@@ -16,14 +16,8 @@ type CoachSessionProps = {
   averageKm: number;
   longestKm: number;
   weightKg: number | null;
+  goalPaceSeconds: number | null;
 };
-
-const quickPrompts = [
-  "Analiza mi semana",
-  "¿Qué debo mejorar?",
-  "¿Cómo corro la próxima sesión?",
-  "Evalúa mi objetivo de 4:55/km",
-];
 
 function welcomeMessage(weightKg: number | null): Message {
   return {
@@ -34,12 +28,23 @@ Ya tengo tu **plan fijo**, tus carreras recientes y tu perfil${weightKg ? ` de *
   };
 }
 
+function formatGoalPace(seconds: number | null) {
+  if (!seconds) return "—";
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
 export function CoachSession(props: CoachSessionProps) {
   const [messages, setMessages] = useState<Message[]>([welcomeMessage(props.weightKg)]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  const quickPrompts = [
+    "Analiza mi semana",
+    "¿Qué debo mejorar?",
+    "¿Cómo corro la próxima sesión?",
+    `Evalúa mi objetivo de ${formatGoalPace(props.goalPaceSeconds)}/km`,
+  ];
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });

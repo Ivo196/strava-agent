@@ -9,6 +9,11 @@ export const dynamic = "force-dynamic";
 const dayMonth = new Intl.DateTimeFormat("es", { day: "numeric", month: "short" });
 const weekdayShort = new Intl.DateTimeFormat("es", { weekday: "short" });
 
+function formatGoalPace(seconds: number | null) {
+  if (!seconds) return "—";
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
 function groupCalendarWeeks(days: PlanCalendarDay[]) {
   return days.reduce<PlanCalendarDay[][]>((weeks, day) => {
     const current = weeks[weeks.length - 1];
@@ -30,6 +35,7 @@ export default async function PlanPage() {
   if (!data) return <OfflineState />;
   const currentWeek = data.weeks.find((week) => week.number === data.current_week_number) ?? data.weeks[0];
   const calendarWeeks = groupCalendarWeeks(data.calendar);
+  const goalPace = formatGoalPace(data.profile.goal_pace_seconds_km);
 
   return (
     <div className="page-wrap">
@@ -117,7 +123,7 @@ export default async function PlanPage() {
               <div className="week-detail">
                 <div className="week-badges">
                   {isCurrent && <span className={`risk-${week.risk_level.toLowerCase()}`}>Estado actual: riesgo {week.risk_level}</span>}
-                  {isCurrent && <span>Objetivo 4:55: {week.goal_status}</span>}
+                  {isCurrent && <span>Objetivo {goalPace}: {week.goal_status}</span>}
                   {week.completion_percentage !== null && <span>Realizado: {week.actual_km} km · {week.completion_percentage}%</span>}
                 </div>
                 <ul className="session-list">{week.sessions.map((session, sessionIndex) => <li key={session}><strong>{session}</strong><small>{week.session_objectives[sessionIndex]}</small></li>)}</ul>

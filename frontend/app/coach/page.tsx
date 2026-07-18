@@ -26,6 +26,7 @@ export default async function CoachPage() {
         averageKm={data.metrics.average_weekly_28d}
         longestKm={data.metrics.longest_42d}
         weightKg={data.profile.weight_kg}
+        goalPaceSeconds={data.profile.goal_pace_seconds_km}
       />
     </div>
   );

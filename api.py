@@ -987,6 +987,7 @@ def plan() -> dict[str, Any]:
         "current_week_number": weeks[0].number if weeks else None,
         "current_week_start": (today - timedelta(days=today.weekday())).isoformat(),
         "current_week_end": (today - timedelta(days=today.weekday()) + timedelta(days=6)).isoformat(),
+        "profile": profile,
         "weeks": [_serialize_week(week) for week in weeks],
         "daily_agenda": _daily_agenda(weeks, today),
         "calendar": _plan_calendar(weeks, today, frame),
