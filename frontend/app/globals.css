@@ -341,23 +341,35 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .route-map-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .route-map-heading h2 { margin: 6px 0 0; font: 500 19px/1.2 Inter, sans-serif; letter-spacing: -.025em; }
 .route-map-heading > span { padding: 6px 9px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; font-size: 9px; white-space: nowrap; }
-.route-map-canvas { display: block; width: 100%; height: 420px; border: 1px solid rgba(36,242,206,.2); border-radius: 8px; background: linear-gradient(145deg, rgba(4,11,22,.98), rgba(8,18,34,.94)); cursor: crosshair; }
-.route-map-background { fill: rgba(3,7,18,.46); }
-.route-map-terrain { fill: url(#map-terrain); opacity: .22; }
-.route-map-terrain-low { opacity: .38; }
-.route-map-contour { fill: none; stroke: rgba(36, 242, 206, .16); stroke-width: .45; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; }
+.route-map-stage { position: relative; }
+.route-map-canvas { display: block; width: 100%; height: 420px; border: 1px solid rgba(36,242,206,.2); border-radius: 8px; background: linear-gradient(145deg, rgba(4,11,22,.98), rgba(8,18,34,.94)); cursor: pointer; }
+.route-map-background { fill: rgba(3,7,18,.58); }
 .route-map-grid { fill: none; stroke: rgba(36, 242, 206, .13); stroke-width: .22; vector-effect: non-scaling-stroke; }
 .route-map-grid-horizontal { stroke: rgba(91, 140, 255, .12); }
-.route-map-shadow, .route-map-line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.route-map-shadow, .route-map-segment { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .route-map-shadow { stroke: rgba(0,0,0,.6); stroke-width: 5.2; transform: translate(.6px, .8px); }
-.route-map-line { stroke: url(#route-stroke); stroke-width: 3.2; vector-effect: non-scaling-stroke; }
+.route-map-segment { stroke-width: 3.4; vector-effect: non-scaling-stroke; transition: stroke-width .16s ease, filter .16s ease; }
+.route-map-segment-0 { stroke: var(--viz-series-1); }
+.route-map-segment-1 { stroke: var(--viz-series-2); }
+.route-map-segment-2 { stroke: var(--viz-series-3); }
+.route-map-segment-3 { stroke: var(--viz-series-4); }
+.route-map-segment-4 { stroke: #75e4ff; }
+.route-map-segment-5 { stroke: #f68fb7; }
 .route-map-marker { stroke: #fff; stroke-width: .7; vector-effect: non-scaling-stroke; }
 .route-map-start { fill: var(--viz-series-1); }
 .route-map-finish { fill: var(--viz-series-2); }
 .route-hit-area, .chart-hit-area { fill: transparent; pointer-events: all; }
+.route-km-marker { pointer-events: none; }
+.route-km-marker circle { fill: rgba(3,7,18,.94); stroke: rgba(255,255,255,.82); stroke-width: .65; vector-effect: non-scaling-stroke; }
+.route-km-marker text { fill: #fff; paint-order: stroke; stroke: rgba(3,7,18,.88); stroke-width: 2.4px; font-size: 3.3px; font-weight: 800; letter-spacing: 0; }
+.route-hover-crosshair { stroke: rgba(255,255,255,.18); stroke-width: .25; stroke-dasharray: 1.4 1.6; vector-effect: non-scaling-stroke; }
 .route-hover-pulse { fill: rgba(101,243,209,.18); stroke: rgba(101,243,209,.54); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .route-hover-dot { fill: #fff; stroke: var(--orange-deep); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
-.route-tooltip-text { font-size: 5px; letter-spacing: 0; }
+.route-hover-card { position: absolute; top: 14px; right: 14px; min-width: 176px; padding: 12px 13px; border: 1px solid rgba(226,232,240,.18); border-radius: 8px; background: rgba(3,7,18,.88); backdrop-filter: blur(12px); box-shadow: var(--shadow); pointer-events: none; }
+.route-hover-card span, .route-hover-card strong, .route-hover-card small { display: block; }
+.route-hover-card span { color: var(--orange-deep); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.route-hover-card strong { margin: 6px 0 4px; font-size: 15px; line-height: 1.2; }
+.route-hover-card small { color: var(--muted); font-size: 10px; line-height: 1.5; }
 .route-map-legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 13px; color: var(--muted); font-size: 10px; }
 .route-map-legend span { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
 .route-map-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; }

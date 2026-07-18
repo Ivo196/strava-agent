@@ -108,8 +108,8 @@ def test_activity_detail_includes_route_map_points(tmp_path: Path, monkeypatch: 
     detail = response.json()
     assert detail["route_available"] is True
     assert detail["route"] == [
-        {"latitude": 41.88, "longitude": -87.63},
-        {"latitude": 41.925, "longitude": -87.63},
+        {"latitude": 41.88, "longitude": -87.63, "distance_km": 0.0, "elapsed_s": 0, "altitude_m": 180.0},
+        {"latitude": 41.925, "longitude": -87.63, "distance_km": 5.004, "elapsed_s": 1800, "altitude_m": 185.0},
     ]
 
 

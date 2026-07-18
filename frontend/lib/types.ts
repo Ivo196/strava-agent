@@ -50,6 +50,9 @@ export type ActivitySplit = {
 export type ActivityRoutePoint = {
   latitude: number;
   longitude: number;
+  distance_km?: number;
+  elapsed_s?: number;
+  altitude_m?: number;
 };
 
 export type ActivityDetail = {

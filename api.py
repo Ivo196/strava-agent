@@ -896,15 +896,28 @@ def _average_dynamics_for_window(samples: list[dict[str, Any]], start_s: float, 
 
 def _activity_route(streams: dict[str, Any]) -> list[dict[str, float]]:
     latlng = _stream_data(streams, "latlng")
+    distance = _stream_data(streams, "distance")
+    elapsed = _stream_data(streams, "time")
+    altitude = _stream_data(streams, "altitude")
     points: list[dict[str, float]] = []
-    for point in latlng:
+    for index, point in enumerate(latlng):
         if not isinstance(point, list | tuple) or len(point) < 2:
             continue
         latitude = _coerce_coordinate(point[0], minimum=-90, maximum=90)
         longitude = _coerce_coordinate(point[1], minimum=-180, maximum=180)
         if latitude is None or longitude is None:
             continue
-        points.append({"latitude": round(latitude, 6), "longitude": round(longitude, 6)})
+        route_point = {"latitude": round(latitude, 6), "longitude": round(longitude, 6)}
+        distance_m = _value_at(distance, index)
+        elapsed_s = _value_at(elapsed, index)
+        altitude_m = _value_at(altitude, index)
+        if distance_m is not None:
+            route_point["distance_km"] = round(float(distance_m) / 1000, 3)
+        if elapsed_s is not None:
+            route_point["elapsed_s"] = round(float(elapsed_s))
+        if altitude_m is not None:
+            route_point["altitude_m"] = round(float(altitude_m), 1)
+        points.append(route_point)
 
     if len(points) < 2:
         return []
