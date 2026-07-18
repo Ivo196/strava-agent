@@ -102,6 +102,7 @@ export type DeviceInsights = {
     week: {
       distance_km: number;
       runs: number;
+      calories: number;
     };
     latest_run: {
       id: string;
@@ -109,6 +110,7 @@ export type DeviceInsights = {
       distance_km: number;
       pace: string;
       average_heartrate: number | null;
+      calories: number | null;
       dynamics: {
         power_w?: number;
         speed_kmh?: number;
@@ -142,6 +144,11 @@ export type DeviceInsights = {
     steps: {
       latest: { date: string; count: number } | null;
       days: { date: string; count: number }[];
+      goal: number;
+    };
+    active_energy: {
+      latest: { date: string; kcal: number } | null;
+      days: { date: string; kcal: number }[];
       goal: number;
     };
     recovery: {

@@ -623,6 +623,7 @@ def _device_insights(rows: list[dict[str, Any]], today: date) -> dict[str, Any]:
             "distance_km": round(distance_km, 2),
             "pace": format_pace(moving_seconds / 60 / distance_km) if distance_km else "—",
             "average_heartrate": _rounded_or_none(latest_run.get("average_heartrate")),
+            "calories": _rounded_or_none(latest_run.get("calories")),
             "dynamics": dynamics["running_dynamics_summary"],
         }
 
@@ -639,6 +640,7 @@ def _device_insights(rows: list[dict[str, Any]], today: date) -> dict[str, Any]:
                     1,
                 ),
                 "runs": len(current_week),
+                "calories": round(sum(float(row.get("calories") or 0) for row in current_week)),
             },
             "latest_run": latest_summary,
             "recovery": _apple_recovery_snapshot(),
@@ -659,6 +661,7 @@ def _fitbit_insights() -> dict[str, Any]:
             "daily-vo2-max",
             "sleep",
             "steps",
+            "active-energy-burned",
         ]
     )
     heart_rate_samples: list[tuple[datetime, str, str, float]] = []
@@ -712,6 +715,7 @@ def _fitbit_insights() -> dict[str, Any]:
     )
     recovery = _fitbit_recovery_metrics(rows)
     step_days = _fitbit_step_days(rows)
+    active_energy_days = _fitbit_active_energy_days(rows)
     status = database.google_health_status()
     recovery_ready = all(
         recovery[key] is not None for key in ("sleep", "hrv", "resting_hr")
@@ -741,8 +745,32 @@ def _fitbit_insights() -> dict[str, Any]:
             "days": step_days,
             "goal": 10000,
         },
+        "active_energy": {
+            "latest": active_energy_days[-1] if active_energy_days else None,
+            "days": active_energy_days,
+            "goal": 600,
+        },
         "recovery": recovery,
     }
+
+
+def _fitbit_active_energy_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    totals: dict[str, float] = {}
+    for row in rows:
+        if row["data_type"] != "active-energy-burned" or row["source"] != "FITBIT":
+            continue
+        point = json.loads(row["value_json"])
+        payload = point.get("activeEnergyBurned") or {}
+        kcal = payload.get("kcal")
+        if kcal is None:
+            continue
+        recorded = _parse_health_datetime(row["recorded_at"])
+        day = recorded.date().isoformat() if recorded else str(row["recorded_at"])[:10]
+        totals[day] = totals.get(day, 0) + float(kcal)
+    return [
+        {"date": day, "kcal": round(kcal)}
+        for day, kcal in sorted(totals.items())[-7:]
+    ]
 
 
 def _fitbit_step_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:

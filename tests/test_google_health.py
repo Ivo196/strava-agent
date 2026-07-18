@@ -136,6 +136,12 @@ def test_sync_saves_available_google_health_points(tmp_path: Path) -> None:
         if "/steps/" in url
     )
     assert "steps.interval.start_time" in steps_request["filter"]
+    energy_request = next(
+        params
+        for url, params in service.session.gets
+        if "/active-energy-burned/" in url
+    )
+    assert "active_energy_burned.interval.start_time" in energy_request["filter"]
 
     service.sync()
     incremental_request = [

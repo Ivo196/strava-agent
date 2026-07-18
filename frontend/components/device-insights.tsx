@@ -7,6 +7,7 @@ import {
   ArrowRight,
   BatteryCharging,
   BedDouble,
+  Flame,
   Footprints,
   Gauge,
   HeartPulse,
@@ -129,6 +130,26 @@ function StepBars({ days, goal }: { days: { date: string; count: number }[]; goa
   );
 }
 
+function EnergyBars({ days, goal }: { days: { date: string; kcal: number }[]; goal: number }) {
+  const labels = new Intl.DateTimeFormat("es", { weekday: "short" });
+  return (
+    <div className="step-bars energy-bars" aria-label="Calorías activas Fitbit por día">
+      {days.length ? days.map((day) => {
+        const percent = clampPercent((day.kcal / goal) * 100);
+        return (
+          <div className="step-day energy-day" key={day.date}>
+            <div><i style={{ height: `${Math.max(8, percent)}%` }} /></div>
+            <strong>{day.kcal}</strong>
+            <span>{labels.format(new Date(`${day.date}T12:00:00`))}</span>
+          </div>
+        );
+      }) : (
+        <div className="step-empty">Sin calorías activas todavía</div>
+      )}
+    </div>
+  );
+}
+
 export function DeviceInsights({ devices }: { devices: DeviceInsightsData }) {
   const apple = devices.apple_watch;
   const fitbit = devices.fitbit;
@@ -143,6 +164,8 @@ export function DeviceInsights({ devices }: { devices: DeviceInsightsData }) {
   const restingPercent = restingHr ? ((70 - restingHr) / 30) * 100 : 0;
   const stepsLatest = fitbit.steps.latest;
   const stepsPercent = stepsLatest ? (stepsLatest.count / fitbit.steps.goal) * 100 : 0;
+  const activeEnergyLatest = fitbit.active_energy.latest;
+  const activeEnergyPercent = activeEnergyLatest ? (activeEnergyLatest.kcal / fitbit.active_energy.goal) * 100 : 0;
 
   return (
     <section className="device-section" aria-labelledby="device-insights-title">
@@ -168,12 +191,12 @@ export function DeviceInsights({ devices }: { devices: DeviceInsightsData }) {
             <div>
               <span>Esta semana</span>
               <strong>{apple.week.distance_km}<small> km</small></strong>
-              <p>{apple.week.runs} {apple.week.runs === 1 ? "carrera" : "carreras"}</p>
+              <p>{apple.week.runs} {apple.week.runs === 1 ? "carrera" : "carreras"} · {apple.week.calories} kcal</p>
             </div>
             <div>
               <span>Última carrera</span>
               <strong>{run?.pace ?? "—"}</strong>
-              <p>{run ? `${run.distance_km} km · ${run.average_heartrate ?? "—"} bpm` : "Esperando entrenamiento"}</p>
+              <p>{run ? `${run.distance_km} km · ${run.average_heartrate ?? "—"} bpm · ${run.calories ?? "—"} kcal` : "Esperando entrenamiento"}</p>
             </div>
           </div>
 
@@ -193,6 +216,14 @@ export function DeviceInsights({ devices }: { devices: DeviceInsightsData }) {
               detail="VO₂ máx. Apple"
               percent={appleVo2 ? (appleVo2 / 60) * 100 : 0}
               tone="cyan"
+            />
+            <ProgressSignal
+              icon={<Flame size={15} />}
+              label="Energía"
+              value={run?.calories ? `${run.calories} kcal` : "Sin dato"}
+              detail="calorías activas última carrera"
+              percent={run?.calories ? (run.calories / 800) * 100 : 0}
+              tone="amber"
             />
             <ProgressSignal
               icon={<HeartPulse size={15} />}
@@ -279,10 +310,21 @@ export function DeviceInsights({ devices }: { devices: DeviceInsightsData }) {
               percent={stepsPercent}
               tone="amber"
             />
+            <ProgressSignal
+              icon={<Flame size={15} />}
+              label="Kcal activas"
+              value={activeEnergyLatest ? `${activeEnergyLatest.kcal} kcal` : "Sin calorías"}
+              detail={`meta ${fitbit.active_energy.goal} kcal`}
+              percent={activeEnergyPercent}
+              tone="amber"
+            />
           </div>
 
           <div className="device-subheading"><span>Pasos por día</span><small>Fitbit · últimos 7 días</small></div>
           <StepBars days={fitbit.steps.days} goal={fitbit.steps.goal} />
+
+          <div className="device-subheading"><span>Calorías activas</span><small>Fitbit · kcal por día</small></div>
+          <EnergyBars days={fitbit.active_energy.days} goal={fitbit.active_energy.goal} />
 
           <div className="device-subheading"><span>Recuperación de la pulsera</span><small>se completa al dormir</small></div>
           <div className="source-metrics fitbit-recovery">

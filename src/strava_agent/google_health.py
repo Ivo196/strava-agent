@@ -73,6 +73,7 @@ DATA_TYPES: dict[str, tuple[str, str, int]] = {
     ),
     "daily-vo2-max": ("daily_vo2_max.date", "daily", 42),
     "daily-heart-rate-zones": ("daily_heart_rate_zones.date", "daily", 42),
+    "active-energy-burned": ("active_energy_burned.interval.start_time", "physical", 14),
     "sleep": ("sleep.interval.end_time", "physical", 42),
     "exercise": ("exercise.interval.civil_start_time", "civil", 42),
     "steps": ("steps.interval.start_time", "physical", 14),
