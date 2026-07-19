@@ -2,7 +2,7 @@
 
 import { RefreshCw } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const REFRESH_INTERVAL_MS = 30 * 1000;
 
@@ -11,18 +11,22 @@ export function LiveDataRefresh() {
   const pathname = usePathname();
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const refreshLocked = useRef(false);
 
   useEffect(() => {
     let mounted = true;
 
     const refresh = () => {
+      if (refreshLocked.current || document.visibilityState !== "visible") return;
+      refreshLocked.current = true;
       setRefreshing(true);
       router.refresh();
       if (!mounted) return;
       setLastRefresh(new Date());
       window.setTimeout(() => {
+        refreshLocked.current = false;
         if (mounted) setRefreshing(false);
-      }, 650);
+      }, 3000);
     };
 
     const handleVisibility = () => {
@@ -36,6 +40,7 @@ export function LiveDataRefresh() {
 
     return () => {
       mounted = false;
+      refreshLocked.current = false;
       window.clearInterval(timer);
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", handleVisibility);

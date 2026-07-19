@@ -25,6 +25,7 @@ import { VolumeChart } from "@/components/volume-chart";
 import type { DailyAgendaItem, DashboardData, RecoveryMetric } from "@/lib/types";
 
 type FocusMode = "today" | "recovery" | "progress";
+let lastFocusMode: FocusMode = "today";
 
 const dateFormat = new Intl.DateTimeFormat("es", { day: "numeric", month: "short" });
 const fullDate = new Intl.DateTimeFormat("es-ES", {
@@ -77,7 +78,7 @@ function shortMetric(value: number | null | undefined, unit = "") {
 }
 
 export function HomeCommandCenter({ data }: { data: DashboardData }) {
-  const [mode, setMode] = useState<FocusMode>("today");
+  const [mode, setMode] = useState<FocusMode>(lastFocusMode);
   const primary = data.daily_agenda[0];
   const following = data.daily_agenda.slice(1, 4);
   const fitbit = data.devices.fitbit;
@@ -125,6 +126,11 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
     : null;
   const sleepDays = fitbit.sleep.days;
 
+  function selectMode(nextMode: FocusMode) {
+    lastFocusMode = nextMode;
+    setMode(nextMode);
+  }
+
   return (
     <section className="command-center" aria-label="Panel principal de entrenamiento">
       <div className="command-scoreboard">
@@ -148,13 +154,13 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
       <div className="command-shell">
         <div className="command-main">
           <div className="command-tabs" role="tablist" aria-label="Vista principal">
-            <button aria-selected={mode === "today"} className={mode === "today" ? "active" : ""} onClick={() => setMode("today")} role="tab" type="button"><CalendarDays size={16} />Hoy</button>
-            <button aria-selected={mode === "recovery"} className={mode === "recovery" ? "active" : ""} onClick={() => setMode("recovery")} role="tab" type="button"><BatteryMedium size={16} />Recuperación</button>
-            <button aria-selected={mode === "progress"} className={mode === "progress" ? "active" : ""} onClick={() => setMode("progress")} role="tab" type="button"><Gauge size={16} />Semana</button>
+            <button aria-controls="panel-today" aria-selected={mode === "today"} className={mode === "today" ? "active" : ""} onClick={() => selectMode("today")} role="tab" type="button"><CalendarDays size={16} />Hoy</button>
+            <button aria-controls="panel-recovery" aria-selected={mode === "recovery"} className={mode === "recovery" ? "active" : ""} onClick={() => selectMode("recovery")} role="tab" type="button"><BatteryMedium size={16} />Recuperación</button>
+            <button aria-controls="panel-progress" aria-selected={mode === "progress"} className={mode === "progress" ? "active" : ""} onClick={() => selectMode("progress")} role="tab" type="button"><Gauge size={16} />Semana</button>
           </div>
 
-          {mode === "today" && primary && (
-            <div className={`focus-panel focus-today agenda-${primary.category}`}>
+          {primary && (
+            <div className={`focus-panel focus-today agenda-${primary.category}`} hidden={mode !== "today"} id="panel-today" role="tabpanel">
               <div className="focus-kicker">
                 <span>{fullDate.format(new Date(`${primary.date}T12:00:00+02:00`))}</span>
                 {hasRunToday && <strong><Check size={15} />Registrado</strong>}
@@ -208,8 +214,7 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
             </div>
           )}
 
-          {mode === "recovery" && (
-            <div className="focus-panel focus-recovery">
+          <div className="focus-panel focus-recovery" hidden={mode !== "recovery"} id="panel-recovery" role="tabpanel">
               <div className="focus-kicker"><span>Recuperación Fitbit · hoy y semana</span><Link href="/settings">Datos <ArrowRight size={15} /></Link></div>
               <div className={hasRunToday ? "recovery-hero post-workout" : "recovery-hero"}>
                 <div className="recovery-ring" style={{ "--score": `${recoveryScore}%` } as CSSProperties}>
@@ -285,11 +290,9 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
                 <strong>Semana Fitbit</strong>
                 <span>{sleepDays.length > 1 ? "Ya estás viendo tendencia real de descanso; la lectura mejora con cada noche nueva." : "Cuando Fitbit mande más noches, acá vas a ver tendencia de descanso semanal."}</span>
               </div>
-            </div>
-          )}
+          </div>
 
-          {mode === "progress" && (
-            <div className="focus-panel focus-progress">
+          <div className="focus-panel focus-progress" hidden={mode !== "progress"} id="panel-progress" role="tabpanel">
               <div className="focus-kicker"><span>Progreso semanal</span><Link href="/activities">Historial <ArrowRight size={15} /></Link></div>
               <VolumeChart data={data.weeks} />
               <div className="progress-facts">
@@ -297,8 +300,7 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
                 <div><span>Carga</span><strong>{data.metrics.load_7d} pts</strong><small>{formatLoadDelta(data.metrics.load_7d, data.metrics.load_previous_7d)}</small></div>
                 <div><span>Descanso</span><strong>{shortMetric(sleep?.value, sleep?.unit)}</strong><small>{recoveryStatus}</small></div>
               </div>
-            </div>
-          )}
+          </div>
         </div>
 
         <aside className="command-rail">
