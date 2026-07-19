@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager, suppress
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from threading import Lock
+from time import monotonic
 from typing import Any, Literal
 
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request
@@ -50,6 +51,14 @@ google_health_scheduler_state: dict[str, Any] = {
     "last_error": None,
 }
 google_health_sync_lock = Lock()
+health_insights_cache_lock = Lock()
+health_insights_cache: dict[str, Any] = {
+    "expires_at": 0.0,
+    "activity_id": None,
+    "analysis_date": None,
+    "value": None,
+}
+HEALTH_INSIGHTS_CACHE_SECONDS = 20
 
 
 def _next_google_health_sync(status: dict[str, Any] | None = None) -> datetime | None:
@@ -316,6 +325,7 @@ def dashboard(today: date | None = None) -> dict[str, Any]:
     ]
     next_week = _serialize_week(plan[0]) if plan else None
 
+    health = _health_dashboard_snapshot(rows, analysis_date)
     return {
         "current_date": analysis_date.isoformat(),
         "activity_count": database.activity_count(),
@@ -324,8 +334,8 @@ def dashboard(today: date | None = None) -> dict[str, Any]:
         "profile": profile,
         "metrics": {key: round(float(value), 1) for key, value in metrics.items()},
         "readiness": {"status": status, "notes": notes},
-        "recovery": _recovery_snapshot(),
-        "devices": _device_insights(rows, analysis_date),
+        "recovery": health["recovery"],
+        "devices": health["devices"],
         "weeks": [
             {
                 "week": row.week.isoformat(),
@@ -508,8 +518,8 @@ def _apple_recovery_snapshot() -> dict[str, Any]:
     }
 
 
-def _recovery_snapshot() -> dict[str, Any]:
-    result = _apple_recovery_snapshot()
+def _recovery_snapshot(apple: dict[str, Any] | None = None) -> dict[str, Any]:
+    result = apple or _apple_recovery_snapshot()
     google = _google_recovery_snapshot()
     combined = {key: google.get(key) or value for key, value in result.items()}
     google_status = database.google_health_status()
@@ -523,6 +533,37 @@ def _recovery_snapshot() -> dict[str, Any]:
         ),
     }
     return combined
+
+
+def _health_dashboard_snapshot(rows: list[dict[str, Any]], analysis_date: date) -> dict[str, Any]:
+    latest_activity_id = rows[0]["id"] if rows else None
+    now = monotonic()
+    with health_insights_cache_lock:
+        cached = health_insights_cache["value"]
+        if (
+            cached is not None
+            and health_insights_cache["expires_at"] > now
+            and health_insights_cache["activity_id"] == latest_activity_id
+            and health_insights_cache["analysis_date"] == analysis_date
+        ):
+            return cached
+
+    apple_recovery = _apple_recovery_snapshot()
+    recovery = _recovery_snapshot(apple_recovery)
+    value = {
+        "recovery": recovery,
+        "devices": _device_insights(rows, analysis_date, apple_recovery=apple_recovery),
+    }
+    with health_insights_cache_lock:
+        health_insights_cache.update(
+            {
+                "expires_at": monotonic() + HEALTH_INSIGHTS_CACHE_SECONDS,
+                "activity_id": latest_activity_id,
+                "analysis_date": analysis_date,
+                "value": value,
+            }
+        )
+    return value
 
 
 def _google_recovery_snapshot() -> dict[str, Any]:
@@ -593,7 +634,12 @@ def _google_recovery_snapshot() -> dict[str, Any]:
     }
 
 
-def _device_insights(rows: list[dict[str, Any]], today: date) -> dict[str, Any]:
+def _device_insights(
+    rows: list[dict[str, Any]],
+    today: date,
+    *,
+    apple_recovery: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     apple_runs_by_id = {
         int(row["id"]): row
         for row in rows
@@ -659,16 +705,20 @@ def _device_insights(rows: list[dict[str, Any]], today: date) -> dict[str, Any]:
                 "calories": round(sum(float(row.get("calories") or 0) for row in current_week)),
             },
             "latest_run": latest_summary,
-            "recovery": _apple_recovery_snapshot(),
+            "recovery": apple_recovery or _apple_recovery_snapshot(),
         },
         "fitbit": fitbit,
     }
 
 
 def _fitbit_insights() -> dict[str, Any]:
-    rows = database.list_google_health_data_points(
+    rows = database.list_latest_google_health_data_points(
+        "heart-rate",
+        source="FITBIT",
+        limit=5000,
+    )
+    rows.extend(database.list_google_health_data_points(
         [
-            "heart-rate",
             "daily-heart-rate-variability",
             "daily-resting-heart-rate",
             "daily-oxygen-saturation",
@@ -679,7 +729,7 @@ def _fitbit_insights() -> dict[str, Any]:
             "steps",
             "active-energy-burned",
         ]
-    )
+    ))
     heart_rate_samples: list[tuple[datetime, str, str, float]] = []
     for row in rows:
         if row["data_type"] != "heart-rate" or row["source"] != "FITBIT":
@@ -1166,6 +1216,23 @@ def coach_status() -> dict[str, Any]:
         "configured": settings.ai_is_configured,
         "model": settings.openai_model,
         "privacy": "Métricas agregadas, perfil, molestias y plan; nunca rutas GPS ni archivos.",
+    }
+
+
+@app.get("/api/coach/summary")
+def coach_summary() -> dict[str, Any]:
+    frame = activities_frame(database.list_activities())
+    metrics = dashboard_metrics(frame)
+    return {
+        "profile": database.get_profile(),
+        "metrics": {
+            key: round(float(metrics[key]), 1)
+            for key in (
+                "distance_current_week",
+                "average_weekly_28d",
+                "longest_42d",
+            )
+        },
     }
 
 

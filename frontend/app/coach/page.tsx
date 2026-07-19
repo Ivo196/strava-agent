@@ -1,15 +1,15 @@
 import { CoachSession } from "@/components/coach-session";
 import { OfflineState } from "@/components/offline-state";
-import { getCoachStatus, getDashboard } from "@/lib/api";
+import { getCoachStatus, getCoachSummary } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 export default async function CoachPage() {
-  const [data, status] = await Promise.all([
-    getDashboard().catch(() => null),
+  const [summary, status] = await Promise.all([
+    getCoachSummary().catch(() => null),
     getCoachStatus().catch(() => null),
   ]);
-  if (!data || !status) return <OfflineState />;
+  if (!summary || !status) return <OfflineState />;
 
   return (
     <div className="page-wrap">
@@ -22,11 +22,11 @@ export default async function CoachPage() {
         configured={status.configured}
         model={status.model}
         privacy={status.privacy}
-        weekKm={data.metrics.distance_current_week}
-        averageKm={data.metrics.average_weekly_28d}
-        longestKm={data.metrics.longest_42d}
-        weightKg={data.profile.weight_kg}
-        goalPaceSeconds={data.profile.goal_pace_seconds_km}
+        weekKm={summary.metrics.distance_current_week}
+        averageKm={summary.metrics.average_weekly_28d}
+        longestKm={summary.metrics.longest_42d}
+        weightKg={summary.profile.weight_kg}
+        goalPaceSeconds={summary.profile.goal_pace_seconds_km}
       />
     </div>
   );

@@ -8,6 +8,7 @@ def test_dashboard_and_coach_status_are_available() -> None:
 
     dashboard = client.get("/api/dashboard")
     coach_status = client.get("/api/coach/status")
+    coach_summary = client.get("/api/coach/summary")
 
     assert dashboard.status_code == 200
     assert 3 <= dashboard.json()["profile"]["running_days"] <= 6
@@ -28,6 +29,12 @@ def test_dashboard_and_coach_status_are_available() -> None:
     assert dashboard.json()["daily_agenda"][0]["category"] in {"run", "strength", "bike", "rest"}
     assert coach_status.status_code == 200
     assert "configured" in coach_status.json()
+    assert coach_summary.status_code == 200
+    assert set(coach_summary.json()["metrics"]) == {
+        "distance_current_week",
+        "average_weekly_28d",
+        "longest_42d",
+    }
 
 
 def test_dashboard_and_plan_accept_simulated_today() -> None:

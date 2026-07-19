@@ -267,6 +267,14 @@ export type CoachStatus = {
   privacy: string;
 };
 
+export type CoachSummary = {
+  profile: Profile;
+  metrics: Pick<
+    DashboardData["metrics"],
+    "distance_current_week" | "average_weekly_28d" | "longest_42d"
+  >;
+};
+
 export type GoogleHealthStatus = {
   configured: boolean;
   connected: boolean;

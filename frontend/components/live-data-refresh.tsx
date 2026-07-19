@@ -14,6 +14,13 @@ export function LiveDataRefresh() {
   const refreshLocked = useRef(false);
 
   useEffect(() => {
+    if (pathname !== "/") {
+      setLastRefresh(null);
+      setRefreshing(false);
+      refreshLocked.current = false;
+      return;
+    }
+
     let mounted = true;
 
     const refresh = () => {
@@ -46,6 +53,8 @@ export function LiveDataRefresh() {
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [pathname, router]);
+
+  if (pathname !== "/") return null;
 
   return (
     <div className={refreshing ? "live-refresh live-refresh-active" : "live-refresh"} aria-live="polite">

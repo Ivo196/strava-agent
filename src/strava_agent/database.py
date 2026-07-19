@@ -121,6 +121,9 @@ CREATE TABLE IF NOT EXISTS google_health_data_points (
 CREATE INDEX IF NOT EXISTS idx_google_health_data_points_recorded_at
 ON google_health_data_points(recorded_at);
 
+CREATE INDEX IF NOT EXISTS idx_google_health_data_points_source_type_recorded
+ON google_health_data_points(source, data_type, recorded_at);
+
 CREATE TABLE IF NOT EXISTS google_health_syncs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     received_at TEXT NOT NULL,
@@ -616,8 +619,7 @@ class Database:
                           MAX(recorded_at) AS last_at
                    FROM google_health_data_points
                    WHERE source = 'FITBIT'
-                     AND json_extract(value_json, '$.dataSource.recordingMethod')
-                         = 'PASSIVELY_MEASURED'"""
+                     AND data_type = 'heart-rate'"""
             ).fetchone()
         last_sync = dict(sync) if sync else None
         if last_sync:
@@ -646,3 +648,21 @@ class Database:
                 data_types,
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def list_latest_google_health_data_points(
+        self,
+        data_type: str,
+        *,
+        source: str,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """SELECT data_type, recorded_at, source, value_json
+                   FROM google_health_data_points
+                   WHERE data_type = ? AND source = ?
+                   ORDER BY recorded_at DESC
+                   LIMIT ?""",
+                (data_type, source, limit),
+            ).fetchall()
+        return [dict(row) for row in reversed(rows)]
