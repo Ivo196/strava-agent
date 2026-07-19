@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import {
   ArrowRight,
   BatteryMedium,
@@ -24,7 +24,7 @@ import {
 import { VolumeChart } from "@/components/volume-chart";
 import type { DailyAgendaItem, DashboardData, RecoveryMetric } from "@/lib/types";
 
-type FocusMode = "today" | "run" | "progress";
+type FocusMode = "today" | "recovery" | "progress";
 
 const dateFormat = new Intl.DateTimeFormat("es", { day: "numeric", month: "short" });
 const fullDate = new Intl.DateTimeFormat("es-ES", {
@@ -61,7 +61,10 @@ function clampPercent(value: number) {
   return Math.max(0, Math.min(100, value));
 }
 
-function readinessLabel(score: number) {
+function readinessLabel(score: number, hasRunToday = false) {
+  if (hasRunToday && score >= 70) return "Entreno hecho: recuperá";
+  if (hasRunToday && score >= 50) return "Ahora a recuperar";
+  if (hasRunToday) return "Priorizar descanso";
   if (score >= 82) return "Listo para cargar";
   if (score >= 62) return "Recuperación aceptable";
   if (score >= 42) return "Cuidar intensidad";
@@ -77,12 +80,12 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
   const [mode, setMode] = useState<FocusMode>("today");
   const primary = data.daily_agenda[0];
   const following = data.daily_agenda.slice(1, 4);
-  const latestRun = data.devices.apple_watch.latest_run;
   const fitbit = data.devices.fitbit;
   const apple = data.devices.apple_watch;
   const recovery = latestRecovery(data.recovery);
-  const completedDates = useMemo(() => data.recent_activities.map((activity) => activity.date), [data.recent_activities]);
-  const primaryComplete = primary?.category === "run" && completedDates.includes(primary.date);
+  const todayActivity = data.today_activity;
+  const hasRunToday = todayActivity.count > 0;
+  const latestTodayRun = data.recent_activities.find((activity) => activity.date === data.current_date);
   const goalSeconds = data.profile.goal_pace_seconds_km;
   const goalPace = goalSeconds ? `${Math.floor(goalSeconds / 60)}:${String(goalSeconds % 60).padStart(2, "0")}` : "—";
   const goalFinishMinutes = goalSeconds ? goalSeconds * 42.195 / 60 : null;
@@ -106,12 +109,20 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
   const stepPercent = steps ? clampPercent((steps.count / fitbit.steps.goal) * 100) : 0;
   const activeEnergyPercent = activeEnergy ? clampPercent((activeEnergy.kcal / fitbit.active_energy.goal) * 100) : 0;
   const restingScore = restingHr?.value ? clampPercent(((70 - restingHr.value) / 28) * 100) : 50;
-  const recoveryScore = Math.round(
+  const physiologicalScore = Math.round(
     (sleep ? sleepPercent * 0.45 : 30) +
     (hrv ? clampPercent((hrv.value / 95) * 100) * 0.25 : 12) +
     (restingHr ? restingScore * 0.2 : 10) +
     (steps ? Math.min(100, 100 - Math.max(0, stepPercent - 100) * 0.35) * 0.1 : 6),
   );
+  const workoutPenalty = hasRunToday
+    ? Math.min(38, todayActivity.distance_km * 1.1 + todayActivity.training_load * 0.35)
+    : 0;
+  const recoveryScore = Math.round(clampPercent(physiologicalScore - workoutPenalty));
+  const recoveryStatus = readinessLabel(recoveryScore, hasRunToday);
+  const workoutSummary = hasRunToday
+    ? `${todayActivity.distance_km} km · ${Math.round(todayActivity.moving_minutes)} min${todayActivity.average_heartrate ? ` · ${todayActivity.average_heartrate} bpm` : ""}${todayActivity.calories ? ` · ${todayActivity.calories} kcal` : ""}`
+    : null;
   const sleepDays = fitbit.sleep.days;
 
   return (
@@ -128,35 +139,46 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
           <p>{data.metrics.runs_current_week} salidas · {Math.round(weekPercent)}%</p>
         </div>
         <div>
-          <span>Recuperación</span>
+          <span>{hasRunToday ? "Energía actual" : "Recuperación"}</span>
           <strong>{recoveryScore}<small>/100</small></strong>
-          <p>{readinessLabel(recoveryScore)}</p>
+          <p>{recoveryStatus}</p>
         </div>
       </div>
 
       <div className="command-shell">
         <div className="command-main">
           <div className="command-tabs" role="tablist" aria-label="Vista principal">
-            <button className={mode === "today" ? "active" : ""} onClick={() => setMode("today")} role="tab" type="button"><CalendarDays size={16} />Hoy</button>
-            <button className={mode === "run" ? "active" : ""} onClick={() => setMode("run")} role="tab" type="button"><BatteryMedium size={16} />Recuperación</button>
-            <button className={mode === "progress" ? "active" : ""} onClick={() => setMode("progress")} role="tab" type="button"><Gauge size={16} />Semana</button>
+            <button aria-selected={mode === "today"} className={mode === "today" ? "active" : ""} onClick={() => setMode("today")} role="tab" type="button"><CalendarDays size={16} />Hoy</button>
+            <button aria-selected={mode === "recovery"} className={mode === "recovery" ? "active" : ""} onClick={() => setMode("recovery")} role="tab" type="button"><BatteryMedium size={16} />Recuperación</button>
+            <button aria-selected={mode === "progress"} className={mode === "progress" ? "active" : ""} onClick={() => setMode("progress")} role="tab" type="button"><Gauge size={16} />Semana</button>
           </div>
 
           {mode === "today" && primary && (
             <div className={`focus-panel focus-today agenda-${primary.category}`}>
               <div className="focus-kicker">
                 <span>{fullDate.format(new Date(`${primary.date}T12:00:00+02:00`))}</span>
-                {primaryComplete && <strong><Check size={15} />Hecho</strong>}
+                {hasRunToday && <strong><Check size={15} />Registrado</strong>}
               </div>
               <div className="focus-hero-row">
-                <div className="focus-icon"><AgendaIcon category={primary.category} /></div>
+                <div className="focus-icon"><AgendaIcon category={hasRunToday ? "run" : primary.category} /></div>
                 <div>
-                  <span className="eyebrow">{primaryComplete ? "Sesión completada" : "Lo que toca hoy"}</span>
-                  <h2>{primary.title}</h2>
-                  <p>{primary.detail}</p>
+                  <span className="eyebrow">{hasRunToday ? "Entrenamiento registrado" : "Lo que toca hoy"}</span>
+                  <h2>{hasRunToday ? `${todayActivity.distance_km} km completados hoy` : primary.title}</h2>
+                  <p>{hasRunToday ? workoutSummary : primary.detail}</p>
                 </div>
-                <Link href="/plan" className="focus-action">Plan <ChevronRight size={17} /></Link>
+                <Link href={latestTodayRun ? `/activities/${latestTodayRun.id}` : "/plan"} className="focus-action">
+                  {latestTodayRun ? "Ver carrera" : "Plan"} <ChevronRight size={17} />
+                </Link>
               </div>
+              {hasRunToday && (
+                <div className="post-workout-guidance">
+                  <BatteryMedium size={17} />
+                  <div>
+                    <strong>{recoveryStatus}</strong>
+                    <span>La carrera de hoy descuenta {Math.round(workoutPenalty)} puntos. Ahora conviene hidratar, comer bien y bajar la carga.</span>
+                  </div>
+                </div>
+              )}
               <div className="mini-agenda">
                 {following.map((item) => (
                   <article key={item.date}>
@@ -186,18 +208,25 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
             </div>
           )}
 
-          {mode === "run" && (
+          {mode === "recovery" && (
             <div className="focus-panel focus-recovery">
               <div className="focus-kicker"><span>Recuperación Fitbit · hoy y semana</span><Link href="/settings">Datos <ArrowRight size={15} /></Link></div>
-              <div className="recovery-hero">
+              <div className={hasRunToday ? "recovery-hero post-workout" : "recovery-hero"}>
                 <div className="recovery-ring" style={{ "--score": `${recoveryScore}%` } as CSSProperties}>
                   <strong>{recoveryScore}</strong>
                   <span>/100</span>
                 </div>
                 <div>
                   <span className="eyebrow">Estado del cuerpo</span>
-                  <h2>{readinessLabel(recoveryScore)}</h2>
-                  <p>{sleep ? `Dormiste ${sleep.value} ${sleep.unit}. ` : "Aún falta historial de sueño. "}{steps ? `Hoy llevas ${steps.count.toLocaleString("es-ES")} pasos.` : "Fitbit seguirá completando el día."}</p>
+                  <h2>{recoveryStatus}</h2>
+                  <p>
+                    {hasRunToday
+                      ? `Hoy corriste ${todayActivity.distance_km} km y esa carga ya está incluida. `
+                      : sleep ? `Dormiste ${sleep.value} ${sleep.unit}. ` : "Aún falta historial de sueño. "}
+                    {hasRunToday && sleep ? `Dormiste ${sleep.value} ${sleep.unit}. ` : ""}
+                    {steps ? `Llevas ${steps.count.toLocaleString("es-ES")} pasos.` : "Fitbit seguirá completando el día."}
+                  </p>
+                  {hasRunToday && <span className="workout-impact"><Flame size={14} />−{Math.round(workoutPenalty)} por el entrenamiento de hoy</span>}
                 </div>
               </div>
               <div className="recovery-signal-list">
@@ -266,7 +295,7 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
               <div className="progress-facts">
                 <div><span>Tirada larga</span><strong>{data.metrics.longest_42d} km</strong></div>
                 <div><span>Carga</span><strong>{data.metrics.load_7d} pts</strong><small>{formatLoadDelta(data.metrics.load_7d, data.metrics.load_previous_7d)}</small></div>
-                <div><span>Descanso</span><strong>{shortMetric(sleep?.value, sleep?.unit)}</strong><small>{readinessLabel(recoveryScore)}</small></div>
+                <div><span>Descanso</span><strong>{shortMetric(sleep?.value, sleep?.unit)}</strong><small>{recoveryStatus}</small></div>
               </div>
             </div>
           )}

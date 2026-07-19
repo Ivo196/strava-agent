@@ -22,6 +22,7 @@ export type Activity = {
   average_heartrate: number | null;
   elevation_gain_m?: number;
   training_load?: number;
+  calories?: number | null;
 };
 
 export type ActivitySeriesPoint = {
@@ -219,6 +220,7 @@ export type PlanData = {
 };
 
 export type DashboardData = {
+  current_date: string;
   activity_count: number;
   days_to_race: number;
   race_date: string;
@@ -246,6 +248,14 @@ export type DashboardData = {
   };
   weeks: { week: string; distance_km: number; training_load: number; runs: number }[];
   recent_activities: Activity[];
+  today_activity: {
+    count: number;
+    distance_km: number;
+    moving_minutes: number;
+    training_load: number;
+    calories: number | null;
+    average_heartrate: number | null;
+  };
   next_week: TrainingWeek | null;
   upcoming_weeks: TrainingWeek[];
   daily_agenda: DailyAgendaItem[];

@@ -15,7 +15,7 @@ def activities_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
     columns = [
         "id", "name", "sport_type", "start_date", "distance_km", "moving_minutes",
         "elevation_gain_m", "average_heartrate", "max_heartrate", "pace_min_km",
-        "training_load", "streams_loaded",
+        "training_load", "calories", "streams_loaded",
     ]
     if not rows:
         return pd.DataFrame(columns=columns)
@@ -40,6 +40,7 @@ def activities_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
                 "max_heartrate": _number_or_nan(row["max_heartrate"]),
                 "pace_min_km": pace,
                 "training_load": activity_training_load(row),
+                "calories": _number_or_nan(row.get("calories")),
                 "streams_loaded": bool(row["streams_loaded"]),
             }
         )

@@ -14,6 +14,15 @@ def test_dashboard_and_coach_status_are_available() -> None:
     assert "apple_watch" in dashboard.json()["devices"]
     assert "fitbit" in dashboard.json()["devices"]
     assert "series" in dashboard.json()["devices"]["fitbit"]["heart_rate"]
+    assert dashboard.json()["current_date"]
+    assert set(dashboard.json()["today_activity"]) == {
+        "count",
+        "distance_km",
+        "moving_minutes",
+        "training_load",
+        "calories",
+        "average_heartrate",
+    }
     assert len(dashboard.json()["daily_agenda"]) == 7
     assert dashboard.json()["daily_agenda"][0]["relative_label"] == "Hoy"
     assert dashboard.json()["daily_agenda"][0]["category"] in {"run", "strength", "bike", "rest"}
@@ -29,6 +38,8 @@ def test_dashboard_and_plan_accept_simulated_today() -> None:
 
     assert dashboard.status_code == 200
     assert dashboard.json()["days_to_race"] == 48
+    assert dashboard.json()["current_date"] == "2026-08-24"
+    assert dashboard.json()["today_activity"]["count"] == 0
     assert plan.status_code == 200
     assert plan.json()["current_date"] == "2026-08-24"
     assert plan.json()["current_week_start"] == "2026-08-24"

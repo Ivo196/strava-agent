@@ -4,7 +4,7 @@ import { RefreshCw } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const REFRESH_INTERVAL_MS = 3 * 60 * 1000;
+const REFRESH_INTERVAL_MS = 30 * 1000;
 
 export function LiveDataRefresh() {
   const router = useRouter();

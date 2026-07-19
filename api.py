@@ -287,22 +287,37 @@ def dashboard(today: date | None = None) -> dict[str, Any]:
     )
 
     recent = frame.sort_values("start_date", ascending=False).head(5)
+    activity_dates = frame["start_date"].dt.date if not frame.empty else None
+    today_runs = frame[activity_dates == analysis_date] if activity_dates is not None else frame
+    today_average_hr = today_runs["average_heartrate"].dropna().mean() if not today_runs.empty else math.nan
+    today_calories = today_runs["calories"].dropna().sum() if not today_runs.empty else 0
+    today_activity = {
+        "count": int(len(today_runs)),
+        "distance_km": round(float(today_runs["distance_km"].sum()), 2),
+        "moving_minutes": round(float(today_runs["moving_minutes"].sum()), 1),
+        "training_load": round(float(today_runs["training_load"].sum()), 1),
+        "calories": round(float(today_calories)) if today_calories else None,
+        "average_heartrate": None if _is_nan(today_average_hr) else round(float(today_average_hr)),
+    }
     activities = [
         {
             "id": str(row.id),
             "name": row.name,
             "date": row.start_date.date().isoformat(),
             "distance_km": round(float(row.distance_km), 2),
+            "moving_minutes": round(float(row.moving_minutes), 1),
             "pace": format_pace(float(row.pace_min_km)),
             "average_heartrate": None if _is_nan(row.average_heartrate) else round(float(row.average_heartrate)),
             "elevation_gain_m": round(float(row.elevation_gain_m)),
             "training_load": round(float(row.training_load)),
+            "calories": None if _is_nan(row.calories) else round(float(row.calories)),
         }
         for row in recent.itertuples()
     ]
     next_week = _serialize_week(plan[0]) if plan else None
 
     return {
+        "current_date": analysis_date.isoformat(),
         "activity_count": database.activity_count(),
         "days_to_race": days_to_race,
         "race_date": RACE_DATE.isoformat(),
@@ -321,6 +336,7 @@ def dashboard(today: date | None = None) -> dict[str, Any]:
             for row in weeks.itertuples()
         ],
         "recent_activities": activities,
+        "today_activity": today_activity,
         "next_week": next_week,
         "upcoming_weeks": [_serialize_week(week) for week in plan[:2]],
         "daily_agenda": _daily_agenda(plan, analysis_date),
