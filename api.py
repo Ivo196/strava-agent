@@ -714,6 +714,7 @@ def _fitbit_insights() -> dict[str, Any]:
         else 0
     )
     recovery = _fitbit_recovery_metrics(rows)
+    sleep_days = _fitbit_sleep_days(rows)
     step_days = _fitbit_step_days(rows)
     active_energy_days = _fitbit_active_energy_days(rows)
     status = database.google_health_status()
@@ -740,6 +741,11 @@ def _fitbit_insights() -> dict[str, Any]:
             "coverage_hours": round(coverage_hours, 1),
             "series": series,
         },
+        "sleep": {
+            "latest": sleep_days[-1] if sleep_days else None,
+            "days": sleep_days,
+            "goal": 8,
+        },
         "steps": {
             "latest": step_days[-1] if step_days else None,
             "days": step_days,
@@ -752,6 +758,24 @@ def _fitbit_insights() -> dict[str, Any]:
         },
         "recovery": recovery,
     }
+
+
+def _fitbit_sleep_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    nights: dict[str, float] = {}
+    for row in rows:
+        if row["data_type"] != "sleep" or row["source"] != "FITBIT":
+            continue
+        normalized = normalized_recovery_value(row["data_type"], json.loads(row["value_json"]))
+        if normalized is None:
+            continue
+        recorded = _parse_health_datetime(row["recorded_at"])
+        day = recorded.date().isoformat() if recorded else str(row["recorded_at"])[:10]
+        value, _unit = normalized
+        nights[day] = max(nights.get(day, 0), float(value))
+    return [
+        {"date": day, "hours": round(hours, 1)}
+        for day, hours in sorted(nights.items())[-7:]
+    ]
 
 
 def _fitbit_active_energy_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
