@@ -96,6 +96,75 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .onboarding-banner strong { font-size: 14px; margin-bottom: 3px; }
 .onboarding-banner span { color: var(--muted); font-size: 12px; }
 .onboarding-banner a { display: flex; gap: 6px; align-items: center; color: var(--orange-deep); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.home-topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; margin-bottom: 22px; }
+.home-topbar h1 { margin: 7px 0 6px; font-size: clamp(28px, 3.2vw, 40px); }
+.home-topbar p { margin: 0; color: var(--muted); font-size: 14px; }
+.home-layout { display: grid; grid-template-columns: minmax(0, 1fr) 336px; gap: 18px; align-items: start; }
+.home-feed { display: grid; gap: 16px; min-width: 0; }
+.home-rail { position: sticky; top: 24px; display: grid; gap: 12px; min-width: 0; }
+.feed-card, .rail-card { border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(145deg, rgba(12,20,38,.9), rgba(6,11,22,.82)); box-shadow: var(--shadow); }
+.feed-card { padding: 20px; }
+.feed-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+.feed-card-header h2 { margin: 5px 0 0; font: 700 20px/1.2 Inter, sans-serif; }
+.feed-card-header a { display: inline-flex; align-items: center; gap: 5px; min-height: 34px; color: var(--orange-deep); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.latest-run-card { overflow: hidden; border-color: rgba(91,140,255,.28); background: linear-gradient(135deg, rgba(14,25,48,.96), rgba(5,11,22,.86)); }
+.latest-run-primary { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: end; margin-bottom: 17px; }
+.latest-run-primary > strong { font-size: clamp(44px, 7vw, 72px); line-height: .88; letter-spacing: -.05em; }
+.latest-run-primary > strong small { color: var(--muted); font-size: 16px; font-weight: 500; letter-spacing: 0; }
+.latest-run-primary div span, .latest-run-primary div small { display: block; }
+.latest-run-primary div span { font-size: 24px; font-weight: 750; }
+.latest-run-primary div small { margin-top: 6px; color: var(--muted); font-size: 12px; }
+.latest-run-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.latest-run-stats div { min-width: 0; padding: 14px 12px; border-right: 1px solid var(--line); }
+.latest-run-stats div:first-child { padding-left: 0; }
+.latest-run-stats div:last-child { border-right: 0; }
+.latest-run-stats svg { display: block; margin-bottom: 8px; color: var(--orange-deep); }
+.latest-run-stats span, .latest-run-stats strong { display: block; }
+.latest-run-stats span { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.latest-run-stats strong { margin-top: 5px; font-size: 15px; }
+.latest-run-stats small { color: var(--muted); font-size: 9px; font-weight: 400; }
+.strava-feed-list { display: grid; border-top: 1px solid var(--line); }
+.strava-feed-item { display: grid; grid-template-columns: 42px minmax(0, 1fr) 18px; gap: 14px; align-items: center; min-height: 88px; padding: 14px 0; border-bottom: 1px solid var(--line); transition: background .18s ease, transform .18s ease; }
+.strava-feed-item:hover { background: rgba(91,140,255,.06); transform: translateX(2px); }
+.feed-avatar { width: 42px; height: 42px; display: grid; place-items: center; color: var(--orange-deep); border: 1px solid rgba(36,242,206,.22); border-radius: 50%; background: rgba(36,242,206,.08); }
+.feed-body { min-width: 0; }
+.feed-meta { margin-bottom: 4px; color: var(--muted); font-size: 10px; text-transform: capitalize; }
+.feed-body > strong { display: block; overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.feed-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.feed-stats span { padding: 5px 7px; color: var(--muted); border: 1px solid rgba(148,163,184,.16); border-radius: 999px; background: rgba(3,7,18,.24); font-size: 10px; }
+.compact-volume-panel { margin-top: 0; }
+.rail-card { padding: 16px; }
+.goal-card { border-color: rgba(36,242,206,.28); background: linear-gradient(135deg, rgba(91,140,255,.88), rgba(36,242,206,.58)); }
+.goal-card .eyebrow, .goal-card p { color: rgba(255,255,255,.76); }
+.goal-card > strong { display: block; margin-top: 10px; color: #fff; font-size: 38px; line-height: 1; letter-spacing: -.04em; }
+.goal-card > strong small { color: rgba(255,255,255,.7); font-size: 12px; font-weight: 500; letter-spacing: 0; }
+.goal-card p { margin: 10px 0 14px; font-size: 12px; }
+.race-mini { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 10px; color: #fff; border: 1px solid rgba(255,255,255,.22); border-radius: 999px; background: rgba(3,7,18,.18); font-size: 11px; font-weight: 700; }
+.rail-card-title { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.rail-card-title svg { color: var(--orange-deep); }
+.rail-card-title strong { font-size: 13px; }
+.rail-metric-row { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.rail-metric-row span { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.rail-metric-row strong { font-size: 14px; }
+.rail-track { height: 7px; margin: 10px 0 6px; overflow: hidden; border-radius: 999px; background: rgba(148,163,184,.16); }
+.rail-track span { display: block; height: 100%; min-width: 5px; border-radius: inherit; background: linear-gradient(90deg, var(--orange), var(--orange-deep)); animation: fillTrack .7s ease-out both; transform-origin: left center; }
+.weekly-score-card small { color: var(--muted); font-size: 10px; }
+.rail-coach-card { display: block; }
+.rail-coach-card h2 { font-size: 22px; }
+.rail-coach-card .coach-notes { margin-bottom: 14px; }
+.rail-coach-card a { margin-top: 0; }
+.source-pill-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.source-pill-row div { min-width: 0; padding: 11px; border: 1px solid rgba(148,163,184,.16); border-radius: 8px; background: rgba(3,7,18,.28); }
+.source-pill-row span, .source-pill-row strong, .source-pill-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.source-pill-row span { color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
+.source-pill-row strong { margin-top: 6px; font-size: 15px; }
+.source-pill-row small { margin-top: 3px; color: var(--muted); font-size: 9px; }
+.recovery-mini-list { display: grid; gap: 8px; }
+.recovery-mini-list div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.recovery-mini-list div:last-child { padding-bottom: 0; border-bottom: 0; }
+.recovery-mini-list span { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.recovery-mini-list strong { font-size: 14px; }
+.recovery-mini-list small { color: var(--muted); font-size: 9px; font-weight: 400; }
 .live-date { display: flex; align-items: baseline; gap: 10px; margin: -10px 0 12px 3px; }
 .live-date strong { font-size: 12px; font-weight: 500; text-transform: capitalize; }
 .today-card { position: relative; overflow: hidden; display: flex; align-items: center; gap: 18px; padding: 20px 22px; margin-bottom: 18px; color: var(--ink); background: linear-gradient(145deg, rgba(13,22,41,.92), rgba(6,12,24,.88)); border: 1px solid rgba(91,140,255,.24); border-left: 4px solid var(--orange); border-radius: var(--radius); box-shadow: var(--shadow); transition: transform .2s ease, border-color .2s ease; }
@@ -635,6 +704,9 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
   .main-content { margin-left: 200px; }
   .page-wrap { padding-inline: 28px; }
   .page-wrap::before { left: 200px; }
+  .home-layout { grid-template-columns: 1fr; }
+  .home-rail { position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .goal-card, .rail-coach-card { grid-column: span 1; }
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
   .dashboard-grid, .device-grid, .settings-grid, .coach-workspace, .insight-grid { grid-template-columns: 1fr; }
   .coach-data-rail { position: static; display: grid; grid-template-columns: 1.2fr 1fr 1fr; }
@@ -657,6 +729,18 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
   .page-wrap { padding: 28px 18px 50px; }
   .page-wrap::before { inset: 0; }
   .page-header { margin-bottom: 24px; flex-direction: column; }
+  .home-topbar { flex-direction: column; gap: 12px; margin-bottom: 18px; }
+  .home-topbar .connection { display: inline-flex; width: fit-content; }
+  .home-rail { grid-template-columns: 1fr; }
+  .feed-card, .rail-card { padding: 16px; }
+  .latest-run-primary { grid-template-columns: 1fr; gap: 10px; align-items: start; }
+  .latest-run-primary > strong { font-size: 52px; }
+  .latest-run-stats { grid-template-columns: 1fr; }
+  .latest-run-stats div { padding: 12px 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .latest-run-stats div:last-child { border-bottom: 0; }
+  .strava-feed-item { grid-template-columns: 36px minmax(0, 1fr); gap: 11px; }
+  .strava-feed-item > svg { display: none; }
+  .feed-avatar { width: 36px; height: 36px; }
   .hero-status-stack { width: 100%; grid-template-columns: 1fr; justify-items: stretch; }
   .connection { display: none; }
   .race-countdown { min-width: 0; text-align: left; }
@@ -724,6 +808,9 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 }
 
 @media (max-width: 420px) {
+  .source-pill-row { grid-template-columns: 1fr; }
+  .feed-card-header { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .goal-card > strong { font-size: 34px; }
   .metric-grid { grid-template-columns: 1fr; }
   .accent-card { grid-column: auto; }
   .recovery-grid { grid-template-columns: 1fr; }

@@ -1,9 +1,21 @@
 import Link from "next/link";
-import { ArrowRight, BatteryMedium, ChevronRight, Gauge, HeartPulse, Route, ShieldCheck, TrendingUp } from "lucide-react";
+import {
+  ArrowRight,
+  BatteryMedium,
+  CalendarDays,
+  ChevronRight,
+  Flame,
+  Footprints,
+  Gauge,
+  HeartPulse,
+  Route,
+  ShieldCheck,
+  TrendingUp,
+  Watch,
+} from "lucide-react";
 import { OfflineState } from "@/components/offline-state";
 import { TrainingNow } from "@/components/training-now";
 import { VolumeChart } from "@/components/volume-chart";
-import { DeviceInsights } from "@/components/device-insights";
 import { getDashboard } from "@/lib/api";
 import type { RecoveryMetric } from "@/lib/types";
 
@@ -43,25 +55,26 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     : "Meta sin configurar";
   const readinessWidth = ({ "Base inicial": 25, "En construcción": 55, "Base sólida": 85, Taper: 100 } as Record<string, number>)[data.readiness.status] ?? 35;
   const loadDelta = data.metrics.load_7d - data.metrics.load_previous_7d;
+  const loadDeltaLabel = Math.round(loadDelta);
   const loadTrend = formatLoadDelta(data.metrics.load_7d, data.metrics.load_previous_7d);
   const recovery = latestRecovery(data.recovery);
+  const latestRun = data.devices.apple_watch.latest_run;
+  const fitbit = data.devices.fitbit;
+  const apple = data.devices.apple_watch;
+  const sleep = fitbit.recovery.sleep;
+  const steps = fitbit.steps.latest;
+  const activeEnergy = fitbit.active_energy.latest;
 
   return (
     <div className="page-wrap dashboard-page">
-      <header className="page-header dashboard-hero">
+      <header className="home-topbar">
         <div>
-          <span className="eyebrow">Training intelligence · Semana {data.next_week?.number ?? "—"}</span>
-          <h1>{name ? `Estado de entrenamiento de ${name}.` : "Estado de entrenamiento."}</h1>
-          <p>Carga, consistencia, recuperación y próximos pasos en una sola lectura.</p>
+          <span className="eyebrow">PaceOS · Semana {data.next_week?.number ?? "—"}</span>
+          <h1>{name ? `Hola, ${name}.` : "Tu entrenamiento de hoy."}</h1>
+          <p>{data.metrics.distance_current_week} km esta semana · {data.days_to_race} días para Chicago</p>
         </div>
-        <div className="hero-status-stack">
-          <div className={hasTrainingData ? "connection connected" : "connection"}>
-            <span />{hasTrainingData ? `${data.activity_count} actividades cargadas` : "Historial pendiente"}
-          </div>
-          <div className="race-countdown">
-            <span>{data.days_to_race}</span>
-            <small>días a carrera</small>
-          </div>
+        <div className={hasTrainingData ? "connection connected" : "connection"}>
+          <span />{hasTrainingData ? `${data.activity_count} actividades` : "Historial pendiente"}
         </div>
       </header>
 
@@ -72,115 +85,126 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       )}
 
-      <TrainingNow agenda={data.daily_agenda} completedDates={data.recent_activities.map((activity) => activity.date)} />
+      <section className="home-layout" aria-label="Resumen principal">
+        <div className="home-feed">
+          <TrainingNow agenda={data.daily_agenda} completedDates={data.recent_activities.map((activity) => activity.date)} />
 
-      <section className="metric-grid" aria-label="Resumen del entrenamiento">
-        <article className="metric-card">
-          <div className="metric-icon"><Route size={19} /></div>
-          <span>Esta semana</span>
-          <strong>{data.metrics.distance_current_week}<small> km</small></strong>
-          <p>{data.metrics.runs_current_week} salidas · {data.metrics.average_weekly_28d} km de media</p>
-        </article>
-        <article className="metric-card">
-          <div className="metric-icon"><Gauge size={19} /></div>
-          <span>Carga 7 días</span>
-          <strong>{data.metrics.load_7d}<small> pts</small></strong>
-          <p>{loadTrend}</p>
-        </article>
-        <article className="metric-card">
-          <div className="metric-icon"><TrendingUp size={19} /></div>
-          <span>Últimos 28 días</span>
-          <strong>{data.metrics.distance_28d}<small> km</small></strong>
-          <p>{data.metrics.runs_28d} entrenamientos registrados</p>
-        </article>
-        <article className="metric-card accent-card">
-          <span>Ritmo objetivo</span>
-          <strong>{goalPace}<small> min/km</small></strong>
-          <p>Maratón aproximada: {goalFinish}</p>
-        </article>
-      </section>
-
-      <DeviceInsights devices={data.devices} />
-
-      <section className="dashboard-grid">
-        <article className="panel volume-panel">
-          <div className="panel-heading">
-            <div><span className="eyebrow">Consistencia</span><h2>Volumen y carga semanal</h2></div>
-            <span className="unit-label">km + carga</span>
-          </div>
-          <VolumeChart data={data.weeks} />
-        </article>
-
-        <article className="panel coach-panel">
-          <div className="coach-panel-top">
-            <span className="coach-badge"><ShieldCheck size={15} />PaceOS Coach</span>
-            <strong className={loadDelta > 0 ? "load-delta positive" : "load-delta"}>{loadDelta > 0 ? "+" : ""}{loadDelta}</strong>
-          </div>
-          <span className="eyebrow">Preparación</span>
-          <h2>{data.readiness.status}</h2>
-          <div className="status-track" aria-label={`Preparación ${readinessWidth}%`}><span style={{ width: hasTrainingData ? `${readinessWidth}%` : "12%" }} /></div>
-          <ul className="coach-notes">{data.readiness.notes.slice(0, 3).map((note) => <li key={note}>{note}</li>)}</ul>
-          <Link href="/coach">Preguntar al entrenador <ArrowRight size={15} /></Link>
-        </article>
-      </section>
-
-      <section className="insight-grid" aria-label="Estadísticas semanales y recuperación">
-        <article className="panel weekly-panel">
-          <div className="panel-heading">
-            <div><span className="eyebrow">Semana actual</span><h2>Estadísticas clave</h2></div>
-            <span className="unit-label">últimos 7/28 días</span>
-          </div>
-          <div className="bullet-list">
-            <div className="bullet-row">
-              <div><span>Volumen semanal</span><strong>{data.metrics.distance_current_week} km</strong></div>
-              <div className="bullet-track"><span style={{ width: `${Math.min(100, (data.metrics.distance_current_week / Math.max(data.metrics.average_weekly_28d || 1, 1)) * 100)}%` }} /></div>
-              <small>vs media 28d</small>
-            </div>
-            <div className="bullet-row">
-              <div><span>Tirada larga</span><strong>{data.metrics.longest_42d} km</strong></div>
-              <div className="bullet-track"><span style={{ width: `${Math.min(100, (data.metrics.longest_42d / 32) * 100)}%` }} /></div>
-              <small>base maratón</small>
-            </div>
-            <div className="bullet-row">
-              <div><span>Cobertura FC</span><strong>{data.metrics.hr_coverage}%</strong></div>
-              <div className="bullet-track"><span style={{ width: `${Math.min(100, data.metrics.hr_coverage)}%` }} /></div>
-              <small>calidad de datos</small>
-            </div>
-          </div>
-        </article>
-
-        <article className="panel recovery-panel">
-          <div className="panel-heading">
-            <div><span className="eyebrow">Recuperación</span><h2>Señales disponibles</h2></div>
-            <span className="recovery-icon"><BatteryMedium size={18} /></span>
-          </div>
-          <div className="recovery-grid">
-            {recovery.map((item) => (
-              <div className={`recovery-card ${item.tone}`} key={item.label}>
-                <span>{item.label}</span>
-                <strong>{item.metric ? item.metric.value : "—"}<small>{item.metric ? ` ${item.metric.unit}` : ""}</small></strong>
-                <p>{item.metric ? item.metric.date : "Calibrando"}</p>
+          <section className="feed-card latest-run-card">
+            <div className="feed-card-header">
+              <div>
+                <span className="eyebrow">Última carrera</span>
+                <h2>{latestRun ? latestRun.date : "Todavía sin carrera"}</h2>
               </div>
-            ))}
-          </div>
-        </article>
-      </section>
+              {latestRun && <Link href={`/activities/${latestRun.id}`}>Ver detalle <ChevronRight size={16} /></Link>}
+            </div>
+            {latestRun ? (
+              <>
+                <div className="latest-run-primary">
+                  <strong>{latestRun.distance_km}<small> km</small></strong>
+                  <div>
+                    <span>{latestRun.pace}</span>
+                    <small>{latestRun.average_heartrate ?? "—"} bpm · {latestRun.calories ?? "—"} kcal</small>
+                  </div>
+                </div>
+                <div className="latest-run-stats">
+                  <div><Gauge size={15} /><span>Potencia</span><strong>{latestRun.dynamics.power_w ?? "—"}<small> W</small></strong></div>
+                  <div><Footprints size={15} /><span>Zancada</span><strong>{latestRun.dynamics.stride_m ?? "—"}<small> m</small></strong></div>
+                  <div><Flame size={15} /><span>Energía</span><strong>{latestRun.calories ?? "—"}<small> kcal</small></strong></div>
+                </div>
+              </>
+            ) : (
+              <div className="empty-row">Cuando entre una carrera, este será el primer bloque que vas a leer.</div>
+            )}
+          </section>
 
-      <section className="recent-section panel">
-        <div className="section-heading"><div><span className="eyebrow">Últimos entrenamientos</span><h2>Actividad reciente</h2></div><Link href="/activities">Ver todo</Link></div>
-        {data.recent_activities.length ? (
-          <div className="activity-list activity-list-enhanced">
-            {data.recent_activities.slice(0, 3).map((activity) => (
-              <Link href={`/activities/${activity.id}`} className="activity-row" key={activity.id}>
-                <div className="activity-date"><strong>{dateFormat.format(new Date(`${activity.date}T12:00:00`)).split(" ")[0]}</strong><span>{dateFormat.format(new Date(`${activity.date}T12:00:00`)).split(" ")[1]}</span></div>
-                <div className="activity-name"><strong>{activity.name}</strong><span>{activity.pace}{activity.average_heartrate ? ` · ${activity.average_heartrate} bpm` : ""}</span></div>
-                <span className="activity-load"><HeartPulse size={14} />{activity.training_load ?? "—"}</span>
-                <strong className="activity-distance">{activity.distance_km} km</strong>
-                <ChevronRight size={17} />
-              </Link>
-            ))}
-          </div>
-        ) : <div className="empty-row">Sin actividades todavía. Tu historial aparecerá aquí.</div>}
+          <section className="feed-card recent-feed-card">
+            <div className="feed-card-header">
+              <div><span className="eyebrow">Feed</span><h2>Actividad reciente</h2></div>
+              <Link href="/activities">Ver historial <ArrowRight size={15} /></Link>
+            </div>
+            {data.recent_activities.length ? (
+              <div className="strava-feed-list">
+                {data.recent_activities.slice(0, 5).map((activity) => (
+                  <Link href={`/activities/${activity.id}`} className="strava-feed-item" key={activity.id}>
+                    <div className="feed-avatar"><Route size={18} /></div>
+                    <div className="feed-body">
+                      <div className="feed-meta">{dateFormat.format(new Date(`${activity.date}T12:00:00`))}</div>
+                      <strong>{activity.name}</strong>
+                      <div className="feed-stats">
+                        <span>{activity.distance_km} km</span>
+                        <span>{activity.pace}</span>
+                        <span>{activity.average_heartrate ? `${activity.average_heartrate} bpm` : "FC —"}</span>
+                        <span>Carga {activity.training_load ?? "—"}</span>
+                      </div>
+                    </div>
+                    <ChevronRight size={17} />
+                  </Link>
+                ))}
+              </div>
+            ) : <div className="empty-row">Sin actividades todavía. Tu historial aparecerá aquí.</div>}
+          </section>
+
+          <article className="panel volume-panel compact-volume-panel">
+            <div className="panel-heading">
+              <div><span className="eyebrow">Progreso</span><h2>Volumen y carga semanal</h2></div>
+              <span className="unit-label">km + carga</span>
+            </div>
+            <VolumeChart data={data.weeks} />
+          </article>
+        </div>
+
+        <aside className="home-rail" aria-label="Contexto de entrenamiento">
+          <section className="rail-card goal-card">
+            <span className="eyebrow">Objetivo Chicago</span>
+            <strong>{goalPace}<small> min/km</small></strong>
+            <p>Maratón aproximada: {goalFinish}</p>
+            <div className="race-mini"><CalendarDays size={15} /><span>{data.days_to_race} días restantes</span></div>
+          </section>
+
+          <section className="rail-card weekly-score-card">
+            <div className="rail-card-title"><Route size={16} /><strong>Semana actual</strong></div>
+            <div className="rail-metric-row"><span>Distancia</span><strong>{data.metrics.distance_current_week} km</strong></div>
+            <div className="rail-track"><span style={{ width: `${Math.min(100, (data.metrics.distance_current_week / Math.max(data.metrics.average_weekly_28d || 1, 1)) * 100)}%` }} /></div>
+            <div className="rail-metric-row"><span>Carga 7 días</span><strong>{data.metrics.load_7d} pts</strong></div>
+            <small>{loadTrend}</small>
+          </section>
+
+          <section className="rail-card coach-panel rail-coach-card">
+            <div className="coach-panel-top">
+              <span className="coach-badge"><ShieldCheck size={15} />Coach</span>
+              <strong className={loadDelta > 0 ? "load-delta positive" : "load-delta"}>{loadDeltaLabel > 0 ? "+" : ""}{loadDeltaLabel}</strong>
+            </div>
+            <span className="eyebrow">Preparación</span>
+            <h2>{data.readiness.status}</h2>
+            <div className="status-track" aria-label={`Preparación ${readinessWidth}%`}><span style={{ width: hasTrainingData ? `${readinessWidth}%` : "12%" }} /></div>
+            <ul className="coach-notes">{data.readiness.notes.slice(0, 2).map((note) => <li key={note}>{note}</li>)}</ul>
+            <Link href="/coach">Preguntar <ArrowRight size={15} /></Link>
+          </section>
+
+          <section className="rail-card source-rail-card">
+            <div className="rail-card-title"><Watch size={16} /><strong>Fuentes</strong></div>
+            <div className="source-pill-row">
+              <div><span>Apple</span><strong>{apple.week.distance_km} km</strong><small>{apple.week.calories} kcal semana</small></div>
+              <div><span>Fitbit</span><strong>{steps ? steps.count.toLocaleString("es-ES") : "—"}</strong><small>pasos hoy</small></div>
+            </div>
+            <div className="source-pill-row">
+              <div><span>Sueño</span><strong>{sleep ? `${sleep.value} ${sleep.unit}` : "—"}</strong><small>última señal</small></div>
+              <div><span>Kcal</span><strong>{activeEnergy ? `${activeEnergy.kcal}` : "—"}</strong><small>activas Fitbit</small></div>
+            </div>
+          </section>
+
+          <section className="rail-card recovery-rail-card">
+            <div className="rail-card-title"><BatteryMedium size={16} /><strong>Recuperación</strong></div>
+            <div className="recovery-mini-list">
+              {recovery.map((item) => (
+                <div key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.metric ? item.metric.value : "—"}<small>{item.metric ? ` ${item.metric.unit}` : ""}</small></strong>
+                </div>
+              ))}
+            </div>
+          </section>
+        </aside>
       </section>
     </div>
   );
