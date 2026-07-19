@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type CSSProperties } from "react";
+import { useRef, type CSSProperties } from "react";
 import {
   ArrowRight,
   BatteryMedium,
@@ -78,7 +78,8 @@ function shortMetric(value: number | null | undefined, unit = "") {
 }
 
 export function HomeCommandCenter({ data }: { data: DashboardData }) {
-  const [mode, setMode] = useState<FocusMode>(lastFocusMode);
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const mode = lastFocusMode;
   const primary = data.daily_agenda[0];
   const following = data.daily_agenda.slice(1, 4);
   const fitbit = data.devices.fitbit;
@@ -128,7 +129,16 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
 
   function selectMode(nextMode: FocusMode) {
     lastFocusMode = nextMode;
-    setMode(nextMode);
+    const tabs = tabsRef.current;
+    if (!tabs) return;
+    tabs.querySelectorAll<HTMLButtonElement>("[data-focus-tab]").forEach((button) => {
+      const selected = button.dataset.focusTab === nextMode;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-selected", String(selected));
+    });
+    tabs.querySelectorAll<HTMLElement>("[data-focus-panel]").forEach((panel) => {
+      panel.hidden = panel.dataset.focusPanel !== nextMode;
+    });
   }
 
   return (
@@ -152,15 +162,15 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
       </div>
 
       <div className="command-shell">
-        <div className="command-main">
+        <div className="command-main" ref={tabsRef}>
           <div className="command-tabs" role="tablist" aria-label="Vista principal">
-            <button aria-controls="panel-today" aria-selected={mode === "today"} className={mode === "today" ? "active" : ""} onClick={() => selectMode("today")} role="tab" type="button"><CalendarDays size={16} />Hoy</button>
-            <button aria-controls="panel-recovery" aria-selected={mode === "recovery"} className={mode === "recovery" ? "active" : ""} onClick={() => selectMode("recovery")} role="tab" type="button"><BatteryMedium size={16} />Recuperación</button>
-            <button aria-controls="panel-progress" aria-selected={mode === "progress"} className={mode === "progress" ? "active" : ""} onClick={() => selectMode("progress")} role="tab" type="button"><Gauge size={16} />Semana</button>
+            <button aria-controls="panel-today" aria-selected={mode === "today"} className={mode === "today" ? "active" : ""} data-focus-tab="today" onClick={() => selectMode("today")} role="tab" type="button"><CalendarDays size={16} />Hoy</button>
+            <button aria-controls="panel-recovery" aria-selected={mode === "recovery"} className={mode === "recovery" ? "active" : ""} data-focus-tab="recovery" onClick={() => selectMode("recovery")} role="tab" type="button"><BatteryMedium size={16} />Recuperación</button>
+            <button aria-controls="panel-progress" aria-selected={mode === "progress"} className={mode === "progress" ? "active" : ""} data-focus-tab="progress" onClick={() => selectMode("progress")} role="tab" type="button"><Gauge size={16} />Semana</button>
           </div>
 
           {primary && (
-            <div className={`focus-panel focus-today agenda-${primary.category}`} hidden={mode !== "today"} id="panel-today" role="tabpanel">
+            <div className={`focus-panel focus-today agenda-${primary.category}`} data-focus-panel="today" hidden={mode !== "today"} id="panel-today" role="tabpanel">
               <div className="focus-kicker">
                 <span>{fullDate.format(new Date(`${primary.date}T12:00:00+02:00`))}</span>
                 {hasRunToday && <strong><Check size={15} />Registrado</strong>}
@@ -214,7 +224,7 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
             </div>
           )}
 
-          <div className="focus-panel focus-recovery" hidden={mode !== "recovery"} id="panel-recovery" role="tabpanel">
+          <div className="focus-panel focus-recovery" data-focus-panel="recovery" hidden={mode !== "recovery"} id="panel-recovery" role="tabpanel">
               <div className="focus-kicker"><span>Recuperación Fitbit · hoy y semana</span><Link href="/settings">Datos <ArrowRight size={15} /></Link></div>
               <div className={hasRunToday ? "recovery-hero post-workout" : "recovery-hero"}>
                 <div className="recovery-ring" style={{ "--score": `${recoveryScore}%` } as CSSProperties}>
@@ -292,7 +302,7 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
               </div>
           </div>
 
-          <div className="focus-panel focus-progress" hidden={mode !== "progress"} id="panel-progress" role="tabpanel">
+          <div className="focus-panel focus-progress" data-focus-panel="progress" hidden={mode !== "progress"} id="panel-progress" role="tabpanel">
               <div className="focus-kicker"><span>Progreso semanal</span><Link href="/activities">Historial <ArrowRight size={15} /></Link></div>
               <VolumeChart data={data.weeks} />
               <div className="progress-facts">

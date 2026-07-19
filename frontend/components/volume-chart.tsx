@@ -100,13 +100,6 @@ export function VolumeChart({ data }: { data: WeekPoint[] }) {
             <stop offset="0%" stopColor="var(--viz-series-1)" />
             <stop offset="100%" stopColor="rgba(91, 140, 255, .28)" />
           </linearGradient>
-          <filter id="chart-soft-glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="2.4" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
         </defs>
         {yTicks.map((tick) => (
           <g key={tick.y}>
@@ -124,7 +117,7 @@ export function VolumeChart({ data }: { data: WeekPoint[] }) {
             </g>
           );
         })}
-        <path className="chart-load-line" d={pointsPath(loadPoints)} filter="url(#chart-soft-glow)" />
+        <path className="chart-load-line" d={pointsPath(loadPoints)} />
         {loadPoints.map((point, index) => (
           <circle className="chart-load-dot" cx={point.x} cy={point.y} r="4" key={chartData[index].week} />
         ))}
