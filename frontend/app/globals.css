@@ -1959,9 +1959,11 @@ a.pace-activity-card:hover {
 
 .pace-calendar-day {
   position: relative;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  min-height: 180px;
-  padding: 11px;
+  min-height: 226px;
+  padding: 0;
   overflow: hidden;
   border: 1px solid rgba(125, 168, 231, .13);
   border-top: 3px solid #3b82f6;
@@ -1987,25 +1989,39 @@ a.pace-activity-card:hover {
   border-top-color: #64748b;
 }
 
-.pace-calendar-day > div {
+.pace-calendar-select {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  padding: 11px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.pace-calendar-select > div {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 5px;
 }
 
-.pace-calendar-day > div span {
+.pace-calendar-select > div span {
   color: #8197b3;
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
 }
 
-.pace-calendar-day > div strong {
+.pace-calendar-select > div strong {
   font: 650 16px "Fira Code", ui-monospace, monospace;
 }
 
-.pace-calendar-day > i {
+.pace-calendar-select > i {
   width: 36px;
   height: 36px;
   display: grid;
@@ -2016,7 +2032,7 @@ a.pace-activity-card:hover {
   background: rgba(59, 130, 246, .11);
 }
 
-.pace-calendar-day > small {
+.pace-calendar-select > small {
   display: block;
   color: #8da2be;
   font-size: 9px;
@@ -2024,7 +2040,7 @@ a.pace-activity-card:hover {
   text-transform: uppercase;
 }
 
-.pace-calendar-day > p {
+.pace-calendar-select > p {
   margin: 6px 0 0;
   color: #d8e5f7;
   font-size: 10px;
@@ -2032,7 +2048,7 @@ a.pace-activity-card:hover {
   line-height: 1.35;
 }
 
-.pace-calendar-day > b {
+.pace-calendar-select > b {
   position: absolute;
   right: 8px;
   bottom: 8px;
@@ -2712,23 +2728,18 @@ a.pace-activity-card:hover {
   background: rgba(37, 99, 235, .1);
 }
 
-button.pace-calendar-day {
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  touch-action: manipulation;
+.pace-calendar-day {
   transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
 }
 
-button.pace-calendar-day:hover {
+.pace-calendar-day:hover {
   border-color: rgba(96, 165, 250, .52);
   background: rgba(37, 99, 235, .09);
 }
 
-button.pace-calendar-day:focus-visible {
+.pace-calendar-select:focus-visible {
   outline: 2px solid #7dd3fc;
-  outline-offset: 3px;
+  outline-offset: -3px;
 }
 
 .pace-calendar-day.is-selected {
@@ -2742,10 +2753,115 @@ button.pace-calendar-day:focus-visible {
   box-shadow: none;
 }
 
-.pace-calendar-day > b {
+.pace-calendar-select > b {
   display: inline-flex;
   align-items: center;
   gap: 3px;
+}
+
+.pace-calendar-day.is-complete {
+  border-color: rgba(52, 211, 153, .42);
+  background: linear-gradient(165deg, rgba(16, 185, 129, .1), rgba(3, 10, 24, .32));
+}
+
+.session-check-wrap {
+  min-width: 0;
+}
+
+.session-check-wrap.is-compact {
+  padding: 0 8px 8px;
+}
+
+.session-check {
+  width: 100%;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid rgba(125, 168, 231, .2);
+  border-radius: 8px;
+  color: #91a5bf;
+  background: rgba(5, 13, 28, .55);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color .18s ease, border-color .18s ease, background .18s ease;
+}
+
+.session-check span {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  flex: 0 0 22px;
+  place-items: center;
+  border: 1px solid #52657d;
+  border-radius: 6px;
+  color: transparent;
+}
+
+.session-check b {
+  font-size: 9px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.session-check:hover:not(:disabled),
+.session-check:focus-visible {
+  color: #dbeafe;
+  border-color: rgba(96, 165, 250, .62);
+  background: rgba(37, 99, 235, .13);
+}
+
+.session-check:focus-visible {
+  outline: 2px solid #7dd3fc;
+  outline-offset: 2px;
+}
+
+.session-check.is-checked {
+  color: #b7f7da;
+  border-color: rgba(52, 211, 153, .4);
+  background: rgba(16, 185, 129, .12);
+}
+
+.session-check.is-checked span {
+  color: #06281e;
+  border-color: #34d399;
+  background: #34d399;
+}
+
+.session-check.is-detected {
+  color: #a5e7ff;
+  border-color: rgba(34, 211, 238, .32);
+  background: rgba(8, 145, 178, .11);
+}
+
+.session-check.is-detected span {
+  color: #06202b;
+  border-color: #22d3ee;
+  background: #22d3ee;
+}
+
+.session-check:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.session-check-error {
+  display: block;
+  margin: 5px 2px 0;
+  color: #fda4af;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.session-check-spinner {
+  animation: paceCheckSpin .75s linear infinite;
+}
+
+@keyframes paceCheckSpin {
+  to { transform: rotate(360deg); }
 }
 
 .pace-bullet i,

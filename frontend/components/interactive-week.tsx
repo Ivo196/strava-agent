@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Bike,
@@ -10,6 +10,7 @@ import {
   Footprints,
   MoonStar,
 } from "lucide-react";
+import { SessionCompletionCheck } from "@/components/session-completion-check";
 import type { DailyAgendaItem } from "@/lib/types";
 
 const weekday = new Intl.DateTimeFormat("es-ES", {
@@ -32,8 +33,13 @@ function label(category: DailyAgendaItem["category"]) {
 }
 
 export function InteractiveWeek({ agenda }: { agenda: DailyAgendaItem[] }) {
+  const [items, setItems] = useState(agenda);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const selected = agenda[selectedIndex] ?? agenda[0];
+  const selected = items[selectedIndex] ?? items[0];
+
+  useEffect(() => {
+    setItems(agenda);
+  }, [agenda]);
 
   if (!selected) return null;
 
@@ -52,24 +58,42 @@ export function InteractiveWeek({ agenda }: { agenda: DailyAgendaItem[] }) {
       </div>
 
       <div className="pace-calendar-strip" aria-label="Explorar los próximos siete días">
-        {agenda.map((item, index) => (
-          <button
-            aria-label={`${item.relative_label}: ${item.title}`}
-            aria-pressed={index === selectedIndex}
-            className={`pace-calendar-day category-${item.category}${index === 0 ? " is-today" : ""}${index === selectedIndex ? " is-selected" : ""}`}
+        {items.map((item, index) => (
+          <article
+            className={`pace-calendar-day category-${item.category}${index === 0 ? " is-today" : ""}${index === selectedIndex ? " is-selected" : ""}${item.completed ? " is-complete" : ""}`}
             key={item.date}
-            onClick={() => setSelectedIndex(index)}
-            type="button"
           >
-            <div>
-              <span>{weekday.format(new Date(`${item.date}T12:00:00+02:00`))}</span>
-              <strong>{new Date(`${item.date}T12:00:00+02:00`).getDate()}</strong>
-            </div>
-            <i>{icon(item.category)}</i>
-            <small>{label(item.category)}</small>
-            <p>{item.title}</p>
-            {index === 0 && <b><CalendarCheck2 size={11} /> Hoy</b>}
-          </button>
+            <button
+              aria-label={`${item.relative_label}: ${item.title}`}
+              aria-pressed={index === selectedIndex}
+              className="pace-calendar-select"
+              onClick={() => setSelectedIndex(index)}
+              type="button"
+            >
+              <div>
+                <span>{weekday.format(new Date(`${item.date}T12:00:00+02:00`))}</span>
+                <strong>{new Date(`${item.date}T12:00:00+02:00`).getDate()}</strong>
+              </div>
+              <i>{icon(item.category)}</i>
+              <small>{label(item.category)}</small>
+              <p>{item.title}</p>
+              {index === 0 && <b><CalendarCheck2 size={11} /> Hoy</b>}
+            </button>
+            <SessionCompletionCheck
+              compact
+              date={item.date}
+              initial={item}
+              onChange={(completion) => {
+                setItems((current) =>
+                  current.map((currentItem) =>
+                    currentItem.date === item.date
+                      ? { ...currentItem, ...completion }
+                      : currentItem,
+                  ),
+                );
+              }}
+            />
+          </article>
         ))}
       </div>
     </div>

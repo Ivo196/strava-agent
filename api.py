@@ -188,6 +188,11 @@ class WeeklyCheckinInput(BaseModel):
     notes: str = Field(default="", max_length=1000)
 
 
+class PlanCompletionInput(BaseModel):
+    session_date: date
+    completed: bool
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -411,7 +416,11 @@ def dashboard(today: date | None = None, scenario: str | None = None) -> dict[st
         "demo_scenario": demo_scenario,
         "next_week": next_week,
         "upcoming_weeks": [_serialize_week(week) for week in plan[:2]],
-        "daily_agenda": _daily_agenda(plan, analysis_date),
+        "daily_agenda": _agenda_with_completion(
+            _daily_agenda(plan, analysis_date),
+            frame,
+            health["devices"]["fitbit"],
+        ),
     }
 
 
@@ -1839,7 +1848,8 @@ def _format_duration(seconds: int) -> str:
 
 @app.get("/api/plan")
 def plan(today: date | None = None) -> dict[str, Any]:
-    frame = activities_frame(database.list_activities())
+    activity_rows = database.list_activities()
+    frame = activities_frame(activity_rows)
     analysis_date = today or date.today()
     metrics = dashboard_metrics(frame, today=analysis_date)
     profile = database.get_profile()
@@ -1851,6 +1861,13 @@ def plan(today: date | None = None) -> dict[str, Any]:
         checkin=checkin,
         today=analysis_date,
     )
+    fitbit = _health_dashboard_snapshot(activity_rows, analysis_date)["devices"]["fitbit"]
+    daily_agenda = _agenda_with_completion(_daily_agenda(weeks, analysis_date), frame, fitbit)
+    calendar = _agenda_with_completion(
+        _plan_calendar(weeks, analysis_date, frame),
+        frame,
+        fitbit,
+    )
     return {
         "fixed": True,
         "policy": "El calendario avanza con la fecha actual y marca cumplimiento; los datos reales actualizan el estado del atleta, no reescriben sesiones sin confirmación.",
@@ -1860,8 +1877,19 @@ def plan(today: date | None = None) -> dict[str, Any]:
         "current_week_end": (analysis_date - timedelta(days=analysis_date.weekday()) + timedelta(days=6)).isoformat(),
         "profile": profile,
         "weeks": [_serialize_week(week) for week in weeks],
-        "daily_agenda": _daily_agenda(weeks, analysis_date),
-        "calendar": _plan_calendar(weeks, analysis_date, frame),
+        "daily_agenda": daily_agenda,
+        "calendar": calendar,
+    }
+
+
+@app.post("/api/plan/completion")
+def save_plan_completion(payload: PlanCompletionInput) -> dict[str, Any]:
+    session_date = payload.session_date.isoformat()
+    database.set_plan_session_completed(session_date, payload.completed)
+    return {
+        "session_date": session_date,
+        "completed": payload.completed,
+        "source": "manual" if payload.completed else None,
     }
 
 
@@ -2034,6 +2062,50 @@ def _plan_calendar(plan: list[Any], today: date, frame: Any, days: int = 28) -> 
         )
         calendar.append(item)
     return calendar
+
+
+def _agenda_with_completion(
+    agenda: list[dict[str, Any]],
+    frame: Any,
+    fitbit: dict[str, Any],
+) -> list[dict[str, Any]]:
+    if not agenda:
+        return agenda
+    start_date = min(item["date"] for item in agenda)
+    end_date = max(item["date"] for item in agenda)
+    manual_dates = {
+        row["session_date"]
+        for row in database.list_plan_session_completions(start_date, end_date)
+        if row["completed"]
+    }
+    run_dates = _completed_activity_dates(frame)
+    fitbit_by_date: dict[str, set[str]] = {}
+    for exercise in fitbit.get("exercises", []):
+        exercise_date = exercise.get("date")
+        exercise_type = exercise.get("type")
+        if exercise_date and exercise_type:
+            fitbit_by_date.setdefault(str(exercise_date), set()).add(str(exercise_type))
+
+    for item in agenda:
+        session_date = item["date"]
+        category = item["category"]
+        source: str | None = None
+        if category == "run" and session_date in run_dates:
+            source = "apple_watch"
+        elif category == "bike" and "BIKING" in fitbit_by_date.get(session_date, set()):
+            source = "fitbit"
+        elif category == "strength" and "STRENGTH_TRAINING" in fitbit_by_date.get(session_date, set()):
+            source = "fitbit"
+        elif session_date in manual_dates:
+            source = "manual"
+        item.update(
+            {
+                "completed": source is not None,
+                "completion_source": source,
+                "completion_locked": source in {"apple_watch", "fitbit"},
+            }
+        )
+    return agenda
 
 
 def _planned_day(plan: list[Any], target: date) -> dict[str, Any] | None:

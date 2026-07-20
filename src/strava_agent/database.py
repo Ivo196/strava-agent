@@ -67,6 +67,13 @@ CREATE TABLE IF NOT EXISTS weekly_checkins (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS plan_session_completions (
+    session_date TEXT PRIMARY KEY,
+    completed INTEGER NOT NULL DEFAULT 1,
+    source TEXT NOT NULL DEFAULT 'manual',
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS apple_health_workouts (
     workout_id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -255,6 +262,48 @@ class Database:
             ).fetchone()
         return dict(row) if row else None
 
+    def set_plan_session_completed(self, session_date: str, completed: bool) -> None:
+        with self.connect() as connection:
+            if completed:
+                connection.execute(
+                    """INSERT INTO plan_session_completions(
+                           session_date, completed, source, updated_at
+                       ) VALUES (?, 1, 'manual', ?)
+                       ON CONFLICT(session_date) DO UPDATE SET
+                           completed=1,
+                           source='manual',
+                           updated_at=excluded.updated_at""",
+                    (session_date, utc_now_iso()),
+                )
+            else:
+                connection.execute(
+                    "DELETE FROM plan_session_completions WHERE session_date = ?",
+                    (session_date,),
+                )
+
+    def list_plan_session_completions(
+        self,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> list[dict[str, Any]]:
+        clauses: list[str] = []
+        parameters: list[str] = []
+        if start_date:
+            clauses.append("session_date >= ?")
+            parameters.append(start_date)
+        if end_date:
+            clauses.append("session_date <= ?")
+            parameters.append(end_date)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        with self.connect() as connection:
+            rows = connection.execute(
+                f"""SELECT session_date, completed, source, updated_at
+                    FROM plan_session_completions{where}
+                    ORDER BY session_date""",
+                parameters,
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def upsert_activity(
         self,
         activity: dict[str, Any],
@@ -358,7 +407,8 @@ class Database:
                        COALESCE((SELECT MAX(received_at) FROM google_health_syncs), ''),
                        COALESCE((SELECT MAX(updated_at) FROM google_health_oauth), ''),
                        COALESCE((SELECT MAX(updated_at) FROM athlete_profile), ''),
-                       COALESCE((SELECT MAX(updated_at) FROM weekly_checkins), '')"""
+                       COALESCE((SELECT MAX(updated_at) FROM weekly_checkins), ''),
+                       COALESCE((SELECT MAX(updated_at) FROM plan_session_completions), '')"""
             ).fetchone()
         return "|".join(str(value or "") for value in row)
 

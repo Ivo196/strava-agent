@@ -1,6 +1,8 @@
 from fastapi.testclient import TestClient
+from pathlib import Path
 
 import api
+from strava_agent.database import Database
 
 
 def test_dashboard_and_coach_status_are_available() -> None:
@@ -37,6 +39,8 @@ def test_dashboard_and_coach_status_are_available() -> None:
     assert len(dashboard.json()["daily_agenda"]) == 7
     assert dashboard.json()["daily_agenda"][0]["relative_label"] == "Hoy"
     assert dashboard.json()["daily_agenda"][0]["category"] in {"run", "strength", "bike", "rest"}
+    assert "completed" in dashboard.json()["daily_agenda"][0]
+    assert "completion_source" in dashboard.json()["daily_agenda"][0]
     assert coach_status.status_code == 200
     assert "configured" in coach_status.json()
     assert coach_summary.status_code == 200
@@ -93,3 +97,48 @@ def test_data_version_is_available_for_lightweight_refresh_checks() -> None:
 
     assert response.status_code == 200
     assert isinstance(response.json()["version"], str)
+
+
+def test_plan_completion_endpoint_persists_and_removes(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    test_database = Database(tmp_path / "completion.db")
+    monkeypatch.setattr(api, "database", test_database)
+    client = TestClient(api.app)
+
+    checked = client.post(
+        "/api/plan/completion",
+        json={"session_date": "2026-07-21", "completed": True},
+    )
+    assert checked.status_code == 200
+    assert checked.json()["source"] == "manual"
+    assert test_database.list_plan_session_completions()[0]["session_date"] == "2026-07-21"
+
+    unchecked = client.post(
+        "/api/plan/completion",
+        json={"session_date": "2026-07-21", "completed": False},
+    )
+    assert unchecked.status_code == 200
+    assert test_database.list_plan_session_completions() == []
+
+
+def test_fitbit_bike_marks_the_planned_bike_as_detected(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(api, "database", Database(tmp_path / "detected.db"))
+    agenda = [{
+        "date": "2026-07-20",
+        "category": "bike",
+    }]
+
+    result = api._agenda_with_completion(
+        agenda,
+        None,
+        {"exercises": [{"date": "2026-07-20", "type": "BIKING"}]},
+    )
+
+    assert result[0]["completed"] is True
+    assert result[0]["completion_source"] == "fitbit"
+    assert result[0]["completion_locked"] is True

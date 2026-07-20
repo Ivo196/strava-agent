@@ -65,6 +65,22 @@ def test_weekly_checkin_round_trip(tmp_path: Path) -> None:
     assert checkin["knee_pain"] == 1
 
 
+def test_plan_session_completion_round_trip(tmp_path: Path) -> None:
+    database = Database(tmp_path / "coach.db")
+    initial_version = database.data_version()
+
+    database.set_plan_session_completed("2026-07-21", True)
+
+    completions = database.list_plan_session_completions("2026-07-20", "2026-07-22")
+    assert len(completions) == 1
+    assert completions[0]["session_date"] == "2026-07-21"
+    assert completions[0]["source"] == "manual"
+    assert database.data_version() != initial_version
+
+    database.set_plan_session_completed("2026-07-21", False)
+    assert database.list_plan_session_completions() == []
+
+
 def test_finds_matching_activity_from_another_source(tmp_path: Path) -> None:
     database = Database(tmp_path / "coach.db")
     database.upsert_activity(sample_activity())

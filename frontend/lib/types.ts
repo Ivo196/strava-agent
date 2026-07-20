@@ -244,6 +244,9 @@ export type DailyAgendaItem = {
   week_number: number;
   phase: string;
   week_target_km: number;
+  completed: boolean;
+  completion_source: "manual" | "apple_watch" | "fitbit" | null;
+  completion_locked: boolean;
 };
 
 export type PlanCalendarDay = DailyAgendaItem & {

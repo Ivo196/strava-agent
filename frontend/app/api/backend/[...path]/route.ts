@@ -8,6 +8,7 @@ const ALLOWED_PATHS = new Set([
   "profile",
   "google-health/status",
   "google-health/sync",
+  "plan/completion",
 ]);
 
 async function proxy(request: Request, context: { params: Promise<{ path: string[] }> }) {

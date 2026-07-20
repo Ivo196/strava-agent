@@ -2,6 +2,7 @@ import { Bike, CheckCircle2, ChevronDown, Dumbbell, Footprints, LockKeyhole, Moo
 import { OfflineState } from "@/components/offline-state";
 import { getPlan } from "@/lib/api";
 import { WeeklyCheckin } from "@/components/weekly-checkin";
+import { SessionCompletionCheck } from "@/components/session-completion-check";
 import type { DailyAgendaItem, PlanCalendarDay } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +89,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
                     </div>
                     <strong>{dayMonth.format(new Date(`${item.date}T12:00:00`))}</strong>
                     <p>{item.title}</p>
+                    <SessionCompletionCheck compact date={item.date} initial={item} />
                   </article>
                 ))}
               </div>
@@ -105,6 +107,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
               <small>{item.relative_label} · {dayMonth.format(new Date(`${item.date}T12:00:00`))}</small>
               <strong>{item.title}</strong>
               <p>{item.detail}</p>
+              <SessionCompletionCheck date={item.date} initial={item} />
             </article>
           ))}
         </div>
