@@ -267,6 +267,7 @@ export type PlanData = {
 };
 
 export type DashboardData = {
+  demo_scenario: "recovered" | "sleep-debt" | "heavy-load" | "calibrating" | null;
   current_date: string;
   activity_count: number;
   days_to_race: number;

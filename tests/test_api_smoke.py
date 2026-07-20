@@ -63,6 +63,19 @@ def test_dashboard_and_plan_accept_simulated_today() -> None:
     assert plan.json()["daily_agenda"][0]["relative_label"] == "Hoy"
 
 
+def test_dashboard_demo_scenario_is_read_only_and_recalculates() -> None:
+    client = TestClient(api.app)
+    points_before = api.database.google_health_status()["point_count"]
+
+    response = client.get("/api/dashboard?scenario=heavy-load")
+
+    assert response.status_code == 200
+    assert response.json()["demo_scenario"] == "heavy-load"
+    assert response.json()["daily_state"]["today_load"]["level"] == "high"
+    assert response.json()["daily_state"]["today_load"]["fitbit_exercises"][0]["type"] == "BIKING"
+    assert api.database.google_health_status()["point_count"] == points_before
+
+
 def test_google_health_runs_automatically_every_six_hours() -> None:
     client = TestClient(api.app)
 

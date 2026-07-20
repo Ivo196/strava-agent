@@ -50,3 +50,11 @@
 - Data Entry: Allow multi-select and bulk edit
 - Sustainability: Click-to-play or pause when off-screen
 - CTA Placement: Primary CTA in nav + After metrics
+
+## Implemented Interaction Rules
+
+- Keep the page server-rendered; isolate state inside leaf components.
+- The weekly calendar is selectable and updates one detail panel with `aria-live`.
+- Animate only data fills and the selected-day transition, for at most 280 ms.
+- Disable all dashboard motion under `prefers-reduced-motion`.
+- QA scenarios are query-based and read-only; always label simulated data visibly.

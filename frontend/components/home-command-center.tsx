@@ -6,7 +6,6 @@ import {
   BedDouble,
   Bike,
   CalendarDays,
-  CheckCircle2,
   ChevronRight,
   CircleGauge,
   Clock3,
@@ -22,6 +21,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import type { DailyAgendaItem, DashboardData } from "@/lib/types";
+import { InteractiveWeek } from "@/components/interactive-week";
 
 const shortDate = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" });
 const weekday = new Intl.DateTimeFormat("es-ES", { weekday: "short" });
@@ -40,13 +40,6 @@ function categoryIcon(category: DailyAgendaItem["category"], size = 18) {
   if (category === "strength") return <Dumbbell size={size} />;
   if (category === "bike") return <Bike size={size} />;
   return <MoonStar size={size} />;
-}
-
-function categoryName(category: DailyAgendaItem["category"]) {
-  if (category === "run") return "Carrera";
-  if (category === "strength") return "Fuerza";
-  if (category === "bike") return "Bicicleta";
-  return "Recuperación";
 }
 
 function MetricTile({
@@ -332,23 +325,7 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
             </div>
           </div>
 
-          <div className="pace-calendar-strip">
-            {data.daily_agenda.map((item, index) => (
-              <article
-                className={`pace-calendar-day category-${item.category}${index === 0 ? " is-today" : ""}`}
-                key={item.date}
-              >
-                <div>
-                  <span>{weekday.format(new Date(`${item.date}T12:00:00`))}</span>
-                  <strong>{new Date(`${item.date}T12:00:00`).getDate()}</strong>
-                </div>
-                <i>{categoryIcon(item.category, 18)}</i>
-                <small>{categoryName(item.category)}</small>
-                <p>{item.title}</p>
-                {index === 0 && <b>Hoy</b>}
-              </article>
-            ))}
-          </div>
+          <InteractiveWeek agenda={data.daily_agenda} />
         </section>
 
         <section className="pace-sleep-card">

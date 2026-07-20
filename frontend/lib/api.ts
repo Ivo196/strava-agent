@@ -10,12 +10,17 @@ async function apiGet<T>(path: string, revalidate: number): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-function withToday(path: string, today?: string) {
-  return today ? `${path}?today=${encodeURIComponent(today)}` : path;
+function withParams(path: string, values: Record<string, string | undefined>) {
+  const params = new URLSearchParams();
+  Object.entries(values).forEach(([key, value]) => {
+    if (value) params.set(key, value);
+  });
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
 }
 
-export function getDashboard(today?: string) {
-  return apiGet<DashboardData>(withToday("/api/dashboard", today), 60);
+export function getDashboard(today?: string, scenario?: string) {
+  return apiGet<DashboardData>(withParams("/api/dashboard", { today, scenario }), scenario ? 0 : 60);
 }
 
 export function getActivities() {
@@ -27,7 +32,7 @@ export function getActivityDetail(id: string) {
 }
 
 export function getPlan(today?: string) {
-  return apiGet<PlanData>(withToday("/api/plan", today), 5 * 60);
+  return apiGet<PlanData>(withParams("/api/plan", { today }), 5 * 60);
 }
 
 export function getProfile() {

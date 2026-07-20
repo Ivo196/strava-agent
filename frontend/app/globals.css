@@ -2544,3 +2544,273 @@ a.pace-activity-card:hover {
     display: none;
   }
 }
+
+.pace-qa-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(245, 158, 11, .32);
+  border-radius: 12px;
+  background: linear-gradient(100deg, rgba(245, 158, 11, .12), rgba(12, 25, 48, .92));
+}
+
+.pace-qa-bar > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #cbd8e9;
+  font-size: 11px;
+}
+
+.pace-qa-bar > div svg {
+  color: #fbbf24;
+}
+
+.pace-qa-bar > div strong {
+  color: #fde68a;
+}
+
+.pace-qa-bar nav {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+}
+
+.pace-qa-bar nav a,
+.pace-qa-close {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid rgba(147, 197, 253, .17);
+  border-radius: 9px;
+  color: #aebfd5;
+  background: rgba(3, 10, 24, .28);
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: color .2s ease, border-color .2s ease, background .2s ease;
+}
+
+.pace-qa-bar nav a:hover,
+.pace-qa-close:hover {
+  color: #fff;
+  border-color: rgba(96, 165, 250, .46);
+  background: rgba(37, 99, 235, .12);
+}
+
+.pace-qa-bar nav a.active {
+  color: #fff;
+  border-color: #60a5fa;
+  background: rgba(37, 99, 235, .24);
+  box-shadow: inset 0 -2px #22d3ee;
+}
+
+.pace-qa-close {
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.pace-week-explorer {
+  margin-top: 13px;
+}
+
+.pace-calendar-strip {
+  scrollbar-width: none;
+  overscroll-behavior-inline: contain;
+}
+
+.pace-calendar-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.pace-day-detail {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: center;
+  min-height: 92px;
+  padding: 14px;
+  border: 1px solid rgba(96, 165, 250, .24);
+  border-left: 3px solid #3b82f6;
+  border-radius: 11px;
+  background: linear-gradient(105deg, rgba(37, 99, 235, .12), rgba(3, 10, 24, .25));
+  animation: paceDetailIn .2s ease-out both;
+}
+
+.pace-day-detail.category-bike {
+  border-left-color: #22d3ee;
+}
+
+.pace-day-detail.category-strength {
+  border-left-color: #a78bfa;
+}
+
+.pace-day-detail.category-rest {
+  border-left-color: #64748b;
+}
+
+.pace-day-detail-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: #93c5fd;
+  border-radius: 10px;
+  background: rgba(59, 130, 246, .13);
+}
+
+.pace-day-detail small,
+.pace-day-detail strong,
+.pace-day-detail p {
+  display: block;
+}
+
+.pace-day-detail small {
+  color: #7fa7dd;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.pace-day-detail strong {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.pace-day-detail p {
+  margin: 4px 0 0;
+  color: #8fa4bf;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.pace-day-detail > a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 1px solid rgba(147, 197, 253, .17);
+  border-radius: 9px;
+  color: #bad5fa;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+  transition: color .2s ease, border-color .2s ease, background .2s ease;
+}
+
+.pace-day-detail > a:hover {
+  color: #fff;
+  border-color: rgba(96, 165, 250, .45);
+  background: rgba(37, 99, 235, .1);
+}
+
+button.pace-calendar-day {
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+
+button.pace-calendar-day:hover {
+  border-color: rgba(96, 165, 250, .52);
+  background: rgba(37, 99, 235, .09);
+}
+
+button.pace-calendar-day:focus-visible {
+  outline: 2px solid #7dd3fc;
+  outline-offset: 3px;
+}
+
+.pace-calendar-day.is-selected {
+  border-color: #60a5fa;
+  background: linear-gradient(165deg, rgba(37, 99, 235, .2), rgba(3, 10, 24, .32));
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, .1), 0 12px 26px rgba(37, 99, 235, .12);
+}
+
+.pace-calendar-day.is-today:not(.is-selected) {
+  border-color: rgba(34, 211, 238, .42);
+  box-shadow: none;
+}
+
+.pace-calendar-day > b {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.pace-bullet i,
+.pace-week-track i,
+.pace-calibration > div i {
+  transform-origin: left center;
+  animation: paceFillIn .28s ease-out both;
+}
+
+@keyframes paceDetailIn {
+  from { opacity: .45; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes paceFillIn {
+  from { transform: scaleX(.08); opacity: .55; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+
+@media (max-width: 1080px) {
+  .pace-qa-bar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .pace-qa-bar nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .pace-qa-bar {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .pace-qa-bar nav {
+    grid-column: auto;
+    grid-row: auto;
+    justify-content: flex-start;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .pace-qa-close {
+    width: fit-content;
+  }
+
+  .pace-day-detail {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .pace-day-detail > a {
+    grid-column: 2;
+    width: fit-content;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pace-day-detail,
+  .pace-bullet i,
+  .pace-week-track i,
+  .pace-calibration > div i {
+    animation: none !important;
+  }
+}

@@ -6,6 +6,7 @@ import json
 import math
 import secrets
 from bisect import bisect_left
+from copy import deepcopy
 from contextlib import asynccontextmanager, suppress
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -60,6 +61,12 @@ health_insights_cache: dict[str, Any] = {
     "value": None,
 }
 HEALTH_INSIGHTS_CACHE_SECONDS = 5 * 60
+DASHBOARD_DEMO_SCENARIOS = {
+    "recovered",
+    "sleep-debt",
+    "heavy-load",
+    "calibrating",
+}
 
 
 def _invalidate_health_insights_cache() -> None:
@@ -301,7 +308,7 @@ async def import_apple_health(
 
 
 @app.get("/api/dashboard")
-def dashboard(today: date | None = None) -> dict[str, Any]:
+def dashboard(today: date | None = None, scenario: str | None = None) -> dict[str, Any]:
     rows = database.list_activities()
     frame = activities_frame(rows)
     analysis_date = today or date.today()
@@ -350,9 +357,33 @@ def dashboard(today: date | None = None) -> dict[str, Any]:
     next_week = _serialize_week(plan[0]) if plan else None
 
     health = _health_dashboard_snapshot(rows, analysis_date)
+    demo_scenario = scenario if scenario in DASHBOARD_DEMO_SCENARIOS else None
+    if demo_scenario:
+        demo_fitbit = _dashboard_demo_fitbit(
+            health["devices"]["fitbit"],
+            demo_scenario,
+            analysis_date,
+        )
+        health = {
+            **health,
+            "devices": {
+                **health["devices"],
+                "fitbit": demo_fitbit,
+            },
+        }
+    dashboard_today_activity = today_activity
+    if demo_scenario:
+        dashboard_today_activity = {
+            "count": 0,
+            "distance_km": 0.0,
+            "moving_minutes": 0.0,
+            "training_load": 0.0,
+            "calories": None,
+            "average_heartrate": None,
+        }
     daily_state = _dashboard_daily_state(
         health["devices"]["fitbit"],
-        today_activity,
+        dashboard_today_activity,
         analysis_date,
     )
     return {
@@ -375,8 +406,9 @@ def dashboard(today: date | None = None) -> dict[str, Any]:
             for row in weeks.itertuples()
         ],
         "recent_activities": activities,
-        "today_activity": today_activity,
+        "today_activity": dashboard_today_activity,
         "daily_state": daily_state,
+        "demo_scenario": demo_scenario,
         "next_week": next_week,
         "upcoming_weeks": [_serialize_week(week) for week in plan[:2]],
         "daily_agenda": _daily_agenda(plan, analysis_date),
@@ -1146,6 +1178,148 @@ def _fitbit_recovery_history(rows: list[dict[str, Any]]) -> list[dict[str, Any]]
         target = days.setdefault(recorded.date().isoformat(), {"date": recorded.date().isoformat()})
         target[key] = round(float(normalized[0]), 1)
     return [values for _day, values in sorted(days.items())[-28:]]
+
+
+def _dashboard_demo_fitbit(
+    fitbit: dict[str, Any],
+    scenario: str,
+    analysis_date: date,
+) -> dict[str, Any]:
+    """Build a read-only QA snapshot without writing synthetic health data."""
+    demo = deepcopy(fitbit)
+    current_day = analysis_date.isoformat()
+    scenario_values = {
+        "recovered": {
+            "sleep": [7.8, 8.0, 7.7, 8.1, 7.9, 8.0, 8.2],
+            "hrv": [95, 97, 96, 98, 95, 97, 108],
+            "rhr": [50, 49, 50, 48, 49, 50, 45],
+            "steps": 3240,
+            "active_kcal": 210,
+            "total_kcal": 1760,
+            "zone_minutes": 0,
+        },
+        "sleep-debt": {
+            "sleep": [7.6, 7.9, 7.4, 8.0, 7.5, 7.8, 4.2],
+            "hrv": [95, 97, 96, 98, 95, 97, 96],
+            "rhr": [49, 50, 49, 48, 50, 49, 51],
+            "steps": 1860,
+            "active_kcal": 125,
+            "total_kcal": 1520,
+            "zone_minutes": 0,
+        },
+        "heavy-load": {
+            "sleep": [7.5, 7.8, 7.4, 7.9, 7.6, 7.7, 7.4],
+            "hrv": [95, 97, 96, 98, 95, 97, 94],
+            "rhr": [49, 50, 49, 48, 50, 49, 50],
+            "steps": 12840,
+            "active_kcal": 1080,
+            "total_kcal": 3260,
+            "zone_minutes": 88,
+        },
+        "calibrating": {
+            "sleep": [7.6, 6.9, 7.1],
+            "hrv": [94, 97, 96],
+            "rhr": [50, 49, 49],
+            "steps": 4480,
+            "active_kcal": 275,
+            "total_kcal": 1850,
+            "zone_minutes": 8,
+        },
+    }[scenario]
+    nights = scenario_values["sleep"]
+    start_offset = len(nights) - 1
+    sleep_days = [
+        {
+            "date": (analysis_date - timedelta(days=start_offset - index)).isoformat(),
+            "hours": hours,
+        }
+        for index, hours in enumerate(nights)
+    ]
+    recovery_history = [
+        {
+            "date": night["date"],
+            "hrv": scenario_values["hrv"][index],
+            "resting_hr": scenario_values["rhr"][index],
+        }
+        for index, night in enumerate(sleep_days)
+    ]
+    latest_sleep = {
+        **(demo.get("sleep", {}).get("latest") or {}),
+        **sleep_days[-1],
+        "deep_minutes": 92 if scenario == "recovered" else 61,
+        "rem_minutes": 104 if scenario == "recovered" else 72,
+        "light_minutes": 276 if scenario == "recovered" else 244,
+        "awake_minutes": 20 if scenario == "recovered" else 43,
+        "efficiency": 94 if scenario == "recovered" else 86,
+    }
+    demo["sleep"] = {
+        **demo.get("sleep", {}),
+        "latest": latest_sleep,
+        "days": sleep_days,
+        "goal": 8,
+    }
+    demo["recovery_history"] = recovery_history
+    demo["recovery"] = {
+        **demo.get("recovery", {}),
+        "hrv": {
+            "value": scenario_values["hrv"][-1],
+            "unit": "ms",
+            "date": current_day,
+            "method": "QA_SCENARIO",
+        },
+        "resting_hr": {
+            "value": scenario_values["rhr"][-1],
+            "unit": "bpm",
+            "date": current_day,
+            "method": "QA_SCENARIO",
+        },
+    }
+    demo["steps"] = {
+        **demo.get("steps", {}),
+        "latest": {"date": current_day, "count": scenario_values["steps"]},
+    }
+    demo["active_energy"] = {
+        **demo.get("active_energy", {}),
+        "latest": {"date": current_day, "kcal": scenario_values["active_kcal"]},
+    }
+    demo["total_calories"] = {
+        **demo.get("total_calories", {}),
+        "latest": {"date": current_day, "kcal": scenario_values["total_kcal"]},
+    }
+    demo["daily_activity"] = {
+        **demo.get("daily_activity", {}),
+        "latest": {
+            "date": current_day,
+            "active_minutes": round(scenario_values["zone_minutes"] * 0.75),
+            "zone_minutes": scenario_values["zone_minutes"],
+            "distance_km": round(scenario_values["steps"] * 0.00076, 1),
+            "sedentary_minutes": 410 if scenario == "heavy-load" else 570,
+        },
+    }
+    exercises = [
+        item
+        for item in demo.get("exercises", [])
+        if item.get("date") != current_day
+    ]
+    if scenario == "heavy-load":
+        exercises = [
+            {
+                "type": "BIKING",
+                "label": "Bicicleta intensa",
+                "date": current_day,
+                "start_time": f"{current_day}T08:05:00+02:00",
+                "duration_minutes": 76,
+                "calories": 720,
+                "distance_km": 31.4,
+                "average_heartrate": 146,
+                "zone_minutes": 88,
+                "source": "Fitbit",
+            },
+            *exercises,
+        ]
+    demo["exercises"] = exercises
+    demo["status"] = "Activo" if len(nights) >= 7 else "Calibrando"
+    return demo
 
 
 def _dashboard_daily_state(
