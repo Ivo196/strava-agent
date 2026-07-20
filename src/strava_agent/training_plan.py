@@ -35,6 +35,7 @@ def build_adaptive_plan(
     checkin: dict[str, Any] | None = None,
     today: date | None = None,
     race_date: date = RACE_DATE,
+    include_past: bool = False,
 ) -> list[TrainingWeek]:
     """Devuelve el calendario fijo y superpone solo el estado real del atleta.
 
@@ -102,7 +103,7 @@ def build_adaptive_plan(
                 completion_percentage=round(completion, 0) if index == current_index else None,
             )
         )
-    return [week for week in weeks if week.end >= today]
+    return weeks if include_past else [week for week in weeks if week.end >= today]
 
 
 def _sessions_for_week(

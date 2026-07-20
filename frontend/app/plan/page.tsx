@@ -1,27 +1,17 @@
-import { Bike, CheckCircle2, ChevronDown, Dumbbell, Footprints, LockKeyhole, MoonStar } from "lucide-react";
+import { Bike, ChevronDown, Dumbbell, Footprints, LockKeyhole, MoonStar } from "lucide-react";
 import { OfflineState } from "@/components/offline-state";
 import { getPlan } from "@/lib/api";
 import { WeeklyCheckin } from "@/components/weekly-checkin";
-import { SessionCompletionCheck } from "@/components/session-completion-check";
-import type { DailyAgendaItem, PlanCalendarDay } from "@/lib/types";
+import { PlanCalendar } from "@/components/plan-calendar";
+import type { DailyAgendaItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 const dayMonth = new Intl.DateTimeFormat("es", { day: "numeric", month: "short" });
-const weekdayShort = new Intl.DateTimeFormat("es", { weekday: "short" });
 
 function formatGoalPace(seconds: number | null) {
   if (!seconds) return "—";
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
-function groupCalendarWeeks(days: PlanCalendarDay[]) {
-  return days.reduce<PlanCalendarDay[][]>((weeks, day) => {
-    const current = weeks[weeks.length - 1];
-    if (!current || current[0]?.week_number !== day.week_number) weeks.push([day]);
-    else current.push(day);
-    return weeks;
-  }, []);
 }
 
 function DayIcon({ category }: { category: DailyAgendaItem["category"] }) {
@@ -37,7 +27,6 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
   const data = await getPlan(simulatedToday).catch(() => null);
   if (!data) return <OfflineState />;
   const currentWeek = data.weeks.find((week) => week.number === data.current_week_number) ?? data.weeks[0];
-  const calendarWeeks = groupCalendarWeeks(data.calendar);
   const goalPace = formatGoalPace(data.profile.goal_pace_seconds_km);
 
   return (
@@ -66,36 +55,10 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
 
       <section className="plan-calendar-panel" aria-label="Calendario del plan">
         <div className="section-heading">
-          <div><span className="eyebrow">Calendario vivo</span><h2>Esta semana y próximas 3</h2></div>
-          <span className="unit-label">{dayMonth.format(new Date(`${data.current_week_start}T12:00:00`))} – {dayMonth.format(new Date(`${data.calendar[data.calendar.length - 1]?.date ?? data.current_week_end}T12:00:00`))}</span>
+          <div><span className="eyebrow">Calendario vivo</span><h2>Esta semana primero, sin perder el historial</h2></div>
+          <span className="unit-label">{dayMonth.format(new Date(`${data.current_week_start}T12:00:00`))} – {dayMonth.format(new Date(`${data.current_week_end}T12:00:00`))}</span>
         </div>
-        <div className="plan-calendar-grid">
-          {calendarWeeks.map((week) => (
-            <section className={`calendar-week ${week.some((day) => day.is_current_week) ? "calendar-week-current" : ""}`} key={week[0]?.week_number}>
-              <div className="calendar-week-label">
-                <span>Semana {week[0]?.week_number}</span>
-                <strong>{week[0]?.phase}</strong>
-              </div>
-              <div className="calendar-days">
-                {week.map((item) => (
-                  <article
-                    key={item.date}
-                    className={`calendar-day calendar-day-${item.category}${item.is_today ? " calendar-day-today" : ""}${item.completed ? " calendar-day-complete" : ""}${item.is_past ? " calendar-day-past" : ""}`}
-                    aria-label={`${item.day}: ${item.title}`}
-                  >
-                    <div className="calendar-day-top">
-                      <span>{weekdayShort.format(new Date(`${item.date}T12:00:00`))}</span>
-                      {item.completed ? <CheckCircle2 size={15} /> : <DayIcon category={item.category} />}
-                    </div>
-                    <strong>{dayMonth.format(new Date(`${item.date}T12:00:00`))}</strong>
-                    <p>{item.title}</p>
-                    <SessionCompletionCheck compact date={item.date} initial={item} />
-                  </article>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+        <PlanCalendar days={data.calendar} />
       </section>
 
       <section className="daily-week-panel" aria-label="Agenda de los próximos siete días">
@@ -107,7 +70,6 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
               <small>{item.relative_label} · {dayMonth.format(new Date(`${item.date}T12:00:00`))}</small>
               <strong>{item.title}</strong>
               <p>{item.detail}</p>
-              <SessionCompletionCheck date={item.date} initial={item} />
             </article>
           ))}
         </div>

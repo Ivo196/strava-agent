@@ -25,6 +25,15 @@ def test_fixed_plan_keeps_three_running_days() -> None:
     assert build_week.sessions[2].startswith("Domingo:")
 
 
+def test_plan_can_include_previous_weeks_for_calendar_history() -> None:
+    current = build_adaptive_plan({}, today=date(2026, 8, 3))
+    with_history = build_adaptive_plan({}, today=date(2026, 8, 3), include_past=True)
+
+    assert current[0].start == date(2026, 8, 3)
+    assert with_history[0].start == date(2026, 7, 13)
+    assert with_history[-1].end == RACE_DATE
+
+
 def test_current_week_does_not_rewrite_remaining_run() -> None:
     metrics = {
         "average_weekly_28d": 15,

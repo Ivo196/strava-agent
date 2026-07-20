@@ -234,6 +234,27 @@ export type TrainingWeek = {
   completion_percentage: number | null;
 };
 
+export type CalendarActualActivity = {
+  type: string;
+  label: string;
+  source: "Apple Watch" | "Fitbit";
+  duration_minutes: number | null;
+  distance_km: number | null;
+  calories: number | null;
+  average_heartrate: number | null;
+  zone_minutes: number | null;
+};
+
+export type CalendarDailyMetrics = {
+  steps?: number;
+  active_energy_kcal?: number;
+  total_calories_kcal?: number;
+  active_minutes?: number;
+  zone_minutes?: number;
+  distance_km?: number;
+  sedentary_minutes?: number;
+};
+
 export type DailyAgendaItem = {
   date: string;
   day: string;
@@ -247,6 +268,8 @@ export type DailyAgendaItem = {
   completed: boolean;
   completion_source: "manual" | "apple_watch" | "fitbit" | null;
   completion_locked: boolean;
+  actual_activities: CalendarActualActivity[];
+  daily_metrics: CalendarDailyMetrics | null;
 };
 
 export type PlanCalendarDay = DailyAgendaItem & {

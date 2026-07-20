@@ -41,6 +41,8 @@ def test_dashboard_and_coach_status_are_available() -> None:
     assert dashboard.json()["daily_agenda"][0]["category"] in {"run", "strength", "bike", "rest"}
     assert "completed" in dashboard.json()["daily_agenda"][0]
     assert "completion_source" in dashboard.json()["daily_agenda"][0]
+    assert "actual_activities" in dashboard.json()["daily_agenda"][0]
+    assert "daily_metrics" in dashboard.json()["daily_agenda"][0]
     assert coach_status.status_code == 200
     assert "configured" in coach_status.json()
     assert coach_summary.status_code == 200
@@ -65,6 +67,8 @@ def test_dashboard_and_plan_accept_simulated_today() -> None:
     assert plan.json()["current_date"] == "2026-08-24"
     assert plan.json()["current_week_start"] == "2026-08-24"
     assert plan.json()["daily_agenda"][0]["relative_label"] == "Hoy"
+    assert any(day["is_past"] for day in plan.json()["calendar"])
+    assert any(day["is_current_week"] for day in plan.json()["calendar"])
 
 
 def test_dashboard_demo_scenario_is_read_only_and_recalculates() -> None:
@@ -136,9 +140,15 @@ def test_fitbit_bike_marks_the_planned_bike_as_detected(
     result = api._agenda_with_completion(
         agenda,
         None,
-        {"exercises": [{"date": "2026-07-20", "type": "BIKING"}]},
+        {"exercises": [{
+            "date": "2026-07-20",
+            "type": "BIKING",
+            "label": "Bicicleta",
+            "source": "Fitbit",
+        }]},
     )
 
     assert result[0]["completed"] is True
     assert result[0]["completion_source"] == "fitbit"
     assert result[0]["completion_locked"] is True
+    assert result[0]["actual_activities"][0]["label"] == "Bicicleta"

@@ -1860,6 +1860,11 @@ def plan(today: date | None = None) -> dict[str, Any]:
         goal_pace_seconds_km=profile.get("goal_pace_seconds_km"),
         checkin=checkin,
         today=analysis_date,
+        include_past=True,
+    )
+    current_week = next(
+        (week for week in weeks if week.start <= analysis_date <= week.end),
+        None,
     )
     fitbit = _health_dashboard_snapshot(activity_rows, analysis_date)["devices"]["fitbit"]
     daily_agenda = _agenda_with_completion(_daily_agenda(weeks, analysis_date), frame, fitbit)
@@ -1872,7 +1877,7 @@ def plan(today: date | None = None) -> dict[str, Any]:
         "fixed": True,
         "policy": "El calendario avanza con la fecha actual y marca cumplimiento; los datos reales actualizan el estado del atleta, no reescriben sesiones sin confirmación.",
         "current_date": analysis_date.isoformat(),
-        "current_week_number": weeks[0].number if weeks else None,
+        "current_week_number": current_week.number if current_week else None,
         "current_week_start": (analysis_date - timedelta(days=analysis_date.weekday())).isoformat(),
         "current_week_end": (analysis_date - timedelta(days=analysis_date.weekday()) + timedelta(days=6)).isoformat(),
         "profile": profile,
@@ -2041,13 +2046,23 @@ def _daily_agenda(plan: list[Any], today: date, days: int = 7) -> list[dict[str,
     return agenda
 
 
-def _plan_calendar(plan: list[Any], today: date, frame: Any, days: int = 28) -> list[dict[str, Any]]:
+def _plan_calendar(
+    plan: list[Any],
+    today: date,
+    frame: Any,
+    past_weeks: int = 4,
+    future_weeks: int = 3,
+) -> list[dict[str, Any]]:
+    if not plan:
+        return []
     week_start = today - timedelta(days=today.weekday())
-    completed_dates = _completed_activity_dates(frame)
+    calendar_start = max(plan[0].start, week_start - timedelta(weeks=past_weeks))
+    calendar_end = min(plan[-1].end, week_start + timedelta(weeks=future_weeks, days=6))
+    days = (calendar_end - calendar_start).days + 1
     calendar: list[dict[str, Any]] = []
 
     for offset in range(days):
-        target = week_start + timedelta(days=offset)
+        target = calendar_start + timedelta(days=offset)
         item = _planned_day(plan, target)
         if item is None:
             continue
@@ -2057,7 +2072,6 @@ def _plan_calendar(plan: list[Any], today: date, frame: Any, days: int = 28) -> 
                 "is_today": target == today,
                 "is_past": target < today,
                 "is_current_week": week_start <= target <= week_start + timedelta(days=6),
-                "completed": item["category"] == "run" and target.isoformat() in completed_dates,
             }
         )
         calendar.append(item)
@@ -2079,6 +2093,8 @@ def _agenda_with_completion(
         if row["completed"]
     }
     run_dates = _completed_activity_dates(frame)
+    actual_by_date = _actual_activities_by_date(frame, fitbit)
+    daily_metrics_by_date = _fitbit_daily_metrics_by_date(fitbit)
     fitbit_by_date: dict[str, set[str]] = {}
     for exercise in fitbit.get("exercises", []):
         exercise_date = exercise.get("date")
@@ -2103,9 +2119,85 @@ def _agenda_with_completion(
                 "completed": source is not None,
                 "completion_source": source,
                 "completion_locked": source in {"apple_watch", "fitbit"},
+                "actual_activities": actual_by_date.get(session_date, []),
+                "daily_metrics": daily_metrics_by_date.get(session_date),
             }
         )
     return agenda
+
+
+def _actual_activities_by_date(
+    frame: Any,
+    fitbit: dict[str, Any],
+) -> dict[str, list[dict[str, Any]]]:
+    actual: dict[str, list[dict[str, Any]]] = {}
+    if not getattr(frame, "empty", True):
+        for row in frame.itertuples():
+            session_date = row.start_date.date().isoformat()
+            actual.setdefault(session_date, []).append(
+                {
+                    "type": "RUNNING",
+                    "label": str(row.name),
+                    "source": "Apple Watch",
+                    "duration_minutes": round(float(row.moving_minutes)),
+                    "distance_km": round(float(row.distance_km), 2),
+                    "calories": None if _is_nan(row.calories) else round(float(row.calories)),
+                    "average_heartrate": (
+                        None
+                        if _is_nan(row.average_heartrate)
+                        else round(float(row.average_heartrate))
+                    ),
+                    "zone_minutes": None,
+                }
+            )
+    for exercise in fitbit.get("exercises", []):
+        session_date = exercise.get("date")
+        if not session_date:
+            continue
+        actual.setdefault(str(session_date), []).append(
+            {
+                key: exercise.get(key)
+                for key in (
+                    "type",
+                    "label",
+                    "source",
+                    "duration_minutes",
+                    "distance_km",
+                    "calories",
+                    "average_heartrate",
+                    "zone_minutes",
+                )
+            }
+        )
+    return actual
+
+
+def _fitbit_daily_metrics_by_date(fitbit: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    metrics: dict[str, dict[str, Any]] = {}
+
+    def merge(series: str, mappings: dict[str, str]) -> None:
+        for day in (fitbit.get(series) or {}).get("days", []):
+            session_date = day.get("date")
+            if not session_date:
+                continue
+            target = metrics.setdefault(str(session_date), {})
+            for source_key, target_key in mappings.items():
+                if day.get(source_key) is not None:
+                    target[target_key] = day[source_key]
+
+    merge("steps", {"count": "steps"})
+    merge("active_energy", {"kcal": "active_energy_kcal"})
+    merge("total_calories", {"kcal": "total_calories_kcal"})
+    merge(
+        "daily_activity",
+        {
+            "active_minutes": "active_minutes",
+            "zone_minutes": "zone_minutes",
+            "distance_km": "distance_km",
+            "sedentary_minutes": "sedentary_minutes",
+        },
+    )
+    return metrics
 
 
 def _planned_day(plan: list[Any], target: date) -> dict[str, Any] | None:

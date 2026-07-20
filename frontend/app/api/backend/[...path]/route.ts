@@ -28,7 +28,7 @@ async function proxy(request: Request, context: { params: Promise<{ path: string
   });
 
   if (request.method !== "GET" && response.ok) {
-    revalidateTag("training-data", "max");
+    revalidateTag("training-data", { expire: 0 });
   }
 
   return new Response(await response.arrayBuffer(), {
