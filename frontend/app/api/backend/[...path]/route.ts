@@ -1,8 +1,10 @@
 import { API_URL } from "@/lib/api";
+import { revalidateTag } from "next/cache";
 
 const ALLOWED_PATHS = new Set([
   "checkin",
   "coach/chat",
+  "data-version",
   "profile",
   "google-health/status",
   "google-health/sync",
@@ -23,6 +25,10 @@ async function proxy(request: Request, context: { params: Promise<{ path: string
     body: request.method === "GET" ? undefined : await request.arrayBuffer(),
     cache: "no-store",
   });
+
+  if (request.method !== "GET" && response.ok) {
+    revalidateTag("training-data", "max");
+  }
 
   return new Response(await response.arrayBuffer(), {
     status: response.status,

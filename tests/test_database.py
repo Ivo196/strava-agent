@@ -73,3 +73,12 @@ def test_finds_matching_activity_from_another_source(tmp_path: Path) -> None:
 
     assert match is not None
     assert match["id"] == 123
+
+
+def test_data_version_changes_when_training_data_changes(tmp_path: Path) -> None:
+    database = Database(tmp_path / "coach.db")
+    initial = database.data_version()
+
+    database.upsert_activity(sample_activity())
+
+    assert database.data_version() != initial

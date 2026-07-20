@@ -191,6 +191,23 @@ def test_status_separates_passive_fitbit_samples_from_derived_data(
     assert status["consolidated_points"] == 1
 
 
+def test_health_points_can_be_filtered_by_source(tmp_path: Path) -> None:
+    database = Database(tmp_path / "coach.db")
+    for source in ("FITBIT", "Apple Inc."):
+        database.upsert_google_health_data_point(
+            "steps",
+            f"{source}-steps",
+            "2026-07-18T12:00:00Z",
+            source,
+            {"steps": {"count": 100}},
+        )
+
+    rows = database.list_google_health_data_points(["steps"], source="FITBIT")
+
+    assert len(rows) == 1
+    assert rows[0]["source"] == "FITBIT"
+
+
 def test_normalizes_recovery_values() -> None:
     hrv = {
         "dailyHeartRateVariability": {

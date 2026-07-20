@@ -56,9 +56,23 @@ health_insights_cache: dict[str, Any] = {
     "expires_at": 0.0,
     "activity_id": None,
     "analysis_date": None,
+    "data_version": None,
     "value": None,
 }
-HEALTH_INSIGHTS_CACHE_SECONDS = 20
+HEALTH_INSIGHTS_CACHE_SECONDS = 5 * 60
+
+
+def _invalidate_health_insights_cache() -> None:
+    with health_insights_cache_lock:
+        health_insights_cache.update(
+            {
+                "expires_at": 0.0,
+                "activity_id": None,
+                "analysis_date": None,
+                "data_version": None,
+                "value": None,
+            }
+        )
 
 
 def _next_google_health_sync(status: dict[str, Any] | None = None) -> datetime | None:
@@ -76,8 +90,8 @@ def _next_google_health_sync(status: dict[str, Any] | None = None) -> datetime |
     return recorded + GOOGLE_HEALTH_SYNC_INTERVAL
 
 
-def _google_health_auto_sync_status() -> dict[str, Any]:
-    next_sync = _next_google_health_sync()
+def _google_health_auto_sync_status(status: dict[str, Any]) -> dict[str, Any]:
+    next_sync = _next_google_health_sync(status)
     return {
         "enabled": True,
         "interval_hours": 6,
@@ -196,16 +210,24 @@ def _google_health_service() -> GoogleHealthService:
 
 def _sync_google_health_now() -> dict[str, Any]:
     with google_health_sync_lock:
-        return _google_health_service().sync()
+        result = _google_health_service().sync()
+        _invalidate_health_insights_cache()
+        return result
 
 
 @app.get("/api/google-health/status")
 def google_health_status() -> dict[str, Any]:
+    status = database.google_health_status()
     return {
         "configured": settings.google_health_is_configured,
-        **database.google_health_status(),
-        "auto_sync": _google_health_auto_sync_status(),
+        **status,
+        "auto_sync": _google_health_auto_sync_status(status),
     }
+
+
+@app.get("/api/data-version")
+def data_version() -> dict[str, str]:
+    return {"version": database.data_version()}
 
 
 @app.get("/api/google-health/connect")
@@ -271,7 +293,9 @@ async def import_apple_health(
     if not isinstance(payload, dict):
         raise HTTPException(status_code=400, detail="El cuerpo debe ser un objeto JSON.")
     try:
-        return result_dict(import_health_auto_export(payload, database))
+        result = result_dict(import_health_auto_export(payload, database))
+        _invalidate_health_insights_cache()
+        return result
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
@@ -518,11 +542,15 @@ def _apple_recovery_snapshot() -> dict[str, Any]:
     }
 
 
-def _recovery_snapshot(apple: dict[str, Any] | None = None) -> dict[str, Any]:
+def _recovery_snapshot(
+    apple: dict[str, Any] | None = None,
+    *,
+    google_status: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     result = apple or _apple_recovery_snapshot()
     google = _google_recovery_snapshot()
     combined = {key: google.get(key) or value for key, value in result.items()}
-    google_status = database.google_health_status()
+    google_status = google_status or database.google_health_status()
     combined["_context"] = {
         "fitbit_sensor_points": google_status["fitbit_sensor_points"],
         "fitbit_sensor_first": google_status["fitbit_sensor_first"],
@@ -537,33 +565,44 @@ def _recovery_snapshot(apple: dict[str, Any] | None = None) -> dict[str, Any]:
 
 def _health_dashboard_snapshot(rows: list[dict[str, Any]], analysis_date: date) -> dict[str, Any]:
     latest_activity_id = rows[0]["id"] if rows else None
-    now = monotonic()
+    data_version = database.data_version()
     with health_insights_cache_lock:
+        now = monotonic()
         cached = health_insights_cache["value"]
         if (
             cached is not None
             and health_insights_cache["expires_at"] > now
             and health_insights_cache["activity_id"] == latest_activity_id
             and health_insights_cache["analysis_date"] == analysis_date
+            and health_insights_cache["data_version"] == data_version
         ):
             return cached
 
-    apple_recovery = _apple_recovery_snapshot()
-    recovery = _recovery_snapshot(apple_recovery)
-    value = {
-        "recovery": recovery,
-        "devices": _device_insights(rows, analysis_date, apple_recovery=apple_recovery),
-    }
-    with health_insights_cache_lock:
+        google_status = database.google_health_status()
+        apple_recovery = _apple_recovery_snapshot()
+        recovery = _recovery_snapshot(
+            apple_recovery,
+            google_status=google_status,
+        )
+        value = {
+            "recovery": recovery,
+            "devices": _device_insights(
+                rows,
+                analysis_date,
+                apple_recovery=apple_recovery,
+                google_status=google_status,
+            ),
+        }
         health_insights_cache.update(
             {
                 "expires_at": monotonic() + HEALTH_INSIGHTS_CACHE_SECONDS,
                 "activity_id": latest_activity_id,
                 "analysis_date": analysis_date,
+                "data_version": data_version,
                 "value": value,
             }
         )
-    return value
+        return value
 
 
 def _google_recovery_snapshot() -> dict[str, Any]:
@@ -639,6 +678,7 @@ def _device_insights(
     today: date,
     *,
     apple_recovery: dict[str, Any] | None = None,
+    google_status: dict[str, Any],
 ) -> dict[str, Any]:
     apple_runs_by_id = {
         int(row["id"]): row
@@ -690,7 +730,7 @@ def _device_insights(
         }
 
     apple_status = database.apple_health_status()
-    fitbit = _fitbit_insights()
+    fitbit = _fitbit_insights(google_status)
     return {
         "apple_watch": {
             "status": "Activo" if apple_runs else "Sin datos",
@@ -711,7 +751,7 @@ def _device_insights(
     }
 
 
-def _fitbit_insights() -> dict[str, Any]:
+def _fitbit_insights(google_status: dict[str, Any]) -> dict[str, Any]:
     rows = database.list_latest_google_health_data_points(
         "heart-rate",
         source="FITBIT",
@@ -728,7 +768,8 @@ def _fitbit_insights() -> dict[str, Any]:
             "sleep",
             "steps",
             "active-energy-burned",
-        ]
+        ],
+        source="FITBIT",
     ))
     heart_rate_samples: list[tuple[datetime, str, str, float]] = []
     for row in rows:
@@ -783,7 +824,6 @@ def _fitbit_insights() -> dict[str, Any]:
     sleep_days = _fitbit_sleep_days(rows)
     step_days = _fitbit_step_days(rows)
     active_energy_days = _fitbit_active_energy_days(rows)
-    status = database.google_health_status()
     recovery_ready = all(
         recovery[key] is not None for key in ("sleep", "hrv", "resting_hr")
     )
@@ -795,9 +835,9 @@ def _fitbit_insights() -> dict[str, Any]:
             if heart_rate_samples
             else "Esperando datos"
         ),
-        "first_seen": status["fitbit_sensor_first"],
-        "last_seen": status["fitbit_sensor_last"],
-        "sensor_samples": status["fitbit_sensor_points"],
+        "first_seen": google_status["fitbit_sensor_first"],
+        "last_seen": google_status["fitbit_sensor_last"],
+        "sensor_samples": google_status["fitbit_sensor_points"],
         "heart_rate": {
             "date": latest_date,
             "latest": round(latest_day[-1][3]) if latest_day else None,

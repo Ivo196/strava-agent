@@ -4,10 +4,10 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $root
 
 if (-not (Test-Path ".venv\Scripts\python.exe")) {
-    throw "PaceOS no está instalado. Ejecuta primero ./setup.ps1."
+    throw "PaceOS no esta instalado. Ejecuta primero ./setup.ps1."
 }
-if (-not (Test-Path "frontend\.next")) {
-    throw "El frontend no está compilado. Ejecuta primero ./setup.ps1."
+if (-not (Test-Path "frontend\node_modules")) {
+    throw "Las dependencias del frontend no estan instaladas. Ejecuta primero ./setup.ps1."
 }
 
 $runDirectory = Join-Path $root ".run"
@@ -24,6 +24,78 @@ function Test-PaceOsEndpoint([string]$Url) {
     }
 }
 
+function Stop-PaceOsListener([int]$Port, [string]$Name) {
+    $listener = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($listener) {
+        & taskkill.exe /PID $listener.OwningProcess /T /F | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Stop-Process -Id $listener.OwningProcess -Force -ErrorAction SilentlyContinue
+        }
+        for ($attempt = 0; $attempt -lt 20; $attempt++) {
+            Start-Sleep -Milliseconds 100
+            if (-not (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue)) {
+                break
+            }
+        }
+    }
+    $pidFile = Join-Path $runDirectory "$Name.pid"
+    if (Test-Path $pidFile) {
+        Remove-Item -LiteralPath $pidFile -Force
+    }
+}
+
+$frontendStamp = Join-Path $root "frontend\.next\paceos-build-stamp"
+$frontendInputs = @(
+    Get-ChildItem (Join-Path $root "frontend\app") -Recurse -File
+    Get-ChildItem (Join-Path $root "frontend\components") -Recurse -File
+    Get-ChildItem (Join-Path $root "frontend\lib") -Recurse -File
+    Get-Item (Join-Path $root "frontend\package.json")
+    Get-Item (Join-Path $root "frontend\package-lock.json")
+    Get-Item (Join-Path $root "frontend\tsconfig.json")
+)
+$frontendNeedsBuild = -not (Test-Path "frontend\.next\BUILD_ID") -or -not (Test-Path $frontendStamp)
+if (-not $frontendNeedsBuild) {
+    $builtAt = (Get-Item $frontendStamp).LastWriteTimeUtc
+    $frontendNeedsBuild = $null -ne (
+        $frontendInputs |
+            Where-Object { $_.LastWriteTimeUtc -gt $builtAt } |
+            Select-Object -First 1
+    )
+}
+if ($frontendNeedsBuild) {
+    Stop-PaceOsListener 3100 "web"
+    Push-Location (Join-Path $root "frontend")
+    try {
+        npm run build
+        if ($LASTEXITCODE -ne 0) {
+            throw "No se pudo compilar el frontend actualizado."
+        }
+        Set-Content -LiteralPath $frontendStamp -Value ([DateTime]::UtcNow.ToString("O")) -Encoding UTF8
+    } finally {
+        Pop-Location
+    }
+}
+
+$apiStamp = Join-Path $runDirectory "api-source-stamp"
+$apiInputs = @(
+    Get-Item (Join-Path $root "api.py")
+    Get-Item (Join-Path $root "requirements.txt")
+    Get-ChildItem (Join-Path $root "src") -Recurse -Filter "*.py" -File
+)
+$apiNeedsRestart = -not (Test-Path $apiStamp)
+if (-not $apiNeedsRestart) {
+    $apiStartedAt = (Get-Item $apiStamp).LastWriteTimeUtc
+    $apiNeedsRestart = $null -ne (
+        $apiInputs |
+            Where-Object { $_.LastWriteTimeUtc -gt $apiStartedAt } |
+            Select-Object -First 1
+    )
+}
+if ($apiNeedsRestart -and (Test-PaceOsEndpoint "http://127.0.0.1:8000/api/health")) {
+    Stop-PaceOsListener 8000 "api"
+}
+
 if (-not (Test-PaceOsEndpoint "http://127.0.0.1:8000/api/health")) {
     $api = Start-Process `
         -FilePath (Join-Path $root ".venv\Scripts\python.exe") `
@@ -34,6 +106,7 @@ if (-not (Test-PaceOsEndpoint "http://127.0.0.1:8000/api/health")) {
         -RedirectStandardError (Join-Path $runDirectory "api.err.log") `
         -PassThru
     $startedApi = $true
+    Set-Content -LiteralPath $apiStamp -Value ([DateTime]::UtcNow.ToString("O")) -Encoding UTF8
 }
 
 if (-not (Test-PaceOsEndpoint "http://127.0.0.1:3100")) {
@@ -61,7 +134,7 @@ for ($attempt = 0; $attempt -lt 30; $attempt++) {
 }
 
 if (-not $ready) {
-    throw "PaceOS no respondió a tiempo. Revisa los archivos .run/*.err.log."
+    throw "PaceOS no respondio a tiempo. Revisa los archivos .run/*.err.log."
 }
 
 if ($startedApi) {
@@ -75,6 +148,6 @@ if ($startedWeb) {
     Set-Content (Join-Path $runDirectory "web.pid") $webListener.OwningProcess
 }
 
-Write-Host "PaceOS está activo."
-Write-Host "Aplicación: http://localhost:3100"
+Write-Host "PaceOS esta activo."
+Write-Host "Aplicacion: http://localhost:3100"
 Write-Host "API:        http://localhost:8000/api/health"

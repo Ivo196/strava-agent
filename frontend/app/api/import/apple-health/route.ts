@@ -1,4 +1,5 @@
 import { API_URL } from "@/lib/api";
+import { revalidateTag } from "next/cache";
 
 const MAX_PAYLOAD_BYTES = 25_000_000;
 
@@ -21,6 +22,10 @@ export async function POST(request: Request) {
     body: payload,
     cache: "no-store",
   });
+
+  if (response.ok) {
+    revalidateTag("training-data", "max");
+  }
 
   return new Response(await response.arrayBuffer(), {
     status: response.status,

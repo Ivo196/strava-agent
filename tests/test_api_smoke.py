@@ -61,3 +61,12 @@ def test_google_health_runs_automatically_every_six_hours() -> None:
     assert status.status_code == 200
     assert status.json()["auto_sync"]["enabled"] is True
     assert status.json()["auto_sync"]["interval_hours"] == 6
+
+
+def test_data_version_is_available_for_lightweight_refresh_checks() -> None:
+    client = TestClient(api.app)
+
+    response = client.get("/api/data-version")
+
+    assert response.status_code == 200
+    assert isinstance(response.json()["version"], str)

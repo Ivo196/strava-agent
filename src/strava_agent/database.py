@@ -121,6 +121,9 @@ CREATE TABLE IF NOT EXISTS google_health_data_points (
 CREATE INDEX IF NOT EXISTS idx_google_health_data_points_recorded_at
 ON google_health_data_points(recorded_at);
 
+CREATE INDEX IF NOT EXISTS idx_google_health_data_points_type_recorded
+ON google_health_data_points(data_type, recorded_at);
+
 CREATE INDEX IF NOT EXISTS idx_google_health_data_points_source_type_recorded
 ON google_health_data_points(source, data_type, recorded_at);
 
@@ -344,6 +347,20 @@ class Database:
         with self.connect() as connection:
             row = connection.execute("SELECT COUNT(*) AS count FROM activities").fetchone()
         return int(row["count"])
+
+    def data_version(self) -> str:
+        """Return a cheap version token for every input that affects rendered pages."""
+        with self.connect() as connection:
+            row = connection.execute(
+                """SELECT
+                       COALESCE((SELECT MAX(synced_at) FROM activities), ''),
+                       COALESCE((SELECT MAX(received_at) FROM apple_health_syncs), ''),
+                       COALESCE((SELECT MAX(received_at) FROM google_health_syncs), ''),
+                       COALESCE((SELECT MAX(updated_at) FROM google_health_oauth), ''),
+                       COALESCE((SELECT MAX(updated_at) FROM athlete_profile), ''),
+                       COALESCE((SELECT MAX(updated_at) FROM weekly_checkins), '')"""
+            ).fetchone()
+        return "|".join(str(value or "") for value in row)
 
     def find_matching_activity(
         self,
@@ -635,17 +652,27 @@ class Database:
             "data_types": [dict(row) for row in types],
         }
 
-    def list_google_health_data_points(self, data_types: list[str]) -> list[dict[str, Any]]:
+    def list_google_health_data_points(
+        self,
+        data_types: list[str],
+        *,
+        source: str | None = None,
+    ) -> list[dict[str, Any]]:
         if not data_types:
             return []
         placeholders = ",".join("?" for _ in data_types)
+        source_filter = " AND source = ?" if source else ""
+        parameters: list[Any] = [*data_types]
+        if source:
+            parameters.append(source)
         with self.connect() as connection:
             rows = connection.execute(
                 f"""SELECT data_type, recorded_at, source, value_json
                     FROM google_health_data_points
                     WHERE data_type IN ({placeholders})
+                    {source_filter}
                     ORDER BY recorded_at""",
-                data_types,
+                parameters,
             ).fetchall()
         return [dict(row) for row in rows]
 
