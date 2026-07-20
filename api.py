@@ -765,9 +765,16 @@ def _fitbit_insights(google_status: dict[str, Any]) -> dict[str, Any]:
             "daily-respiratory-rate",
             "daily-sleep-temperature-derivations",
             "daily-vo2-max",
+            "daily-heart-rate-zones",
             "sleep",
             "steps",
             "active-energy-burned",
+            "total-calories",
+            "active-minutes",
+            "active-zone-minutes",
+            "distance",
+            "sedentary-period",
+            "time-in-heart-rate-zone",
         ],
         source="FITBIT",
     ))
@@ -822,8 +829,11 @@ def _fitbit_insights(google_status: dict[str, Any]) -> dict[str, Any]:
     )
     recovery = _fitbit_recovery_metrics(rows)
     sleep_days = _fitbit_sleep_days(rows)
+    sleep_detail = _fitbit_sleep_detail(rows)
     step_days = _fitbit_step_days(rows)
     active_energy_days = _fitbit_active_energy_days(rows)
+    total_calorie_days = _fitbit_total_calorie_days(rows)
+    activity_days = _fitbit_activity_days(rows)
     recovery_ready = all(
         recovery[key] is not None for key in ("sleep", "hrv", "resting_hr")
     )
@@ -848,7 +858,11 @@ def _fitbit_insights(google_status: dict[str, Any]) -> dict[str, Any]:
             "series": series,
         },
         "sleep": {
-            "latest": sleep_days[-1] if sleep_days else None,
+            "latest": (
+                {**sleep_days[-1], **sleep_detail}
+                if sleep_days and sleep_detail
+                else sleep_days[-1] if sleep_days else None
+            ),
             "days": sleep_days,
             "goal": 8,
         },
@@ -861,6 +875,16 @@ def _fitbit_insights(google_status: dict[str, Any]) -> dict[str, Any]:
             "latest": active_energy_days[-1] if active_energy_days else None,
             "days": active_energy_days,
             "goal": 600,
+        },
+        "total_calories": {
+            "latest": total_calorie_days[-1] if total_calorie_days else None,
+            "days": total_calorie_days,
+        },
+        "daily_activity": {
+            "latest": activity_days[-1] if activity_days else None,
+            "days": activity_days,
+            "active_minutes_goal": 30,
+            "zone_minutes_goal": 22,
         },
         "recovery": recovery,
     }
@@ -884,6 +908,40 @@ def _fitbit_sleep_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+def _fitbit_sleep_detail(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    sessions: list[tuple[str, float, dict[str, Any]]] = []
+    for row in rows:
+        if row["data_type"] != "sleep" or row["source"] != "FITBIT":
+            continue
+        point = json.loads(row["value_json"])
+        sleep = point.get("sleep") or {}
+        summary = sleep.get("summary") or {}
+        if (sleep.get("metadata") or {}).get("nap"):
+            continue
+        minutes_asleep = float(summary.get("minutesAsleep") or 0)
+        if minutes_asleep <= 0:
+            continue
+        recorded = _parse_health_datetime(row["recorded_at"])
+        day = recorded.date().isoformat() if recorded else str(row["recorded_at"])[:10]
+        sessions.append((day, minutes_asleep, sleep))
+    if not sessions:
+        return None
+    _day, minutes_asleep, sleep = max(sessions, key=lambda item: (item[0], item[1]))
+    summary = sleep.get("summary") or {}
+    stage_minutes = {
+        str(stage.get("type") or "").lower(): int(stage.get("minutes") or 0)
+        for stage in summary.get("stagesSummary") or []
+    }
+    period = float(summary.get("minutesInSleepPeriod") or minutes_asleep)
+    return {
+        "deep_minutes": stage_minutes.get("deep", 0),
+        "rem_minutes": stage_minutes.get("rem", 0),
+        "light_minutes": stage_minutes.get("light", 0),
+        "awake_minutes": stage_minutes.get("awake", 0),
+        "efficiency": round(minutes_asleep / period * 100) if period else None,
+    }
+
+
 def _fitbit_active_energy_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     totals: dict[str, float] = {}
     for row in rows:
@@ -900,6 +958,82 @@ def _fitbit_active_energy_days(rows: list[dict[str, Any]]) -> list[dict[str, Any
     return [
         {"date": day, "kcal": round(kcal)}
         for day, kcal in sorted(totals.items())[-7:]
+    ]
+
+
+def _fitbit_total_calorie_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    totals: dict[str, float] = {}
+    for row in rows:
+        if row["data_type"] != "total-calories" or row["source"] != "FITBIT":
+            continue
+        point = json.loads(row["value_json"])
+        payload = point.get("totalCalories") or point.get("totalCaloriesRollupValue") or {}
+        kcal = payload.get("kcal", payload.get("kcalSum", payload.get("totalKcal")))
+        if kcal is None:
+            continue
+        recorded = _parse_health_datetime(row["recorded_at"])
+        day = recorded.date().isoformat() if recorded else str(row["recorded_at"])[:10]
+        totals[day] = max(totals.get(day, 0), float(kcal))
+    return [
+        {"date": day, "kcal": round(kcal)}
+        for day, kcal in sorted(totals.items())[-7:]
+    ]
+
+
+def _fitbit_activity_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    days: dict[str, dict[str, float]] = {}
+
+    def bucket(row: dict[str, Any], payload: dict[str, Any]) -> dict[str, float]:
+        interval = payload.get("interval") or {}
+        recorded = _parse_health_datetime(interval.get("startTime") or row["recorded_at"])
+        day = recorded.date().isoformat() if recorded else str(row["recorded_at"])[:10]
+        return days.setdefault(
+            day,
+            {
+                "active_minutes": 0,
+                "zone_minutes": 0,
+                "distance_km": 0,
+                "sedentary_minutes": 0,
+            },
+        )
+
+    for row in rows:
+        if row["source"] != "FITBIT":
+            continue
+        point = json.loads(row["value_json"])
+        if row["data_type"] == "active-minutes":
+            payload = point.get("activeMinutes") or {}
+            target = bucket(row, payload)
+            target["active_minutes"] += sum(
+                float(item.get("activeMinutes") or 0)
+                for item in payload.get("activeMinutesByActivityLevel") or []
+                if item.get("activityLevel") in {"MODERATE", "VIGOROUS"}
+            )
+        elif row["data_type"] == "active-zone-minutes":
+            payload = point.get("activeZoneMinutes") or {}
+            target = bucket(row, payload)
+            target["zone_minutes"] += float(payload.get("activeZoneMinutes") or 0)
+        elif row["data_type"] == "distance":
+            payload = point.get("distance") or {}
+            target = bucket(row, payload)
+            target["distance_km"] += float(payload.get("millimeters") or 0) / 1_000_000
+        elif row["data_type"] == "sedentary-period":
+            payload = point.get("sedentaryPeriod") or {}
+            target = bucket(row, payload)
+            interval = payload.get("interval") or {}
+            start = _parse_health_datetime(interval.get("startTime"))
+            end = _parse_health_datetime(interval.get("endTime"))
+            if start and end:
+                target["sedentary_minutes"] += max(0, (end - start).total_seconds() / 60)
+    return [
+        {
+            "date": day,
+            "active_minutes": round(values["active_minutes"]),
+            "zone_minutes": round(values["zone_minutes"]),
+            "distance_km": round(values["distance_km"], 1),
+            "sedentary_minutes": round(values["sedentary_minutes"]),
+        }
+        for day, values in sorted(days.items())[-7:]
     ]
 
 

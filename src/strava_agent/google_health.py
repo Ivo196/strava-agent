@@ -74,6 +74,15 @@ DATA_TYPES: dict[str, tuple[str, str, int]] = {
     "daily-vo2-max": ("daily_vo2_max.date", "daily", 42),
     "daily-heart-rate-zones": ("daily_heart_rate_zones.date", "daily", 42),
     "active-energy-burned": ("active_energy_burned.interval.start_time", "physical", 14),
+    "active-minutes": ("active_minutes.interval.start_time", "physical", 14),
+    "active-zone-minutes": ("active_zone_minutes.interval.start_time", "physical", 42),
+    "distance": ("distance.interval.start_time", "physical", 42),
+    "sedentary-period": ("sedentary_period.interval.start_time", "physical", 42),
+    "time-in-heart-rate-zone": (
+        "time_in_heart_rate_zone.interval.start_time",
+        "physical",
+        42,
+    ),
     "sleep": ("sleep.interval.end_time", "physical", 42),
     "exercise": ("exercise.interval.civil_start_time", "civil", 42),
     "steps": ("steps.interval.start_time", "physical", 14),
@@ -189,6 +198,53 @@ class GoogleHealthService:
                 completed_types += 1
             except (requests.RequestException, ValueError) as error:
                 errors.append(f"{data_type}: {error}")
+
+        rollup_start = today - timedelta(days=2 if is_incremental else 13)
+        try:
+            response = self.session.post(
+                f"{API_URL}/users/me/dataTypes/total-calories/dataPoints:dailyRollUp",
+                headers=headers,
+                json={
+                    "range": {
+                        "start": {"date": _date_object(rollup_start)},
+                        "end": {"date": _date_object(today + timedelta(days=1))},
+                    },
+                    "windowSizeDays": 1,
+                    "pageSize": 14,
+                    "dataSourceFamily": "users/me/dataSourceFamilies/google-wearables",
+                },
+                timeout=45,
+            )
+            self._raise_for_google(response, "No se pudo consolidar total-calories")
+            collected_rollups: list[tuple[str, str, str, dict[str, Any]]] = []
+            for point in response.json().get("rollupDataPoints") or []:
+                if not isinstance(point, dict) or not point.get("totalCalories"):
+                    continue
+                day = _date_object_iso((point.get("civilStartTime") or {}).get("date") or {})
+                value = {
+                    "dataSource": {
+                        "platform": "FITBIT",
+                        "recordingMethod": "DERIVED",
+                    },
+                    "totalCalories": {
+                        **point["totalCalories"],
+                        "date": (point.get("civilStartTime") or {}).get("date"),
+                    },
+                }
+                key = data_point_key("total-calories", value, day, "FITBIT")
+                collected_rollups.append((key, day, "FITBIT", value))
+            rollup_imported, rollup_updated = (
+                self.database.upsert_google_health_data_points_batch(
+                    "total-calories",
+                    collected_rollups,
+                )
+            )
+            total += len(collected_rollups)
+            imported += rollup_imported
+            updated += rollup_updated
+            completed_types += 1
+        except (requests.RequestException, ValueError, KeyError, TypeError) as error:
+            errors.append(f"total-calories: {error}")
 
         self.database.record_google_health_sync(total, completed_types, errors)
         return {
@@ -350,6 +406,10 @@ def _date_object_iso(value: dict[str, Any]) -> str:
         int(value["month"]),
         int(value["day"]),
     ).isoformat()
+
+
+def _date_object(value: date) -> dict[str, int]:
+    return {"year": value.year, "month": value.month, "day": value.day}
 
 
 def _b64encode(value: str) -> str:

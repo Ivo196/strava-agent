@@ -143,7 +143,15 @@ export type DeviceInsights = {
       series: { time: string; bpm: number }[];
     };
     sleep: {
-      latest: { date: string; hours: number } | null;
+      latest: {
+        date: string;
+        hours: number;
+        deep_minutes?: number;
+        rem_minutes?: number;
+        light_minutes?: number;
+        awake_minutes?: number;
+        efficiency?: number | null;
+      } | null;
       days: { date: string; hours: number }[];
       goal: number;
     };
@@ -156,6 +164,28 @@ export type DeviceInsights = {
       latest: { date: string; kcal: number } | null;
       days: { date: string; kcal: number }[];
       goal: number;
+    };
+    total_calories?: {
+      latest: { date: string; kcal: number } | null;
+      days: { date: string; kcal: number }[];
+    };
+    daily_activity?: {
+      latest: {
+        date: string;
+        active_minutes: number;
+        zone_minutes: number;
+        distance_km: number;
+        sedentary_minutes: number;
+      } | null;
+      days: {
+        date: string;
+        active_minutes: number;
+        zone_minutes: number;
+        distance_km: number;
+        sedentary_minutes: number;
+      }[];
+      active_minutes_goal: number;
+      zone_minutes_goal: number;
     };
     recovery: {
       hrv: DeviceMetric;

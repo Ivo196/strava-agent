@@ -30,8 +30,29 @@ class FakeSession:
         self.posts: list[tuple[str, dict]] = []
         self.gets: list[tuple[str, dict]] = []
 
-    def post(self, url: str, data: dict, timeout: int) -> FakeResponse:
-        self.posts.append((url, data))
+    def post(
+        self,
+        url: str,
+        data: dict | None = None,
+        timeout: int = 30,
+        headers: dict | None = None,
+        json: dict | None = None,
+    ) -> FakeResponse:
+        del headers, timeout
+        self.posts.append((url, data or json or {}))
+        if url.endswith("dataPoints:dailyRollUp"):
+            return FakeResponse(
+                {
+                    "rollupDataPoints": [
+                        {
+                            "civilStartTime": {
+                                "date": {"year": 2026, "month": 7, "day": 18}
+                            },
+                            "totalCalories": {"kcalSum": 2450.5},
+                        }
+                    ]
+                }
+            )
         return FakeResponse(
             {
                 "access_token": "access",
@@ -117,12 +138,12 @@ def test_sync_saves_available_google_health_points(tmp_path: Path) -> None:
     result = service.sync()
     status = database.google_health_status()
 
-    assert result["points_received"] == 1
+    assert result["points_received"] == 2
     assert result["data_types_received"] > 10
     assert status["connected"] is True
-    assert status["point_count"] == 1
+    assert status["point_count"] == 2
     assert status["fitbit_sensor_points"] == 0
-    assert status["consolidated_points"] == 1
+    assert status["consolidated_points"] == 2
     assert status["data_types"][0]["data_type"] == "daily-resting-heart-rate"
     daily_request = next(
         params
@@ -142,6 +163,19 @@ def test_sync_saves_available_google_health_points(tmp_path: Path) -> None:
         if "/active-energy-burned/" in url
     )
     assert "active_energy_burned.interval.start_time" in energy_request["filter"]
+    total_calories_request = next(
+        body
+        for url, body in service.session.posts
+        if url.endswith("dataPoints:dailyRollUp")
+    )
+    assert total_calories_request["windowSizeDays"] == 1
+    assert total_calories_request["dataSourceFamily"].endswith("google-wearables")
+    zone_minutes_request = next(
+        params
+        for url, params in service.session.gets
+        if "/active-zone-minutes/" in url
+    )
+    assert "active_zone_minutes.interval.start_time" in zone_minutes_request["filter"]
 
     service.sync()
     incremental_request = [

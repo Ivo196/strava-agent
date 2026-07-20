@@ -15,6 +15,8 @@ def test_dashboard_and_coach_status_are_available() -> None:
     assert "apple_watch" in dashboard.json()["devices"]
     assert "fitbit" in dashboard.json()["devices"]
     assert "series" in dashboard.json()["devices"]["fitbit"]["heart_rate"]
+    assert "total_calories" in dashboard.json()["devices"]["fitbit"]
+    assert "daily_activity" in dashboard.json()["devices"]["fitbit"]
     assert dashboard.json()["current_date"]
     assert set(dashboard.json()["today_activity"]) == {
         "count",

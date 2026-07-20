@@ -9,7 +9,7 @@ import { localNow } from "@/lib/local-clock";
 
 const navigation = [
   { href: "/", label: "Hoy", icon: ChartNoAxesColumnIncreasing },
-  { href: "/plan", label: "Plan", icon: CalendarDays },
+  { href: "/plan", label: "Calendario", icon: CalendarDays },
   { href: "/coach", label: "Coach AI", icon: Sparkles },
   { href: "/activities", label: "Historial", icon: Activity },
   { href: "/settings", label: "Datos", icon: Settings },
