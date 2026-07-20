@@ -187,6 +187,23 @@ export type DeviceInsights = {
       active_minutes_goal: number;
       zone_minutes_goal: number;
     };
+    exercises: {
+      type: string;
+      label: string;
+      date: string;
+      start_time: string;
+      duration_minutes: number;
+      calories: number | null;
+      distance_km: number | null;
+      average_heartrate: number | null;
+      zone_minutes: number;
+      source: "Fitbit";
+    }[];
+    recovery_history: {
+      date: string;
+      hrv?: number;
+      resting_hr?: number;
+    }[];
     recovery: {
       hrv: DeviceMetric;
       resting_hr: DeviceMetric;
@@ -285,6 +302,41 @@ export type DashboardData = {
     training_load: number;
     calories: number | null;
     average_heartrate: number | null;
+  };
+  daily_state: {
+    calibration: {
+      ready: boolean;
+      nights: number;
+      required: number;
+    };
+    morning_recovery: {
+      score: number | null;
+      label: string;
+      summary: string;
+      sleep_hours: number | null;
+      factors: {
+        key: "sleep" | "hrv" | "resting_hr";
+        label: string;
+        value: string;
+        state: "low" | "neutral" | "good";
+        detail: string;
+      }[];
+    };
+    today_load: {
+      level: "none" | "light" | "moderate" | "high";
+      label: string;
+      activities_count: number;
+      duration_minutes: number;
+      zone_minutes: number;
+      calories: number;
+      fitbit_exercises: DeviceInsights["fitbit"]["exercises"];
+      apple_runs: number;
+    };
+    recommendation: {
+      title: string;
+      body: string;
+      remaining: string;
+    };
   };
   next_week: TrainingWeek | null;
   upcoming_weeks: TrainingWeek[];

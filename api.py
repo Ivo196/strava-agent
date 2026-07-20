@@ -350,6 +350,11 @@ def dashboard(today: date | None = None) -> dict[str, Any]:
     next_week = _serialize_week(plan[0]) if plan else None
 
     health = _health_dashboard_snapshot(rows, analysis_date)
+    daily_state = _dashboard_daily_state(
+        health["devices"]["fitbit"],
+        today_activity,
+        analysis_date,
+    )
     return {
         "current_date": analysis_date.isoformat(),
         "activity_count": database.activity_count(),
@@ -371,6 +376,7 @@ def dashboard(today: date | None = None) -> dict[str, Any]:
         ],
         "recent_activities": activities,
         "today_activity": today_activity,
+        "daily_state": daily_state,
         "next_week": next_week,
         "upcoming_weeks": [_serialize_week(week) for week in plan[:2]],
         "daily_agenda": _daily_agenda(plan, analysis_date),
@@ -775,6 +781,7 @@ def _fitbit_insights(google_status: dict[str, Any]) -> dict[str, Any]:
             "distance",
             "sedentary-period",
             "time-in-heart-rate-zone",
+            "exercise",
         ],
         source="FITBIT",
     ))
@@ -834,6 +841,8 @@ def _fitbit_insights(google_status: dict[str, Any]) -> dict[str, Any]:
     active_energy_days = _fitbit_active_energy_days(rows)
     total_calorie_days = _fitbit_total_calorie_days(rows)
     activity_days = _fitbit_activity_days(rows)
+    exercises = _fitbit_exercises(rows)
+    recovery_history = _fitbit_recovery_history(rows)
     recovery_ready = all(
         recovery[key] is not None for key in ("sleep", "hrv", "resting_hr")
     )
@@ -886,6 +895,8 @@ def _fitbit_insights(google_status: dict[str, Any]) -> dict[str, Any]:
             "active_minutes_goal": 30,
             "zone_minutes_goal": 22,
         },
+        "exercises": exercises,
+        "recovery_history": recovery_history,
         "recovery": recovery,
     }
 
@@ -1035,6 +1046,321 @@ def _fitbit_activity_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         }
         for day, values in sorted(days.items())[-7:]
     ]
+
+
+def _duration_seconds(value: Any) -> float:
+    text = str(value or "0").strip().lower()
+    if text.endswith("s"):
+        text = text[:-1]
+    try:
+        return max(0, float(text))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _fitbit_exercises(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    exercises: list[dict[str, Any]] = []
+    labels = {
+        "BIKING": "Bicicleta",
+        "WALKING": "Caminata",
+        "HIKING": "Senderismo",
+        "SWIMMING": "Natación",
+        "ELLIPTICAL": "Elíptica",
+        "STRENGTH_TRAINING": "Fuerza",
+        "OTHER_WORKOUT": "Entrenamiento",
+    }
+    for row in rows:
+        if row["data_type"] != "exercise" or row["source"] != "FITBIT":
+            continue
+        point = json.loads(row["value_json"])
+        payload = point.get("exercise") or {}
+        exercise_type = str(payload.get("exerciseType") or "OTHER_WORKOUT").upper()
+        # Las carreras pertenecen a Apple Watch. Excluirlas evita duplicar carga,
+        # calorías y distancia cuando Fitbit también las detecta.
+        if exercise_type == "RUNNING":
+            continue
+        interval = payload.get("interval") or {}
+        start = _parse_health_datetime(interval.get("startTime"))
+        end = _parse_health_datetime(interval.get("endTime"))
+        if start is None:
+            continue
+        local_start = start + timedelta(
+            seconds=_duration_seconds(interval.get("startUtcOffset"))
+        )
+        duration_seconds = _duration_seconds(payload.get("activeDuration"))
+        if not duration_seconds and end:
+            duration_seconds = max(0, (end - start).total_seconds())
+        summary = payload.get("metricsSummary") or {}
+        zone_durations = summary.get("heartRateZoneDurations") or {}
+        moderate_seconds = _duration_seconds(zone_durations.get("moderateTime"))
+        vigorous_seconds = _duration_seconds(zone_durations.get("vigorousTime"))
+        peak_seconds = _duration_seconds(zone_durations.get("peakTime"))
+        zone_minutes = summary.get("activeZoneMinutes")
+        if zone_minutes is None:
+            zone_minutes = (moderate_seconds + 2 * (vigorous_seconds + peak_seconds)) / 60
+        distance_mm = summary.get("distanceMillimeters")
+        exercises.append(
+            {
+                "type": exercise_type,
+                "label": labels.get(
+                    exercise_type,
+                    str(payload.get("displayName") or "Actividad"),
+                ),
+                "date": local_start.date().isoformat(),
+                "start_time": start.isoformat(),
+                "duration_minutes": round(duration_seconds / 60),
+                "calories": _rounded_or_none(summary.get("caloriesKcal")),
+                "distance_km": (
+                    round(float(distance_mm) / 1_000_000, 2)
+                    if distance_mm is not None
+                    else None
+                ),
+                "average_heartrate": _rounded_or_none(
+                    summary.get("averageHeartRateBeatsPerMinute")
+                ),
+                "zone_minutes": round(float(zone_minutes)),
+                "source": "Fitbit",
+            }
+        )
+    exercises.sort(key=lambda item: item["start_time"], reverse=True)
+    return exercises[:30]
+
+
+def _fitbit_recovery_history(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    supported = {
+        "daily-heart-rate-variability": "hrv",
+        "daily-resting-heart-rate": "resting_hr",
+    }
+    days: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        key = supported.get(row["data_type"])
+        if key is None or row["source"] != "FITBIT":
+            continue
+        normalized = normalized_recovery_value(
+            row["data_type"],
+            json.loads(row["value_json"]),
+        )
+        recorded = _parse_health_datetime(row["recorded_at"])
+        if normalized is None or recorded is None:
+            continue
+        target = days.setdefault(recorded.date().isoformat(), {"date": recorded.date().isoformat()})
+        target[key] = round(float(normalized[0]), 1)
+    return [values for _day, values in sorted(days.items())[-28:]]
+
+
+def _dashboard_daily_state(
+    fitbit: dict[str, Any],
+    apple_activity: dict[str, Any],
+    analysis_date: date,
+) -> dict[str, Any]:
+    current_day = analysis_date.isoformat()
+    sleep_days = [
+        night
+        for night in fitbit.get("sleep", {}).get("days", [])
+        if str(night.get("date") or "") <= current_day
+    ]
+    latest_sleep = next(
+        (night for night in reversed(sleep_days) if night.get("date") == current_day),
+        None,
+    )
+    sleep_hours = float(latest_sleep["hours"]) if latest_sleep else None
+    sleep_goal = float(fitbit.get("sleep", {}).get("goal") or 8)
+    history = [
+        item
+        for item in fitbit.get("recovery_history", [])
+        if str(item.get("date") or "") <= current_day
+    ]
+    today_recovery = next(
+        (item for item in reversed(history) if item.get("date") == current_day),
+        {},
+    )
+    prior_history = [item for item in history if item.get("date") != current_day]
+    hrv_baseline_values = [
+        float(item["hrv"]) for item in prior_history if item.get("hrv") is not None
+    ]
+    rhr_baseline_values = [
+        float(item["resting_hr"])
+        for item in prior_history
+        if item.get("resting_hr") is not None
+    ]
+    hrv = today_recovery.get("hrv")
+    resting_hr = today_recovery.get("resting_hr")
+    hrv_baseline = (
+        sum(hrv_baseline_values) / len(hrv_baseline_values)
+        if hrv_baseline_values
+        else None
+    )
+    rhr_baseline = (
+        sum(rhr_baseline_values) / len(rhr_baseline_values)
+        if rhr_baseline_values
+        else None
+    )
+    calibration_nights = len({night["date"] for night in sleep_days})
+    calibrated = (
+        calibration_nights >= 7
+        and len(hrv_baseline_values) >= 6
+        and len(rhr_baseline_values) >= 6
+    )
+
+    sleep_score = min(100, max(0, (sleep_hours or 0) / sleep_goal * 100))
+    hrv_score = 50.0
+    if hrv is not None and hrv_baseline:
+        hrv_score = min(100, max(0, 50 + ((float(hrv) / hrv_baseline) - 1) * 250))
+    rhr_score = 50.0
+    if resting_hr is not None and rhr_baseline:
+        rhr_score = min(
+            100,
+            max(0, 50 - ((float(resting_hr) / rhr_baseline) - 1) * 250),
+        )
+    score = round(sleep_score * 0.5 + hrv_score * 0.3 + rhr_score * 0.2)
+    if sleep_hours is not None and sleep_hours < 5:
+        score = min(score, 39)
+    elif sleep_hours is not None and sleep_hours < 6:
+        score = min(score, 55)
+
+    if sleep_hours is not None and sleep_hours < 5:
+        recovery_label = "Recuperación limitada"
+        recovery_summary = (
+            f"Dormiste {sleep_hours:g} h. Aunque las señales cardíacas sean buenas, "
+            "el sueño corto limita la capacidad para otra carga intensa."
+        )
+    elif sleep_hours is not None and sleep_hours < 6:
+        recovery_label = "Recuperación baja"
+        recovery_summary = "El sueño quedó corto. Conviene reducir intensidad y vigilar sensaciones."
+    elif not calibrated:
+        recovery_label = "Fitbit está calibrando"
+        recovery_summary = (
+            f"Hay {calibration_nights} de 7 noches necesarias. "
+            "Mostramos las señales reales sin inventar una puntuación precisa."
+        )
+    elif score >= 75:
+        recovery_label = "Buena recuperación"
+        recovery_summary = "Sueño y señales nocturnas acompañan una sesión de calidad."
+    elif score >= 50:
+        recovery_label = "Recuperación moderada"
+        recovery_summary = "Hay señales mixtas. Mantén flexibilidad con la intensidad."
+    else:
+        recovery_label = "Prioriza recuperar"
+        recovery_summary = "Tus señales sugieren bajar la carga y favorecer la recuperación."
+
+    today_exercises = [
+        exercise
+        for exercise in fitbit.get("exercises", [])
+        if exercise.get("date") == current_day
+    ]
+    fitbit_minutes = sum(float(item.get("duration_minutes") or 0) for item in today_exercises)
+    fitbit_zone_minutes = sum(float(item.get("zone_minutes") or 0) for item in today_exercises)
+    fitbit_calories = sum(float(item.get("calories") or 0) for item in today_exercises)
+    apple_count = int(apple_activity.get("count") or 0)
+    apple_minutes = float(apple_activity.get("moving_minutes") or 0)
+    apple_calories = float(apple_activity.get("calories") or 0)
+    activity_count = len(today_exercises) + apple_count
+    total_minutes = round(fitbit_minutes + apple_minutes)
+    total_calories = round(fitbit_calories + apple_calories)
+    training_load = float(apple_activity.get("training_load") or 0)
+    if training_load >= 65 or fitbit_zone_minutes >= 40:
+        load_level, load_label = "high", "Carga alta"
+    elif training_load >= 25 or fitbit_zone_minutes >= 15:
+        load_level, load_label = "moderate", "Carga moderada"
+    elif activity_count:
+        load_level, load_label = "light", "Carga ligera"
+    else:
+        load_level, load_label = "none", "Sin carga registrada"
+
+    if sleep_hours is not None and sleep_hours < 5 and activity_count:
+        recommendation_title = "La carga de hoy ya es suficiente"
+        recommendation_body = (
+            "Con menos de 5 horas de sueño y actividad ya registrada, evita otra sesión "
+            "intensa. Hidrátate, come bien y elige movilidad o una caminata suave."
+        )
+        remaining = "Solo recuperación suave"
+    elif sleep_hours is not None and sleep_hours < 5:
+        recommendation_title = "Cambia intensidad por recuperación"
+        recommendation_body = (
+            "Si entrenas, que sea muy suave. No persigas ritmo, potencia ni volumen hoy."
+        )
+        remaining = "Movimiento suave opcional"
+    elif activity_count and load_level in {"moderate", "high"}:
+        recommendation_title = "Entrenamiento del día completado"
+        recommendation_body = (
+            "La carga registrada ya cuenta. El resto del día debe favorecer la recuperación."
+        )
+        remaining = "Recuperar y completar actividad cotidiana"
+    elif calibrated and score >= 75:
+        recommendation_title = "Puedes seguir la sesión prevista"
+        recommendation_body = "Calienta de forma progresiva y ajusta si las sensaciones no acompañan."
+        remaining = "Sesión prevista disponible"
+    else:
+        recommendation_title = "Mantén el plan flexible"
+        recommendation_body = "Usa las sensaciones del calentamiento para decidir la intensidad final."
+        remaining = "Carga moderada como máximo"
+
+    factors = [
+        {
+            "key": "sleep",
+            "label": "Sueño",
+            "value": f"{sleep_hours:g} h" if sleep_hours is not None else "Sin dato",
+            "state": (
+                "low"
+                if sleep_hours is not None and sleep_hours < 6
+                else "good"
+                if sleep_hours is not None and sleep_hours >= 7
+                else "neutral"
+            ),
+            "detail": f"Meta personal {sleep_goal:g} h",
+        },
+        {
+            "key": "hrv",
+            "label": "HRV nocturna",
+            "value": f"{float(hrv):g} ms" if hrv is not None else "Calibrando",
+            "state": "neutral" if not calibrated else "good" if hrv_score >= 55 else "low",
+            "detail": (
+                "Comparación personal disponible"
+                if calibrated
+                else "Falta construir tu línea personal"
+            ),
+        },
+        {
+            "key": "resting_hr",
+            "label": "Pulso en reposo",
+            "value": f"{float(resting_hr):g} bpm" if resting_hr is not None else "Calibrando",
+            "state": "neutral" if not calibrated else "good" if rhr_score >= 55 else "low",
+            "detail": (
+                "Comparación personal disponible"
+                if calibrated
+                else "Falta construir tu línea personal"
+            ),
+        },
+    ]
+    return {
+        "calibration": {
+            "ready": calibrated,
+            "nights": calibration_nights,
+            "required": 7,
+        },
+        "morning_recovery": {
+            "score": score if calibrated else None,
+            "label": recovery_label,
+            "summary": recovery_summary,
+            "sleep_hours": sleep_hours,
+            "factors": factors,
+        },
+        "today_load": {
+            "level": load_level,
+            "label": load_label,
+            "activities_count": activity_count,
+            "duration_minutes": total_minutes,
+            "zone_minutes": round(fitbit_zone_minutes),
+            "calories": total_calories,
+            "fitbit_exercises": today_exercises,
+            "apple_runs": apple_count,
+        },
+        "recommendation": {
+            "title": recommendation_title,
+            "body": recommendation_body,
+            "remaining": remaining,
+        },
+    }
 
 
 def _fitbit_step_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
