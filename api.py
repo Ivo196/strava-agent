@@ -1875,7 +1875,7 @@ def plan(today: date | None = None) -> dict[str, Any]:
     )
     return {
         "fixed": True,
-        "policy": "El calendario avanza con la fecha actual y marca cumplimiento; los datos reales actualizan el estado del atleta, no reescriben sesiones sin confirmación.",
+        "policy": "El calendario usa el plan ajustado de 12 semanas. El bloque 2 se revisará al cerrar el bloque 1 según sensaciones, recuperación y rodilla; ninguna sesión se reescribe sin confirmación.",
         "current_date": analysis_date.isoformat(),
         "current_week_number": current_week.number if current_week else None,
         "current_week_start": (analysis_date - timedelta(days=analysis_date.weekday())).isoformat(),
@@ -2223,9 +2223,13 @@ def _planned_day(plan: list[Any], target: date) -> dict[str, Any] | None:
             else f"Sesión de la semana {week.number} del plan fijo."
         )
         title = _sentence_case(instruction)
-    elif target.weekday() in (2, 4):
+    elif target.weekday() == 2:
         category = "strength"
         title = "Gimnasio · fuerza de piernas"
+        detail = _recommendation_for_day(week.strength_recommendation, day_name)
+    elif target.weekday() == 4:
+        category = "rest"
+        title = "Movilidad y core · sin piernas"
         detail = _recommendation_for_day(week.strength_recommendation, day_name)
     elif target.weekday() == 0:
         category = "bike"

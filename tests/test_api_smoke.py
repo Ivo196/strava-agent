@@ -71,6 +71,25 @@ def test_dashboard_and_plan_accept_simulated_today() -> None:
     assert any(day["is_current_week"] for day in plan.json()["calendar"])
 
 
+def test_adjusted_plan_exposes_first_block_paces_and_saturday_long_run() -> None:
+    client = TestClient(api.app)
+
+    response = client.get("/api/plan?today=2026-07-21")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["current_week_number"] == 1
+    assert payload["weeks"][0]["target_km"] == 21.0
+    assert "objetivo central 5:30 min/km" in payload["weeks"][0]["sessions"][0]
+    saturday = next(day for day in payload["calendar"] if day["date"] == "2026-07-25")
+    friday = next(day for day in payload["calendar"] if day["date"] == "2026-07-24")
+    assert saturday["category"] == "run"
+    assert "11 km" in saturday["title"]
+    assert "5:35-5:50 min/km" in saturday["title"]
+    assert friday["category"] == "rest"
+    assert friday["title"] == "Movilidad y core · sin piernas"
+
+
 def test_dashboard_demo_scenario_is_read_only_and_recalculates() -> None:
     client = TestClient(api.app)
     points_before = api.database.google_health_status()["point_count"]

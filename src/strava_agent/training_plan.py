@@ -6,7 +6,7 @@ from typing import Any
 
 
 RACE_DATE = date(2026, 10, 11)
-PLAN_START_DATE = date(2026, 7, 13)
+PLAN_START_DATE = date(2026, 7, 20)
 
 
 @dataclass(frozen=True)
@@ -28,6 +28,139 @@ class TrainingWeek:
     completion_percentage: float | None = None
 
 
+@dataclass(frozen=True)
+class PlanWeekTemplate:
+    phase: str
+    target_km: float
+    long_run_km: float
+    sessions: tuple[str, ...]
+
+
+PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
+    PlanWeekTemplate(
+        "Base",
+        21.0,
+        11.0,
+        (
+            "Martes: 5 km a 5:25-5:40 min/km; objetivo central 5:30 min/km",
+            "Jueves: 5 km a 5:30-5:45 min/km",
+            "Sábado: tirada larga de 11 km a 5:35-5:50 min/km; empieza controlado",
+        ),
+    ),
+    PlanWeekTemplate(
+        "Base",
+        24.0,
+        12.0,
+        (
+            "Martes: 6 km a 5:25-5:40 min/km, más 4-6 pasadas de 80-100 m a 4:25-4:45 min/km",
+            "Jueves: 6 km a 5:30-5:45 min/km",
+            "Sábado: tirada larga de 12 km a 5:35-5:50 min/km; empieza controlado",
+        ),
+    ),
+    PlanWeekTemplate(
+        "Recuperación",
+        21.0,
+        10.0,
+        (
+            "Martes: 5 km a 5:35-5:50 min/km",
+            "Jueves: 6 km a 5:30-5:45 min/km",
+            "Sábado: tirada larga de 10 km a 5:40-5:55 min/km",
+        ),
+    ),
+    PlanWeekTemplate(
+        "Construcción",
+        28.0,
+        14.0,
+        (
+            "Martes: 7 km totales con 3 x 5 min a 5:05-5:15 min/km; resto a 5:35-5:50 min/km",
+            "Jueves: 7 km a 5:30-5:45 min/km",
+            "Sábado: tirada larga de 14 km a 5:35-5:50 min/km",
+        ),
+    ),
+    PlanWeekTemplate(
+        "Construcción",
+        32.0,
+        16.0,
+        (
+            "Martes: 8 km a 5:30-5:45 min/km, más 4-6 pasadas de 80-100 m a 4:25-4:45 min/km",
+            "Jueves: 8 km a 5:30-5:45 min/km",
+            "Sábado: tirada larga de 16 km a 5:35-5:50 min/km",
+        ),
+    ),
+    PlanWeekTemplate(
+        "Recuperación",
+        27.0,
+        13.0,
+        (
+            "Martes: 7 km a 5:35-5:50 min/km",
+            "Jueves: 7 km a 5:35-5:50 min/km",
+            "Sábado: tirada larga de 13 km a 5:40-5:55 min/km",
+        ),
+    ),
+    PlanWeekTemplate(
+        "Específica",
+        35.0,
+        18.0,
+        (
+            "Martes: 9 km totales con 4 km a 4:55-5:00 min/km; resto a 5:35-5:50 min/km",
+            "Jueves: 8 km a 5:30-5:45 min/km",
+            "Sábado: tirada larga de 18 km a 5:35-5:55 min/km",
+        ),
+    ),
+    PlanWeekTemplate(
+        "Específica",
+        40.0,
+        22.0,
+        (
+            "Martes: 10 km totales con 5 km a 4:55-5:00 min/km; resto a 5:35-5:50 min/km",
+            "Jueves: 8 km a 5:30-5:45 min/km",
+            "Sábado: tirada larga de 22 km a 5:35-5:55 min/km; reducir a 18-20 km si la recuperación no es buena",
+        ),
+    ),
+    PlanWeekTemplate(
+        "Taper",
+        32.0,
+        17.0,
+        (
+            "Martes: 8 km totales con 3 km a 4:55-5:00 min/km; resto a 5:35-5:50 min/km",
+            "Jueves: 7 km a 5:30-5:45 min/km",
+            "Sábado: tirada larga de 17 km a 5:40-5:55 min/km",
+        ),
+    ),
+    PlanWeekTemplate(
+        "Taper",
+        25.0,
+        13.0,
+        (
+            "Martes: 6 km totales con 3 km a 4:55-5:00 min/km; resto a 5:40-5:55 min/km",
+            "Jueves: 6 km a 5:35-5:50 min/km",
+            "Sábado: tirada larga de 13 km a 5:40-5:55 min/km",
+        ),
+    ),
+    PlanWeekTemplate(
+        "Taper",
+        17.0,
+        8.0,
+        (
+            "Martes: 5 km a 5:35-5:50 min/km, más 4 pasadas de 80 m a 4:25-4:45 min/km",
+            "Jueves: 4 km a 5:50-6:10 min/km",
+            "Sábado: 8 km a 5:40-5:55 min/km",
+        ),
+    ),
+    PlanWeekTemplate(
+        "Carrera",
+        9.0,
+        0.0,
+        (
+            "Lunes: descanso y movilidad suave",
+            "Martes: 5 km a 5:35-5:50 min/km",
+            "Jueves: 4 km a 5:50-6:10 min/km con 4 progresivos cortos",
+            "Domingo: Maratón de Chicago; primeros 5 km a 5:00-5:05 min/km y luego 4:55 min/km solo si está controlado",
+        ),
+    ),
+)
+
+
 def build_adaptive_plan(
     metrics: dict[str, Any],
     running_days: int = 4,
@@ -47,12 +180,12 @@ def build_adaptive_plan(
     if today > race_date:
         return []
 
-    del running_days  # El calendario acordado siempre tiene martes, jueves y domingo.
+    del running_days, goal_pace_seconds_km  # El plan acordado ya contiene días y paces explícitos.
     first_monday = PLAN_START_DATE
-    total_weeks = ((race_date - first_monday).days // 7) + 1
+    total_weeks = len(PLAN_WEEKS)
     current_week_start = today - timedelta(days=today.weekday())
     current_index = max(0, min((current_week_start - first_monday).days // 7, total_weeks - 1))
-    current_planned = _three_day_targets(total_weeks - current_index - 1)[1]
+    current_planned = PLAN_WEEKS[current_index].target_km
     actual_current = float(metrics.get("distance_current_week", 0))
     completion = (actual_current / current_planned * 100) if current_planned else 0.0
     risk_level = _risk_level(checkin)
@@ -60,26 +193,21 @@ def build_adaptive_plan(
     adaptation_reason = _adaptation_reason(checkin, completion, risk_level)
 
     weeks: list[TrainingWeek] = []
-    for index in range(total_weeks):
+    for index, template in enumerate(PLAN_WEEKS):
         start = first_monday + timedelta(weeks=index)
         end = min(start + timedelta(days=6), race_date)
         weeks_left_after = total_weeks - index - 1
-
-        if weeks_left_after == 0:
-            phase, target, long_run = "Carrera", 9.0, 0.0
-        else:
-            phase, target, long_run = _three_day_targets(weeks_left_after)
-
-        sessions = _sessions_for_week(
-            phase,
-            target,
-            long_run,
-            3,
-            weeks_left_after,
-            goal_pace_seconds_km,
-            "Bajo",
-        )
+        phase = template.phase
+        target = template.target_km
+        long_run = template.long_run_km
+        sessions = template.sessions
         objectives = _session_objectives(phase, len(sessions))
+        if index < 3:
+            plan_note = "Bloque 1: pace ajustado alrededor de 5:30 min/km, con la tirada larga algo más controlada."
+        elif index < 6:
+            plan_note = "Bloque 2 pendiente de revisión al cerrar la semana 3, según sensaciones, recuperación y rodilla."
+        else:
+            plan_note = "Plan fijo: importar entrenamientos no modifica estas sesiones."
         weeks.append(
             TrainingWeek(
                 number=index + 1,
@@ -90,13 +218,13 @@ def build_adaptive_plan(
                 long_run_km=round(long_run, 1),
                 sessions=sessions,
                 session_objectives=objectives,
-                strength_recommendation="Miércoles: fuerza de piernas moderada. Viernes: sesión ligera, sin llegar al fallo.",
-                bike_recommendation="Lunes o sábado: 30–45 min de bicicleta suave opcional; omitir si hay fatiga.",
+                strength_recommendation="Miércoles: fuerza de piernas moderada. Viernes: movilidad y core; sin fuerza de piernas antes de la tirada larga.",
+                bike_recommendation="Lunes: 30-45 min de bicicleta suave opcional; omitir si hay fatiga o si la mano no permite frenar con seguridad.",
                 risk_level=risk_level,
                 change_reason=(
-                    f"Lectura actual: {adaptation_reason} El calendario permanece fijo."
+                    f"Lectura actual: {adaptation_reason} {plan_note}"
                     if index == current_index
-                    else "Plan fijo: importar entrenamientos no modifica estas sesiones."
+                    else plan_note
                 ),
                 goal_status=goal_status,
                 actual_km=round(actual_current, 1) if index == current_index else None,
@@ -104,89 +232,6 @@ def build_adaptive_plan(
             )
         )
     return weeks if include_past else [week for week in weeks if week.end >= today]
-
-
-def _sessions_for_week(
-    phase: str,
-    target_km: float,
-    long_run_km: float,
-    running_days: int,
-    weeks_left: int,
-    goal_pace_seconds_km: int | None,
-    risk_level: str,
-) -> tuple[str, ...]:
-    if risk_level == "Alto":
-        return (
-            "Martes: descanso; no correr con dolor articular",
-            "Jueves: bicicleta muy suave solo si no hay dolor al caminar",
-            "Domingo: sin tirada larga; solicitar evaluación profesional",
-        )
-    if phase == "Carrera":
-        race_pace = _pace_range(goal_pace_seconds_km, 3, 10, "ritmo maratón por esfuerzo")
-        return (
-            "Lunes: descanso y movilidad suave",
-            "Martes: 5 km muy suaves",
-            "Jueves: 4 km suaves con 4 progresivos cortos",
-            f"Domingo: Maratón de Chicago — salida controlada a {race_pace}",
-        )
-
-    quality_km = max(5.0, min(12.0, target_km * 0.22))
-    easy_budget = max(target_km - long_run_km - quality_km, 0)
-    easy_sessions = max(running_days - 2, 1)
-    easy_km = easy_budget / easy_sessions if easy_sessions else 0
-    easy_pace = _pace_range(goal_pace_seconds_km, 55, 95, "ritmo conversacional")
-    long_pace = _pace_range(goal_pace_seconds_km, 45, 80, "esfuerzo cómodo")
-    marathon_pace = _pace_range(goal_pace_seconds_km, 3, 10, "ritmo maratón")
-    tempo_pace = _pace_range(goal_pace_seconds_km, -20, -5, "tempo controlado")
-
-    if phase == "Taper":
-        quality = f"Martes: {quality_km:.0f} km controlados, con un bloque corto a {marathon_pace}"
-    elif phase == "Base":
-        quality = f"Martes: {quality_km:.0f} km totales con 3 × 3 min a {marathon_pace}, recuperando 2 min suave"
-    elif phase == "Recuperación":
-        quality = f"Martes: {quality_km:.0f} km suaves a {easy_pace}; sin trabajo intenso"
-    elif weeks_left <= 5:
-        marathon_block = max(3.0, quality_km - 4.0)
-        quality = f"Martes: {quality_km:.0f} km totales, incluyendo {marathon_block:.0f} km a {marathon_pace}"
-    else:
-        quality = f"Martes: {quality_km:.0f} km totales con bloques a {tempo_pace} o cuestas por esfuerzo"
-
-    sessions = [quality]
-    available_days = ["Jueves", "Viernes", "Miércoles", "Lunes"]
-    for index in range(easy_sessions):
-        sessions.append(f"{available_days[index]}: {easy_km:.0f} km fáciles a {easy_pace}")
-    sessions.append(f"Domingo: tirada larga de {long_run_km:.0f} km a {long_pace}; empieza por el extremo lento")
-    return tuple(sessions)
-
-
-def _three_day_targets(weeks_left: int) -> tuple[str, float, float]:
-    schedule = {
-        1: ("Taper", 18.0, 10.0),
-        2: ("Taper", 28.0, 16.0),
-        3: ("Taper", 36.0, 20.0),
-        4: ("Específica", 42.0, 26.0),
-        5: ("Específica", 40.0, 24.0),
-        6: ("Recuperación", 34.0, 18.0),
-        7: ("Construcción", 40.0, 22.0),
-        8: ("Construcción", 34.0, 18.0),
-        9: ("Recuperación", 28.0, 14.0),
-        10: ("Construcción", 26.0, 14.0),
-        11: ("Construcción", 22.0, 12.0),
-    }
-    return schedule.get(weeks_left, ("Base", 20.0, 10.0))
-
-
-def _pace_range(goal_seconds: int | None, faster_delta: int, slower_delta: int, fallback: str) -> str:
-    if not goal_seconds:
-        return fallback
-    faster = _format_pace_seconds(goal_seconds + faster_delta)
-    slower = _format_pace_seconds(goal_seconds + slower_delta)
-    return f"{faster}–{slower} min/km"
-
-
-def _format_pace_seconds(total_seconds: int) -> str:
-    safe_seconds = max(total_seconds, 1)
-    return f"{safe_seconds // 60}:{safe_seconds % 60:02d}"
 
 
 def _risk_level(checkin: dict[str, Any] | None) -> str:
@@ -240,20 +285,20 @@ def _session_objectives(phase: str, count: int) -> tuple[str, ...]:
         )
     elif phase == "Recuperación":
         objectives = (
-            "Favorecer recuperación aeróbica sin intensidad.",
-            "Acumular tiempo en Z2 con bajo estrés.",
+            "Favorecer la recuperación aeróbica con el pace indicado.",
+            "Acumular kilómetros controlados con bajo estrés.",
             "Conservar resistencia reduciendo la carga.",
         )
     elif phase == "Taper":
         objectives = (
-            "Conservar economía y ritmo con poco volumen.",
-            "Mantener Z2 sin generar fatiga.",
+            "Conservar economía y pace con poco volumen.",
+            "Mantener frecuencia sin generar fatiga.",
             "Reducir fatiga acumulada conservando resistencia.",
         )
     else:
         objectives = (
-            "Mejorar umbral, economía y control del ritmo.",
-            "Desarrollar base aeróbica en Z2.",
+            "Mejorar economía y control del pace indicado.",
+            "Desarrollar la base aeróbica con continuidad.",
             "Aumentar resistencia y tolerancia al tiempo de carrera.",
         )
     return objectives[:count]
