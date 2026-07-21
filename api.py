@@ -498,7 +498,11 @@ def _running_dynamics(activity: dict[str, Any]) -> dict[str, Any]:
         }
     duration = int(activity.get("elapsed_time_s") or activity.get("moving_time_s") or 0)
     end = start + timedelta(seconds=duration + 180)
-    rows = database.list_apple_health_metrics(list(RUNNING_DYNAMICS))
+    rows = database.list_apple_health_metrics(
+        list(RUNNING_DYNAMICS),
+        start_date=start.date().isoformat(),
+        end_date=(end.date() + timedelta(days=1)).isoformat(),
+    )
     points: dict[int, dict[str, Any]] = {}
     values: dict[str, list[float]] = {target: [] for target in RUNNING_DYNAMICS.values()}
     for row in rows:
@@ -1626,7 +1630,11 @@ def _streams_with_apple_health_heart_rate(activity: dict[str, Any], streams: dic
     duration = int(activity.get("elapsed_time_s") or activity.get("moving_time_s") or 0)
     end = start + timedelta(seconds=duration + 180)
     samples: list[tuple[float, float]] = []
-    for row in database.list_apple_health_metrics(["heart_rate"]):
+    for row in database.list_apple_health_metrics(
+        ["heart_rate"],
+        start_date=(start - timedelta(seconds=90)).date().isoformat(),
+        end_date=(end.date() + timedelta(days=1)).isoformat(),
+    ):
         recorded = _parse_health_datetime(row["recorded_at"])
         if recorded is None or recorded < start - timedelta(seconds=90) or recorded > end:
             continue
@@ -1736,7 +1744,11 @@ def _activity_dynamics_samples(activity: dict[str, Any]) -> list[dict[str, Any]]
         return []
     duration = int(activity.get("elapsed_time_s") or activity.get("moving_time_s") or 0)
     end = start + timedelta(seconds=duration + 180)
-    rows = database.list_apple_health_metrics(list(RUNNING_DYNAMICS))
+    rows = database.list_apple_health_metrics(
+        list(RUNNING_DYNAMICS),
+        start_date=start.date().isoformat(),
+        end_date=(end.date() + timedelta(days=1)).isoformat(),
+    )
     samples: list[dict[str, Any]] = []
     for row in rows:
         recorded = _parse_health_datetime(row["recorded_at"])

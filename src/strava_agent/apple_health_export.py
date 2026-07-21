@@ -14,6 +14,7 @@ from .database import Database
 
 
 APPLE_EXPORT_ROOT = "apple_health_export"
+METRIC_BATCH_SIZE = 2_000
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,16 @@ def import_apple_health_export_zip(zip_path: str, database: Database) -> AppleHe
     metrics_imported = metrics_updated = 0
     sleep_days_imported = sleep_days_updated = 0
     sleep_by_day: dict[str, dict[str, Any]] = {}
+    metric_batch: list[tuple[str, dict[str, Any], str]] = []
+
+    def flush_metrics() -> None:
+        nonlocal metrics_imported, metrics_updated
+        if not metric_batch:
+            return
+        imported, updated = database.upsert_apple_health_metrics_batch(metric_batch)
+        metrics_imported += imported
+        metrics_updated += updated
+        metric_batch.clear()
 
     with ZipFile(zip_path) as archive:
         export_name = _find_export_xml(archive)
@@ -69,7 +80,7 @@ def import_apple_health_export_zip(zip_path: str, database: Database) -> AppleHe
                     database.upsert_apple_health_workout(workout)
                     workouts_saved += 1
 
-                    if _is_running_workout(workout["workoutActivityType"]):
+                    if _is_running_workout(workout["workoutActivityType"]) and _is_apple_watch_workout(workout):
                         streams = _route_streams_for_workout(archive, workout)
                         if streams:
                             routes_imported += 1
@@ -91,18 +102,20 @@ def import_apple_health_export_zip(zip_path: str, database: Database) -> AppleHe
                 if elem.tag == "Record":
                     metric_name = RECORD_METRICS.get(elem.attrib.get("type", ""))
                     if metric_name:
-                        existed = database.upsert_apple_health_metric(
-                            metric_name,
-                            _record_measurement(elem.attrib),
-                            default_units=elem.attrib.get("unit", ""),
+                        metric_batch.append(
+                            (
+                                metric_name,
+                                _record_measurement(elem.attrib),
+                                elem.attrib.get("unit", ""),
+                            )
                         )
-                        if existed:
-                            metrics_updated += 1
-                        else:
-                            metrics_imported += 1
+                        if len(metric_batch) >= METRIC_BATCH_SIZE:
+                            flush_metrics()
                     elif elem.attrib.get("type") == "HKCategoryTypeIdentifierSleepAnalysis":
                         _add_sleep_record(sleep_by_day, elem.attrib)
                     elem.clear()
+
+        flush_metrics()
 
         for measurement in sleep_by_day.values():
             existed = database.upsert_apple_health_metric("sleep_analysis", measurement, default_units="h")
@@ -354,6 +367,12 @@ def _stable_id(prefix: str, value: str) -> int:
 
 def _is_running_workout(workout_type: str) -> bool:
     return workout_type == "HKWorkoutActivityTypeRunning"
+
+
+def _is_apple_watch_workout(workout: dict[str, Any]) -> bool:
+    source = str(workout.get("sourceName") or workout.get("source") or "").lower()
+    device = str(workout.get("device") or "").lower()
+    return "apple watch" in source or "apple watch" in device
 
 
 def _duration_seconds(value: Any, unit: Any) -> int:

@@ -465,6 +465,7 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 }
 
 .calendar-week-v2 {
+  container-type: inline-size;
   min-width: 0;
   padding: 14px;
   border: 1px solid rgba(125, 168, 231, .16);
@@ -529,12 +530,10 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 
 .calendar-days-v2 {
   display: grid;
-  grid-template-columns: repeat(7, minmax(154px, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 8px;
-  overflow-x: auto;
-  padding: 1px 1px 7px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(96, 165, 250, .4) transparent;
+  min-width: 0;
+  padding: 1px;
 }
 
 .calendar-day-v2 {
@@ -548,6 +547,18 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
   border-radius: 10px;
   background: rgba(5, 13, 28, .72);
   transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+@container (max-width: 1080px) {
+  .calendar-days-v2 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 720px) {
+  .calendar-days-v2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .calendar-day-v2.calendar-day-bike { border-top-color: #22d3ee; }
@@ -1145,8 +1156,8 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
   .calendar-week-v2-head,
   .calendar-zone > header { align-items: flex-start; flex-direction: column; gap: 8px; }
   .calendar-week-summary { justify-content: flex-start; }
-  .calendar-days-v2 { grid-template-columns: repeat(7, 172px); scroll-snap-type: x proximity; }
-  .calendar-day-v2 { min-height: 302px; scroll-snap-align: start; }
+  .calendar-days-v2 { grid-template-columns: 1fr; }
+  .calendar-day-v2 { min-height: 0; }
   .sidebar { display: none; }
   .main-content { margin-left: 0; padding-bottom: 70px; }
   .mobile-nav { position: fixed; inset: auto 0 0; z-index: 20; display: grid; grid-template-columns: repeat(5, 1fr); padding: 7px 8px max(7px, env(safe-area-inset-bottom)); background: rgba(6,8,13,.96); border-top: 1px solid var(--line); backdrop-filter: blur(12px); }

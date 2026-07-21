@@ -512,6 +512,55 @@ class Database:
             )
         return existed
 
+    def upsert_apple_health_metrics_batch(
+        self,
+        metrics: list[tuple[str, dict[str, Any], str]],
+    ) -> tuple[int, int]:
+        """Upsert a batch with one SQLite transaction.
+
+        Official Apple Health exports can contain hundreds of thousands of
+        samples. Reusing one connection keeps a full import practical while
+        preserving the imported/updated counts returned by the importer.
+        """
+        imported = updated = 0
+        with self.connect() as connection:
+            for metric_name, measurement, default_units in metrics:
+                recorded_at = str(
+                    measurement.get("date")
+                    or measurement.get("sleepEnd")
+                    or measurement.get("sleepStart")
+                    or ""
+                )
+                source = str(measurement.get("source") or "")
+                units = str(measurement.get("units") or default_units)
+                existed = connection.execute(
+                    """SELECT 1 FROM apple_health_metrics
+                       WHERE metric_name = ? AND recorded_at = ? AND source = ?""",
+                    (metric_name, recorded_at, source),
+                ).fetchone() is not None
+                connection.execute(
+                    """INSERT INTO apple_health_metrics(
+                           metric_name, recorded_at, source, units, value_json, synced_at
+                       ) VALUES (?, ?, ?, ?, ?, ?)
+                       ON CONFLICT(metric_name, recorded_at, source) DO UPDATE SET
+                           units=excluded.units,
+                           value_json=excluded.value_json,
+                           synced_at=excluded.synced_at""",
+                    (
+                        metric_name,
+                        recorded_at,
+                        source,
+                        units,
+                        json.dumps(measurement),
+                        utc_now_iso(),
+                    ),
+                )
+                if existed:
+                    updated += 1
+                else:
+                    imported += 1
+        return imported, updated
+
     def record_apple_health_sync(self, workouts_received: int, metrics_received: int) -> None:
         with self.connect() as connection:
             connection.execute(
@@ -537,17 +586,31 @@ class Database:
             "metric_count": int(metric_count["count"]),
         }
 
-    def list_apple_health_metrics(self, metric_names: list[str]) -> list[dict[str, Any]]:
+    def list_apple_health_metrics(
+        self,
+        metric_names: list[str],
+        *,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> list[dict[str, Any]]:
         if not metric_names:
             return []
         placeholders = ",".join("?" for _ in metric_names)
+        filters = [f"metric_name IN ({placeholders})"]
+        parameters: list[Any] = list(metric_names)
+        if start_date:
+            filters.append("recorded_at >= ?")
+            parameters.append(start_date)
+        if end_date:
+            filters.append("recorded_at < ?")
+            parameters.append(end_date)
         with self.connect() as connection:
             rows = connection.execute(
                 f"""SELECT metric_name, recorded_at, source, units, value_json
                     FROM apple_health_metrics
-                    WHERE metric_name IN ({placeholders})
+                    WHERE {' AND '.join(filters)}
                     ORDER BY recorded_at""",
-                metric_names,
+                parameters,
             ).fetchall()
         return [dict(row) for row in rows]
 

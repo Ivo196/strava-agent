@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   });
 
   if (response.ok) {
-    revalidateTag("training-data", "max");
+    revalidateTag("training-data", { expire: 0 });
   }
 
   return new Response(await response.arrayBuffer(), {
