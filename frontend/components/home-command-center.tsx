@@ -22,8 +22,8 @@ import {
 } from "lucide-react";
 import type { DailyAgendaItem, DashboardData } from "@/lib/types";
 import { InteractiveWeek } from "@/components/interactive-week";
+import { activityDisplayName, activityDisplaySource } from "@/lib/activity-display";
 
-const shortDate = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" });
 const weekday = new Intl.DateTimeFormat("es-ES", { weekday: "short" });
 const time = new Intl.DateTimeFormat("es-ES", {
   hour: "2-digit",
@@ -395,8 +395,8 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
             <Link href={`/activities/${activity.id}`} key={activity.id}>
               <span className="pace-activity-icon"><Route size={19} /></span>
               <div>
-                <small>{shortDate.format(new Date(`${activity.date}T12:00:00`))}</small>
-                <strong>{activity.name}</strong>
+                <small>{activityDisplaySource(activity)}</small>
+                <strong>{activityDisplayName(activity)}</strong>
               </div>
               <span><strong>{activity.distance_km}</strong> km</span>
               <span><strong>{activity.pace}</strong> /km</span>

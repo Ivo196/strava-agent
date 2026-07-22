@@ -28,7 +28,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     <div className="page-wrap dashboard-page">
       <header className="home-topbar refined-home-topbar">
         <div>
-          <span className="eyebrow">PaceOS · Semana {data.next_week?.number ?? "—"}</span>
+          <span className="eyebrow">Chicago 2026 · Semana {data.next_week?.number ?? "—"}</span>
           <h1>{name ? `Hola, ${name}.` : "Tu entrenamiento de hoy."}</h1>
           <p>{data.metrics.distance_current_week} km esta semana</p>
           <RaceCountdown raceDate={data.race_date} initialDays={data.days_to_race} />

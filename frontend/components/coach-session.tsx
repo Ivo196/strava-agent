@@ -98,7 +98,7 @@ export function CoachSession(props: CoachSessionProps) {
         <header className="coach-toolbar">
           <div className="coach-identity">
             <span className="coach-avatar"><BrainCircuit size={19} /></span>
-            <span><strong>PaceOS Coach</strong><small><i /> Conectado a tus datos</small></span>
+            <span><strong>PaceOS · Chicago</strong><small><i /> Conectado a tus datos</small></span>
           </div>
           <button className="new-chat-button" type="button" onClick={resetConversation} disabled={busy}>
             <RotateCcw size={14} /> Nueva conversación

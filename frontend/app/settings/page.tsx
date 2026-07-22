@@ -10,8 +10,8 @@ export default async function SettingsPage() {
   return (
     <div className="page-wrap">
       <header className="simple-header">
-        <span className="eyebrow">Data center</span>
-        <h1>Datos y preferencias.</h1>
+        <span className="eyebrow">Chicago 2026 · Sincronización</span>
+        <h1>Fuentes y preferencias.</h1>
         <p>Estado de las fuentes que alimentan entrenamientos y recuperación.</p>
       </header>
       <SettingsForm googleHealth={googleHealth} />

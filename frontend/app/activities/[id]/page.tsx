@@ -5,6 +5,7 @@ import { ActivityRouteMap } from "@/components/activity-route-map";
 import { RunningDynamicsCharts } from "@/components/running-dynamics-charts";
 import { LiveDateBadge } from "@/components/live-date-badge";
 import { getActivityDetail } from "@/lib/api";
+import { activityDetailName } from "@/lib/activity-display";
 
 export const dynamic = "force-dynamic";
 const dateFormat = new Intl.DateTimeFormat("es", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -26,8 +27,8 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
       <Link className="back-link" href="/activities">← Volver al historial</Link>
       <LiveDateBadge />
       <header className="simple-header activity-detail-header">
-        <span className="eyebrow">Activity intelligence</span>
-        <h1>{activity.name}</h1>
+        <span className="eyebrow">Chicago 2026 · Análisis de carrera</span>
+        <h1>{activityDetailName(activity)}</h1>
         <p><span className="activity-date-label">Fecha de la actividad</span>{dateFormat.format(new Date(`${activity.date}T12:00:00`))}</p>
       </header>
 

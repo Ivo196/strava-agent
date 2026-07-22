@@ -52,7 +52,8 @@ button { color: inherit; }
   z-index: 10;
 }
 .brand { display: flex; align-items: center; gap: 12px; margin: 2px 5px 42px; }
-.brand-mark { width: 40px; height: 40px; display: grid; place-items: center; color: #fff; background: linear-gradient(145deg, #2563eb, #0f766e); border-radius: 8px; font: 600 17px ui-monospace, monospace; box-shadow: 0 12px 24px rgba(15, 23, 42, .24); }
+.chicago-mark { width: 40px; height: 40px; display: grid; flex: 0 0 40px; overflow: hidden; border-radius: 9px; box-shadow: 0 12px 24px rgba(15, 23, 42, .28), 0 0 0 1px rgba(255,255,255,.12); }
+.chicago-mark svg { width: 100%; height: 100%; display: block; }
 .brand strong, .brand small { display: block; }
 .brand strong { font: 600 16px Inter, sans-serif; letter-spacing: .09em; text-transform: uppercase; }
 .brand small { margin-top: 2px; color: rgba(255,255,255,.56); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }

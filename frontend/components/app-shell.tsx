@@ -5,14 +5,15 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Activity, CalendarDays, ChartNoAxesColumnIncreasing, Settings, Sparkles } from "lucide-react";
 import { LiveDataRefresh } from "@/components/live-data-refresh";
+import { ChicagoMark } from "@/components/chicago-mark";
 import { localNow } from "@/lib/local-clock";
 
 const navigation = [
   { href: "/", label: "Hoy", icon: ChartNoAxesColumnIncreasing },
-  { href: "/plan", label: "Calendario", icon: CalendarDays },
-  { href: "/coach", label: "Coach AI", icon: Sparkles },
-  { href: "/activities", label: "Historial", icon: Activity },
-  { href: "/settings", label: "Datos", icon: Settings },
+  { href: "/plan", label: "Plan Chicago", mobileLabel: "Plan", icon: CalendarDays },
+  { href: "/coach", label: "Coach", icon: Sparkles },
+  { href: "/activities", label: "Carreras", icon: Activity },
+  { href: "/settings", label: "Fuentes", icon: Settings },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -27,9 +28,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <Link className="brand" href="/" aria-label="PaceOS Running Intelligence">
-          <span className="brand-mark">P</span>
-          <span><strong>PaceOS</strong><small>Running Intelligence</small></span>
+        <Link className="brand" href="/" aria-label="PaceOS Chicago 26.2">
+          <ChicagoMark />
+          <span><strong>PaceOS</strong><small>Chicago 26.2</small></span>
         </Link>
         <nav className="side-nav" aria-label="Navegación principal">
           {navigation.map(({ href, label, icon: Icon }) => {
@@ -51,12 +52,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
       <main className="main-content">{children}</main>
       <nav className="mobile-nav" aria-label="Navegación móvil">
-        {navigation.map(({ href, label, icon: Icon }) => {
+        {navigation.map(({ href, label, mobileLabel, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
             <Link className={active ? "mobile-link active" : "mobile-link"} href={href} key={href}>
               <Icon size={19} aria-hidden="true" />
-              <span>{label}</span>
+              <span>{mobileLabel ?? label}</span>
             </Link>
           );
         })}

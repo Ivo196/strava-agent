@@ -1,9 +1,9 @@
 import { OfflineState } from "@/components/offline-state";
 import { getActivities } from "@/lib/api";
 import Link from "next/link";
+import { activityDisplayName, activityDisplaySource } from "@/lib/activity-display";
 
 export const dynamic = "force-dynamic";
-const dateFormat = new Intl.DateTimeFormat("es", { day: "numeric", month: "short", year: "numeric" });
 
 export default async function ActivitiesPage() {
   const data = await getActivities().catch(() => null);
@@ -11,8 +11,8 @@ export default async function ActivitiesPage() {
   return (
     <div className="page-wrap">
       <header className="simple-header">
-        <span className="eyebrow">Training log</span>
-        <h1>Historial de actividades.</h1>
+        <span className="eyebrow">Chicago 2026 · Apple Watch</span>
+        <h1>Historial de carreras.</h1>
         <p>Solo las variables que usamos para tomar decisiones de entrenamiento.</p>
       </header>
       {data.activities.length ? (
@@ -22,7 +22,7 @@ export default async function ActivitiesPage() {
             <tbody>
               {data.activities.map((activity) => (
                 <tr key={activity.id}>
-                  <td><Link className="activity-table-link" href={`/activities/${activity.id}`}><strong>{activity.name}</strong><span>{dateFormat.format(new Date(`${activity.date}T12:00:00`))}</span></Link></td>
+                  <td><Link className="activity-table-link" href={`/activities/${activity.id}`}><strong>{activityDisplayName(activity)}</strong><span>{activityDisplaySource(activity)}</span></Link></td>
                   <td>{activity.distance_km} km</td>
                   <td>{activity.pace}</td>
                   <td>{activity.average_heartrate ? `${activity.average_heartrate} bpm` : "—"}</td>

@@ -1,9 +1,8 @@
-import { Bike, ChevronDown, Dumbbell, Footprints, LockKeyhole, MoonStar } from "lucide-react";
+import { ChevronDown, LockKeyhole } from "lucide-react";
 import { OfflineState } from "@/components/offline-state";
 import { getPlan } from "@/lib/api";
 import { WeeklyCheckin } from "@/components/weekly-checkin";
 import { PlanCalendar } from "@/components/plan-calendar";
-import type { DailyAgendaItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -12,13 +11,6 @@ const dayMonth = new Intl.DateTimeFormat("es", { day: "numeric", month: "short" 
 function formatGoalPace(seconds: number | null) {
   if (!seconds) return "—";
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
-function DayIcon({ category }: { category: DailyAgendaItem["category"] }) {
-  if (category === "run") return <Footprints size={17} />;
-  if (category === "strength") return <Dumbbell size={17} />;
-  if (category === "bike") return <Bike size={17} />;
-  return <MoonStar size={17} />;
 }
 
 export default async function PlanPage({ searchParams }: { searchParams: Promise<{ today?: string }> }) {
@@ -32,7 +24,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
   return (
     <div className="page-wrap">
       <header className="simple-header">
-        <span className="eyebrow">Plan de carrera · Semana {data.current_week_number ?? "—"}</span>
+        <span className="eyebrow">Chicago 2026 · Semana {data.current_week_number ?? "—"}</span>
         <h1>Calendario de entrenamiento.</h1>
         <p>El calendario avanza solo con la fecha actual. La semana vigente se abre y se marca automáticamente con tus entrenamientos completados.</p>
       </header>
@@ -61,19 +53,6 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
         <PlanCalendar days={data.calendar} />
       </section>
 
-      <section className="daily-week-panel" aria-label="Agenda de los próximos siete días">
-        <div className="section-heading"><div><span className="eyebrow">Día por día</span><h2>Próximos 7 días</h2></div></div>
-        <div className="daily-week-grid">
-          {data.daily_agenda.map((item) => (
-            <article key={item.date} className={`daily-week-item daily-week-${item.category}`}>
-              <div className="daily-week-icon"><DayIcon category={item.category} /></div>
-              <small>{item.relative_label} · {dayMonth.format(new Date(`${item.date}T12:00:00`))}</small>
-              <strong>{item.title}</strong>
-              <p>{item.detail}</p>
-            </article>
-          ))}
-        </div>
-      </section>
       <WeeklyCheckin />
       <div className="week-list">
         {data.weeks.map((week) => {
