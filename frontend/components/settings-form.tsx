@@ -69,7 +69,7 @@ export function SettingsForm({ googleHealth }: { googleHealth: GoogleHealthStatu
           )}
           {googleHealth.connected && googleHealth.auto_sync && (
             <small className="source-meta auto-sync-meta">
-              Automática cada {googleHealth.auto_sync.interval_hours} horas
+              Automática cada {googleHealth.auto_sync.interval_hours} {googleHealth.auto_sync.interval_hours === 1 ? "hora" : "horas"}
               {googleHealth.auto_sync.next_sync ? ` · Próxima: ${new Date(googleHealth.auto_sync.next_sync).toLocaleString("es-ES")}` : ""}
             </small>
           )}

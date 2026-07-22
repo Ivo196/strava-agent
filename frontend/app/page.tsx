@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, FlaskConical, X } from "lucide-react";
 import { HomeCommandCenter } from "@/components/home-command-center";
 import { OfflineState } from "@/components/offline-state";
+import { RaceCountdown } from "@/components/race-countdown";
 import { getDashboard } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div>
           <span className="eyebrow">PaceOS · Semana {data.next_week?.number ?? "—"}</span>
           <h1>{name ? `Hola, ${name}.` : "Tu entrenamiento de hoy."}</h1>
-          <p>{data.metrics.distance_current_week} km esta semana · {data.days_to_race} días para Chicago</p>
+          <p>{data.metrics.distance_current_week} km esta semana</p>
+          <RaceCountdown raceDate={data.race_date} initialDays={data.days_to_race} />
         </div>
         <div className={hasTrainingData ? "connection connected" : "connection"}>
           <span />{hasTrainingData ? `${data.activity_count} actividades` : "Historial pendiente"}

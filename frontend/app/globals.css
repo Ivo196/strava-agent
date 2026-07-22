@@ -87,10 +87,14 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .connection span { width: 7px; height: 7px; background: #a8aaa5; border-radius: 50%; }
 .connection.connected span { background: var(--green); box-shadow: 0 0 0 4px rgba(15,118,110,.1); }
 .hero-status-stack { display: grid; justify-items: end; gap: 12px; }
-.race-countdown { min-width: 136px; padding: 14px 16px; text-align: right; border: 1px solid rgba(91,140,255,.24); border-radius: var(--radius); background: linear-gradient(145deg, rgba(16,24,39,.94), rgba(7,12,24,.9)); box-shadow: var(--shadow); }
-.race-countdown span, .race-countdown small { display: block; }
-.race-countdown span { color: var(--ink); font-size: 30px; font-weight: 700; line-height: 1; }
-.race-countdown small { margin-top: 5px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.race-countdown { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 11px; align-items: center; width: fit-content; min-width: 250px; margin-top: 14px; padding: 11px 15px 11px 11px; overflow: hidden; border: 1px solid rgba(36,242,206,.24); border-radius: var(--radius); background: linear-gradient(135deg, rgba(91,140,255,.15), rgba(36,242,206,.075)); box-shadow: 0 12px 30px rgba(0,0,0,.18), inset 0 1px rgba(255,255,255,.035); }
+.race-countdown::after { content: ""; position: absolute; inset: auto 0 0; height: 2px; background: linear-gradient(90deg, var(--orange), var(--orange-deep)); }
+.race-countdown-icon { display: grid; place-items: center; width: 34px; height: 34px; color: var(--orange-deep); border: 1px solid rgba(36,242,206,.2); border-radius: 8px; background: rgba(36,242,206,.08); }
+.race-countdown-copy, .race-countdown-copy small, .race-countdown-copy strong, .race-countdown-copy time { display: block; }
+.race-countdown-copy small { color: var(--orange-deep); font-size: 9px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+.race-countdown-copy strong { margin-top: 3px; color: var(--ink); font-size: 15px; line-height: 1; }
+.race-countdown-copy strong b { margin-right: 3px; font-size: 27px; letter-spacing: -.04em; }
+.race-countdown-copy time { margin-top: 4px; color: var(--muted); font-size: 10px; }
 .onboarding-banner { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 22px; padding: 16px 18px; border: 1px solid rgba(184,255,90,.2); border-radius: 14px; background: linear-gradient(90deg, rgba(184,255,90,.1), rgba(111,247,220,.035)); }
 .onboarding-banner strong, .onboarding-banner span { display: block; }
 .onboarding-banner strong { font-size: 14px; margin-bottom: 3px; }

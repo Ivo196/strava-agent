@@ -103,14 +103,14 @@ def test_dashboard_demo_scenario_is_read_only_and_recalculates() -> None:
     assert api.database.google_health_status()["point_count"] == points_before
 
 
-def test_google_health_runs_automatically_every_six_hours() -> None:
+def test_google_health_runs_automatically_every_hour() -> None:
     client = TestClient(api.app)
 
     status = client.get("/api/google-health/status")
 
     assert status.status_code == 200
     assert status.json()["auto_sync"]["enabled"] is True
-    assert status.json()["auto_sync"]["interval_hours"] == 6
+    assert status.json()["auto_sync"]["interval_hours"] == 1
 
 
 def test_data_version_is_available_for_lightweight_refresh_checks() -> None:

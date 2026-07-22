@@ -44,7 +44,8 @@ from strava_agent.training_plan import RACE_DATE, build_adaptive_plan
 
 settings = get_settings()
 database = Database(settings.database_path)
-GOOGLE_HEALTH_SYNC_INTERVAL = timedelta(hours=6)
+GOOGLE_HEALTH_SYNC_INTERVAL_HOURS = 1
+GOOGLE_HEALTH_SYNC_INTERVAL = timedelta(hours=GOOGLE_HEALTH_SYNC_INTERVAL_HOURS)
 GOOGLE_HEALTH_RETRY_INTERVAL = timedelta(minutes=15)
 google_health_scheduler_state: dict[str, Any] = {
     "running": False,
@@ -101,7 +102,7 @@ def _google_health_auto_sync_status(status: dict[str, Any]) -> dict[str, Any]:
     next_sync = _next_google_health_sync(status)
     return {
         "enabled": True,
-        "interval_hours": 6,
+        "interval_hours": GOOGLE_HEALTH_SYNC_INTERVAL_HOURS,
         "next_sync": next_sync.isoformat() if next_sync else None,
         **google_health_scheduler_state,
     }
