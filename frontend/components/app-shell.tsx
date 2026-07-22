@@ -3,17 +3,26 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Activity, CalendarDays, ChartNoAxesColumnIncreasing, Settings, Sparkles } from "lucide-react";
+import { Activity, CalendarDays, ChartNoAxesColumnIncreasing, Scale, Settings, Sparkles } from "lucide-react";
 import { LiveDataRefresh } from "@/components/live-data-refresh";
 import { ChicagoMark } from "@/components/chicago-mark";
 import { localNow } from "@/lib/local-clock";
 
-const navigation = [
+type NavigationItem = {
+  href: string;
+  label: string;
+  mobileLabel?: string;
+  mobile?: boolean;
+  icon: typeof Activity;
+};
+
+const navigation: NavigationItem[] = [
   { href: "/", label: "Hoy", icon: ChartNoAxesColumnIncreasing },
   { href: "/plan", label: "Plan Chicago", mobileLabel: "Plan", icon: CalendarDays },
   { href: "/coach", label: "Coach", icon: Sparkles },
   { href: "/activities", label: "Carreras", icon: Activity },
-  { href: "/settings", label: "Fuentes", icon: Settings },
+  { href: "/body", label: "Composición", mobileLabel: "Cuerpo", icon: Scale },
+  { href: "/settings", label: "Fuentes", mobile: false, icon: Settings },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -52,7 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
       <main className="main-content">{children}</main>
       <nav className="mobile-nav" aria-label="Navegación móvil">
-        {navigation.map(({ href, label, mobileLabel, icon: Icon }) => {
+        {navigation.filter((item) => item.mobile !== false).map(({ href, label, mobileLabel, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
             <Link className={active ? "mobile-link active" : "mobile-link"} href={href} key={href}>

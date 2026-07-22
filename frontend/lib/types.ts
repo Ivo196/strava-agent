@@ -245,6 +245,27 @@ export type CalendarActualActivity = {
   zone_minutes: number | null;
 };
 
+export type BodyCompositionMeasurement = {
+  id: number;
+  measurement_date: string;
+  source: string;
+  weight_kg: number;
+  muscle_mass_kg: number;
+  body_fat_percent: number;
+  height_cm: number | null;
+  age: number | null;
+  sex: "M" | "F" | null;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BodyCompositionData = {
+  latest: BodyCompositionMeasurement | null;
+  measurements: BodyCompositionMeasurement[];
+  count: number;
+};
+
 export type CalendarDailyMetrics = {
   steps?: number;
   active_energy_kcal?: number;

@@ -122,6 +122,34 @@ def test_data_version_is_available_for_lightweight_refresh_checks() -> None:
     assert isinstance(response.json()["version"], str)
 
 
+def test_body_composition_endpoint_saves_history(tmp_path: Path, monkeypatch) -> None:
+    test_database = Database(tmp_path / "body.db")
+    test_database.save_profile({"running_days": 3, "weight_kg": 78})
+    monkeypatch.setattr(api, "database", test_database)
+    client = TestClient(api.app)
+
+    saved = client.post(
+        "/api/body-composition",
+        json={
+            "measurement_date": "2026-07-22",
+            "source": "InBody",
+            "weight_kg": 81.7,
+            "muscle_mass_kg": 23.0,
+            "body_fat_percent": 47.8,
+            "height_cm": 185,
+            "age": 30,
+            "sex": "M",
+        },
+    )
+    history = client.get("/api/body-composition")
+
+    assert saved.status_code == 200
+    assert saved.json()["measurement"]["measurement_date"] == "2026-07-22"
+    assert history.status_code == 200
+    assert history.json()["count"] == 1
+    assert history.json()["latest"]["body_fat_percent"] == 47.8
+
+
 def test_plan_completion_endpoint_persists_and_removes(
     tmp_path: Path,
     monkeypatch,

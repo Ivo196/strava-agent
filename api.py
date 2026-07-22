@@ -194,6 +194,18 @@ class PlanCompletionInput(BaseModel):
     completed: bool
 
 
+class BodyCompositionInput(BaseModel):
+    measurement_date: date
+    source: str = Field(default="InBody", min_length=1, max_length=80)
+    weight_kg: float = Field(ge=30, le=250)
+    muscle_mass_kg: float = Field(ge=5, le=120)
+    body_fat_percent: float = Field(ge=1, le=75)
+    height_cm: float | None = Field(default=None, ge=130, le=220)
+    age: int | None = Field(default=None, ge=16, le=100)
+    sex: Literal["M", "F"] | None = None
+    notes: str = Field(default="", max_length=500)
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -1928,6 +1940,22 @@ def save_checkin(checkin: WeeklyCheckinInput) -> dict[str, Any]:
 @app.get("/api/profile")
 def get_profile() -> dict[str, Any]:
     return database.get_profile()
+
+
+@app.get("/api/body-composition")
+def get_body_composition() -> dict[str, Any]:
+    measurements = database.list_body_composition()
+    return {
+        "latest": measurements[0] if measurements else None,
+        "measurements": measurements,
+        "count": len(measurements),
+    }
+
+
+@app.post("/api/body-composition")
+def save_body_composition(payload: BodyCompositionInput) -> dict[str, Any]:
+    measurement = database.upsert_body_composition(payload.model_dump(mode="json"))
+    return {"measurement": measurement}
 
 
 @app.get("/api/coach/status")

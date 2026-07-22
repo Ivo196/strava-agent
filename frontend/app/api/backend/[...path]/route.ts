@@ -6,6 +6,7 @@ const ALLOWED_PATHS = new Set([
   "coach/chat",
   "data-version",
   "profile",
+  "body-composition",
   "google-health/status",
   "google-health/sync",
   "plan/completion",

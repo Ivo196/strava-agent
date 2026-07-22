@@ -1364,6 +1364,64 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
   .typing-indicator i { animation: none; }
 }
 
+/* Body composition history */
+.body-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.body-header > div { max-width: 760px; }
+.body-page, .body-composition-layout { min-width: 0; }
+.body-composition-layout { display: grid; gap: 22px; }
+.body-latest-panel, .body-trends-section, .body-history-section { min-width: 0; padding: 22px; border: 1px solid var(--pace-border); border-radius: 16px; background: linear-gradient(155deg, rgba(9, 22, 45, .95), rgba(4, 12, 26, .94)); box-shadow: 0 18px 45px rgba(1, 7, 18, .2); }
+.body-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.body-panel-heading h2 { margin-top: 6px; font-size: 20px; }
+.body-entry-form { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 12px; margin-top: 20px; padding: 18px; border: 1px solid rgba(96, 165, 250, .2); border-radius: 12px; background: rgba(37, 99, 235, .065); }
+.body-entry-form label { display: grid; gap: 7px; color: #9db2ce; font-size: 10px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.body-entry-form input { min-width: 0; min-height: 44px; padding: 0 12px; color: #edf5ff; border: 1px solid rgba(125, 168, 231, .24); border-radius: 9px; background: rgba(3, 10, 24, .72); font: 500 13px Inter, sans-serif; color-scheme: dark; }
+.body-entry-form input:focus-visible { outline: 2px solid #7dd3fc; outline-offset: 2px; border-color: #60a5fa; }
+.body-entry-form .body-notes { grid-column: span 3; }
+.body-entry-form > button { align-self: end; }
+.body-latest-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.body-latest-grid article { min-width: 0; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 16px; border: 1px solid rgba(125, 168, 231, .16); border-radius: 12px; background: rgba(3, 10, 24, .52); }
+.body-metric-icon { width: 40px; height: 40px; display: grid; place-items: center; color: #8fc1ff; border-radius: 10px; background: rgba(37, 99, 235, .13); }
+.body-latest-grid small, .body-latest-grid strong { display: block; }
+.body-latest-grid small { color: #849ab8; font-size: 9px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; }
+.body-latest-grid strong { margin-top: 5px; color: #edf5ff; font: 650 22px "Fira Code", ui-monospace, monospace; }
+.body-latest-grid strong b { color: #8ea4c0; font: 500 10px Inter, sans-serif; }
+.body-delta { display: inline-flex; align-items: center; gap: 4px; padding: 5px 7px; border-radius: 999px; font-size: 9px; font-weight: 750; white-space: nowrap; }
+.body-delta.up { color: #a8d5ff; background: rgba(59, 130, 246, .12); }
+.body-delta.down { color: #9eead9; background: rgba(36, 242, 206, .09); }
+.body-delta.neutral { color: #8da1bb; background: rgba(148, 163, 184, .08); }
+.body-context-note { margin: 18px 0 0; padding: 12px 14px; color: #8ea3bd; border-left: 3px solid rgba(96, 165, 250, .55); background: rgba(37, 99, 235, .055); font-size: 11px; line-height: 1.6; }
+.body-trends-section .section-heading, .body-history-section .section-heading { margin-bottom: 16px; }
+.body-trends-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.body-trend-card { min-width: 0; padding: 16px; border: 1px solid rgba(125, 168, 231, .15); border-radius: 12px; background: rgba(3, 10, 24, .5); }
+.body-trend-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.body-trend-heading > span { display: inline-flex; align-items: center; gap: 7px; color: #91a7c4; font-size: 10px; font-weight: 750; }
+.body-trend-heading > strong { color: #edf5ff; font: 650 17px "Fira Code", ui-monospace, monospace; }
+.body-trend-heading > strong small { color: #8298b5; font: 500 9px Inter, sans-serif; }
+.body-trend-card svg { width: 100%; height: auto; display: block; margin-top: 10px; overflow: visible; }
+.body-trend-card svg text { fill: #7187a4; font: 500 8px Inter, sans-serif; text-transform: capitalize; }
+.body-chart-grid { fill: none; stroke: rgba(125, 168, 231, .1); stroke-width: 1; }
+.body-history-table td:first-child { min-width: 170px; }
+.body-history-table td:last-child { min-width: 180px; color: var(--muted); }
+.body-history-section .table-scroll { width: 100%; max-width: 100%; }
+
+@media (max-width: 1100px) {
+  .body-latest-grid, .body-trends-grid { grid-template-columns: 1fr; }
+  .body-entry-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .body-entry-form .body-notes { grid-column: span 1; }
+}
+
+@media (max-width: 720px) {
+  .body-header { display: grid; }
+  .body-header > a { width: fit-content; }
+  .body-latest-panel, .body-trends-section, .body-history-section { padding: 16px; border-radius: 13px; }
+  .body-panel-heading { align-items: flex-start; }
+  .body-panel-heading .primary-button { min-width: 44px; padding-inline: 11px; }
+  .body-entry-form { grid-template-columns: 1fr; padding: 14px; }
+  .body-entry-form .body-notes { grid-column: auto; }
+  .body-latest-grid article { grid-template-columns: 40px minmax(0, 1fr); }
+  .body-delta { grid-column: 2; width: fit-content; }
+}
+
 /* Dashboard 2026: lectura continua tipo feed deportivo, con Fitbit como base diaria. */
 .blue-dashboard { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; min-width: 0; }
 .blue-dashboard > *, .today-dashboard-grid > *, .recovery-week-grid > *, .week-progress-layout > * { min-width: 0; }

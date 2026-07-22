@@ -81,6 +81,42 @@ def test_plan_session_completion_round_trip(tmp_path: Path) -> None:
     assert database.list_plan_session_completions() == []
 
 
+def test_body_composition_history_upserts_by_date_and_updates_weight(tmp_path: Path) -> None:
+    database = Database(tmp_path / "coach.db")
+    database.save_profile({"display_name": "Ivo", "running_days": 3, "weight_kg": 78})
+    initial_version = database.data_version()
+
+    database.upsert_body_composition(
+        {
+            "measurement_date": "2026-07-22",
+            "source": "InBody",
+            "weight_kg": 81.7,
+            "muscle_mass_kg": 23.0,
+            "body_fat_percent": 47.8,
+            "height_cm": 185,
+            "age": 30,
+            "sex": "M",
+        }
+    )
+    database.upsert_body_composition(
+        {
+            "measurement_date": "2026-07-22",
+            "source": "InBody",
+            "weight_kg": 81.6,
+            "muscle_mass_kg": 23.1,
+            "body_fat_percent": 47.7,
+        }
+    )
+
+    history = database.list_body_composition()
+    assert len(history) == 1
+    assert history[0]["weight_kg"] == 81.6
+    assert database.get_profile()["weight_kg"] == 81.6
+    assert database.get_profile()["height_cm"] == 185
+    assert database.get_profile()["age"] == 30
+    assert database.data_version() != initial_version
+
+
 def test_finds_matching_activity_from_another_source(tmp_path: Path) -> None:
     database = Database(tmp_path / "coach.db")
     database.upsert_activity(sample_activity())

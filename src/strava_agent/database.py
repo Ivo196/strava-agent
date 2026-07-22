@@ -74,6 +74,25 @@ CREATE TABLE IF NOT EXISTS plan_session_completions (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS body_composition_measurements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    measurement_date TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'InBody',
+    weight_kg REAL NOT NULL,
+    muscle_mass_kg REAL NOT NULL,
+    body_fat_percent REAL NOT NULL,
+    height_cm REAL,
+    age INTEGER,
+    sex TEXT,
+    notes TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(measurement_date, source)
+);
+
+CREATE INDEX IF NOT EXISTS idx_body_composition_date
+ON body_composition_measurements(measurement_date);
+
 CREATE TABLE IF NOT EXISTS apple_health_workouts (
     workout_id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -304,6 +323,71 @@ class Database:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def upsert_body_composition(self, measurement: dict[str, Any]) -> dict[str, Any]:
+        now = utc_now_iso()
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT INTO body_composition_measurements(
+                       measurement_date, source, weight_kg, muscle_mass_kg,
+                       body_fat_percent, height_cm, age, sex, notes, created_at, updated_at
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(measurement_date, source) DO UPDATE SET
+                       weight_kg=excluded.weight_kg,
+                       muscle_mass_kg=excluded.muscle_mass_kg,
+                       body_fat_percent=excluded.body_fat_percent,
+                       height_cm=COALESCE(excluded.height_cm, body_composition_measurements.height_cm),
+                       age=COALESCE(excluded.age, body_composition_measurements.age),
+                       sex=COALESCE(excluded.sex, body_composition_measurements.sex),
+                       notes=excluded.notes,
+                       updated_at=excluded.updated_at""",
+                (
+                    measurement["measurement_date"],
+                    measurement.get("source") or "InBody",
+                    float(measurement["weight_kg"]),
+                    float(measurement["muscle_mass_kg"]),
+                    float(measurement["body_fat_percent"]),
+                    measurement.get("height_cm"),
+                    measurement.get("age"),
+                    measurement.get("sex"),
+                    measurement.get("notes", ""),
+                    now,
+                    now,
+                ),
+            )
+            latest = connection.execute(
+                """SELECT * FROM body_composition_measurements
+                   ORDER BY measurement_date DESC, id DESC LIMIT 1"""
+            ).fetchone()
+            if latest and latest["measurement_date"] == measurement["measurement_date"]:
+                connection.execute(
+                    """UPDATE athlete_profile
+                       SET weight_kg = ?,
+                           height_cm = COALESCE(?, height_cm),
+                           age = COALESCE(?, age),
+                           updated_at = ?
+                       WHERE id = 1""",
+                    (
+                        float(latest["weight_kg"]),
+                        latest["height_cm"],
+                        latest["age"],
+                        now,
+                    ),
+                )
+            row = connection.execute(
+                """SELECT * FROM body_composition_measurements
+                   WHERE measurement_date = ? AND source = ?""",
+                (measurement["measurement_date"], measurement.get("source") or "InBody"),
+            ).fetchone()
+        return dict(row)
+
+    def list_body_composition(self) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """SELECT * FROM body_composition_measurements
+                   ORDER BY measurement_date DESC, id DESC"""
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def upsert_activity(
         self,
         activity: dict[str, Any],
@@ -408,7 +492,8 @@ class Database:
                        COALESCE((SELECT MAX(updated_at) FROM google_health_oauth), ''),
                        COALESCE((SELECT MAX(updated_at) FROM athlete_profile), ''),
                        COALESCE((SELECT MAX(updated_at) FROM weekly_checkins), ''),
-                       COALESCE((SELECT MAX(updated_at) FROM plan_session_completions), '')"""
+                       COALESCE((SELECT MAX(updated_at) FROM plan_session_completions), ''),
+                       COALESCE((SELECT MAX(updated_at) FROM body_composition_measurements), '')"""
             ).fetchone()
         return "|".join(str(value or "") for value in row)
 
