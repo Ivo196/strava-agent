@@ -19,10 +19,10 @@
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#C7F36B` | `--color-primary` |
-| On Primary | `#10140E` | `--color-on-primary` |
+| Primary | `#78C6FF` | `--color-primary` |
+| On Primary | `#071018` | `--color-on-primary` |
 | Secondary | `#A98BFF` | `--color-secondary` |
-| Accent/CTA | `#C7F36B` | `--color-accent` |
+| Accent/CTA | `#78C6FF` | `--color-accent` |
 | Background | `#070908` | `--color-background` |
 | Foreground | `#F3F6EF` | `--color-foreground` |
 | Muted | `#8F998E` | `--color-muted` |
@@ -30,7 +30,7 @@
 | Destructive | `#DC2626` | `--color-destructive` |
 | Ring | `#1E40AF` | `--color-ring` |
 
-**Color Notes:** Dark-only, near-black base with one energy-lime action color. Violet is reserved for sleep and amber for workload warnings.
+**Color Notes:** Dark-only, near-black base with one electric-sky action color. Violet is reserved for sleep, amber for workload warnings, and green only for completed/success states.
 
 ### Typography
 
