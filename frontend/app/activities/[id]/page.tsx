@@ -11,7 +11,6 @@ export const dynamic = "force-dynamic";
 const dateFormat = new Intl.DateTimeFormat("es", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
 function splitHeartRate(split: { average_heartrate: number | null; heartrate_source: "stream" | "workout_average" | null }) {
-  if (!split.average_heartrate) return "—";
   return `${split.heartrate_source === "workout_average" ? "~" : ""}${split.average_heartrate} bpm`;
 }
 
@@ -36,9 +35,9 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
         <div><span>Distancia</span><strong>{activity.distance_km} km</strong></div>
         <div><span>Tiempo</span><strong>{activity.moving_time}</strong></div>
         <div><span>Ritmo medio</span><strong>{activity.pace}</strong></div>
-        <div><span>Pulso medio</span><strong>{activity.average_heartrate ? `${activity.average_heartrate} bpm` : "—"}</strong></div>
-        <div><span>Calorías</span><strong>{activity.calories ? `${activity.calories} kcal` : "—"}</strong></div>
-        <div><span>Desnivel</span><strong>{activity.elevation_gain_m ?? 0} m</strong></div>
+        {activity.average_heartrate != null && <div><span>Pulso medio</span><strong>{activity.average_heartrate} bpm</strong></div>}
+        {activity.calories != null && <div><span>Calorías</span><strong>{activity.calories} kcal</strong></div>}
+        {activity.elevation_gain_m != null && <div><span>Desnivel</span><strong>{activity.elevation_gain_m} m</strong></div>}
       </section>
 
       {data.route_available && <ActivityRouteMap route={data.route} />}
@@ -56,16 +55,16 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
             <div className="section-heading"><div><span className="eyebrow">Parciales</span><h2>Kilómetro por kilómetro.</h2></div></div>
             <div className="table-scroll">
               <table className="data-table splits-table">
-                <thead><tr><th>Tramo</th><th>Distancia</th><th>Ritmo</th><th>FC media</th><th>Potencia</th><th>Contacto</th><th>Zancada</th><th>Subida</th></tr></thead>
+                <thead><tr><th>Tramo</th><th>Distancia</th><th>Ritmo</th>{data.splits.every((split) => split.average_heartrate != null) && <th>FC media</th>}{data.splits.every((split) => split.average_power_w != null) && <th>Potencia</th>}{data.splits.every((split) => split.ground_contact_ms != null) && <th>Contacto</th>}{data.splits.every((split) => split.stride_m != null) && <th>Zancada</th>}<th>Subida</th></tr></thead>
                 <tbody>{data.splits.map((split) => (
                   <tr key={`${split.kilometer}-${split.label}`}>
                     <td><strong>{split.label}</strong></td>
                     <td>{split.distance_km} km</td>
                     <td>{split.pace}</td>
-                    <td>{splitHeartRate(split)}</td>
-                    <td>{split.average_power_w ? `${split.average_power_w} W` : "—"}</td>
-                    <td>{split.ground_contact_ms ? `${split.ground_contact_ms} ms` : "—"}</td>
-                    <td>{split.stride_m ? `${split.stride_m} m` : "—"}</td>
+                    {data.splits.every((item) => item.average_heartrate != null) && <td>{splitHeartRate(split)}</td>}
+                    {data.splits.every((item) => item.average_power_w != null) && <td>{split.average_power_w} W</td>}
+                    {data.splits.every((item) => item.ground_contact_ms != null) && <td>{split.ground_contact_ms} ms</td>}
+                    {data.splits.every((item) => item.stride_m != null) && <td>{split.stride_m} m</td>}
                     <td>+{split.elevation_gain_m} m</td>
                   </tr>
                 ))}</tbody>

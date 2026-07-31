@@ -18,15 +18,13 @@ export default async function ActivitiesPage() {
       {data.activities.length ? (
         <div className="table-scroll">
           <table className="data-table">
-            <thead><tr><th>Entrenamiento</th><th>Distancia</th><th>Ritmo</th><th>FC media</th><th>Desnivel</th><th><span className="sr-only">Detalle</span></th></tr></thead>
+            <thead><tr><th>Entrenamiento</th><th>Distancia</th><th>Ritmo</th><th><span className="sr-only">Detalle</span></th></tr></thead>
             <tbody>
               {data.activities.map((activity) => (
                 <tr key={activity.id}>
                   <td><Link className="activity-table-link" href={`/activities/${activity.id}`}><strong>{activityDisplayName(activity)}</strong><span>{activityDisplaySource(activity)}</span></Link></td>
                   <td>{activity.distance_km} km</td>
                   <td>{activity.pace}</td>
-                  <td>{activity.average_heartrate ? `${activity.average_heartrate} bpm` : "—"}</td>
-                  <td>{activity.elevation_gain_m ?? 0} m</td>
                   <td><Link className="detail-link" href={`/activities/${activity.id}`}>Ver carrera →</Link></td>
                 </tr>
               ))}

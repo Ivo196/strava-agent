@@ -1,7 +1,6 @@
 import { ChevronDown, LockKeyhole } from "lucide-react";
 import { OfflineState } from "@/components/offline-state";
 import { getPlan } from "@/lib/api";
-import { WeeklyCheckin } from "@/components/weekly-checkin";
 import { PlanCalendar } from "@/components/plan-calendar";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +52,6 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
         <PlanCalendar days={data.calendar} />
       </section>
 
-      <WeeklyCheckin />
       <div className="week-list">
         {data.weeks.map((week) => {
           const isCurrent = week.number === data.current_week_number;

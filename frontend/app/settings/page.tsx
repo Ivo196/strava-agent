@@ -15,6 +15,13 @@ export default async function SettingsPage() {
         <p>Estado de las fuentes que alimentan entrenamientos y recuperación.</p>
       </header>
       <SettingsForm googleHealth={googleHealth} />
+      <section className="you-links" aria-label="Tus herramientas">
+        <Link href="/activities"><Activity size={19} /><span><strong>Carreras</strong><small>Historial y análisis</small></span></Link>
+        <Link href="/body"><Scale size={19} /><span><strong>Composición</strong><small>Peso sincronizado</small></span></Link>
+        <Link href="/coach"><Sparkles size={19} /><span><strong>Coach</strong><small>Pregunta por tus datos</small></span></Link>
+      </section>
     </div>
   );
 }
+import Link from "next/link";
+import { Activity, Scale, Sparkles } from "lucide-react";

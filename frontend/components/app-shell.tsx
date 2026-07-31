@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Activity, CalendarDays, ChartNoAxesColumnIncreasing, Scale, Settings, Sparkles } from "lucide-react";
+import { ChartNoAxesColumnIncreasing, Dumbbell, MoonStar, Settings, TrendingUp } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { LiveDataRefresh } from "@/components/live-data-refresh";
 import { ChicagoMark } from "@/components/chicago-mark";
 import { localNow } from "@/lib/local-clock";
@@ -13,16 +14,15 @@ type NavigationItem = {
   label: string;
   mobileLabel?: string;
   mobile?: boolean;
-  icon: typeof Activity;
+  icon: LucideIcon;
 };
 
 const navigation: NavigationItem[] = [
   { href: "/", label: "Hoy", icon: ChartNoAxesColumnIncreasing },
-  { href: "/plan", label: "Plan Chicago", mobileLabel: "Plan", icon: CalendarDays },
-  { href: "/coach", label: "Coach", icon: Sparkles },
-  { href: "/activities", label: "Carreras", icon: Activity },
-  { href: "/body", label: "Composición", mobileLabel: "Cuerpo", icon: Scale },
-  { href: "/settings", label: "Fuentes", mobile: false, icon: Settings },
+  { href: "/trends", label: "Tendencias", mobileLabel: "Tendencias", icon: TrendingUp },
+  { href: "/sleep", label: "Sueño", icon: MoonStar },
+  { href: "/plan", label: "Entrenamiento", mobileLabel: "Entreno", icon: Dumbbell },
+  { href: "/settings", label: "Tú", icon: Settings },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

@@ -170,7 +170,7 @@ def test_performance_state_uses_six_signals_and_multisport_load() -> None:
         {"count": 0, "moving_minutes": 0, "training_load": 0, "calories": 0},
         date(2026, 7, 20),
         activity_rows=[{
-            "start_date_local": "2026-07-19T08:00:00+02:00",
+            "start_date_local": "2026-07-20T08:00:00+02:00",
             "sport_type": "Run",
             "moving_time_s": 3600,
             "suffer_score": 55,
@@ -184,5 +184,59 @@ def test_performance_state_uses_six_signals_and_multisport_load() -> None:
     assert state["load_7d"]["categories"]["running"] == 55
     assert state["load_7d"]["categories"]["strength"] > 0
     assert state["load_7d"]["risk"] == "Sin base"
+    assert state["load_7d"]["week_start"] == "2026-07-20"
+    assert state["load_7d"]["week_end"] == "2026-07-26"
+    assert [day["date"] for day in state["load_7d"]["trend"]] == [
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-25",
+        "2026-07-26",
+    ]
     assert state["sleep_utility"]["debt_hours"] == 3.5
     assert state["journal"]["insights"] == []
+
+
+def test_performance_state_uses_previous_night_without_rendering_false_gaps() -> None:
+    fitbit = {
+        "sleep": {
+            "goal": 8,
+            "days": [
+                {"date": f"2026-07-{day:02d}", "hours": 7.5}
+                for day in range(25, 32)
+            ],
+        },
+        "recovery_history": [
+            {
+                "date": f"2026-07-{day:02d}",
+                "hrv": 92 + day % 3,
+                "resting_hr": 50,
+                "respiratory_rate": 14.2,
+                "temperature": 0.1,
+                "oxygen": 96,
+            }
+            for day in range(25, 32)
+        ],
+        "exercises": [],
+        "daily_activity": {"days": []},
+    }
+
+    state = api._performance_daily_state(
+        fitbit,
+        {"count": 0, "moving_minutes": 0, "training_load": 0, "calories": 0},
+        date(2026, 8, 1),
+        activity_rows=[],
+        daily_checkins=[],
+    )
+
+    assert state["morning_recovery"]["sleep_hours"] == 7.5
+    assert state["confidence"]["available_signals"] == 6
+    assert all(factor["value"] != "Sin dato" for factor in state["morning_recovery"]["factors"])
+    assert all(factor["measurement_date"] == "2026-07-31" for factor in state["morning_recovery"]["factors"])
+    assert all(factor["detail"].startswith("Última noche") for factor in state["morning_recovery"]["factors"])
+    assert state["physiological_stress"]["score"] is not None
+    assert state["physiological_stress"]["source"].startswith("Estimación nocturna")
+    assert 0 <= state["energy"]["score"] <= 100
+    assert state["load_7d"]["target_min"] < state["load_7d"]["target_max"]

@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, FlaskConical, X } from "lucide-react";
+import { ArrowRight, Flag, FlaskConical, X } from "lucide-react";
 import { HomeCommandCenter } from "@/components/home-command-center";
 import { OfflineState } from "@/components/offline-state";
-import { RaceCountdown } from "@/components/race-countdown";
 import { getDashboard } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -26,15 +25,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="page-wrap dashboard-page">
-      <header className="home-topbar refined-home-topbar">
+      <header className="pulse-page-header">
         <div>
-          <span className="eyebrow">Chicago 2026 · Semana {data.next_week?.number ?? "—"}</span>
-          <h1>{name ? `Hola, ${name}.` : "Tu entrenamiento de hoy."}</h1>
-          <p>{data.metrics.distance_current_week} km esta semana</p>
-          <RaceCountdown raceDate={data.race_date} initialDays={data.days_to_race} />
+          <span className="eyebrow">PaceOS · Chicago 2026</span>
+          <h1>{name ? `Hola, ${name}. Este es tu estado.` : "Tu estado de hoy."}</h1>
+          <p>Lo importante para decidir cómo entrenar.</p>
         </div>
-        <div className={hasTrainingData ? "connection connected" : "connection"}>
-          <span />{hasTrainingData ? `${data.activity_count} actividades` : "Historial pendiente"}
+        <div className="pulse-race-chip" aria-label={`${data.days_to_race} días para el Maratón de Chicago`}>
+          <Flag size={18} />
+          <span><strong>{data.days_to_race}</strong> días para Chicago</span>
         </div>
       </header>
 

@@ -28,9 +28,12 @@ def test_dashboard_and_coach_status_are_available() -> None:
         "recommendation",
         "confidence",
         "load_7d",
-        "sleep_utility",
-        "journal",
-    }
+            "sleep_utility",
+            "journal",
+            "physiological_stress",
+            "energy",
+            "trends",
+        }
     assert len(dashboard.json()["daily_state"]["morning_recovery"]["factors"]) == 6
     assert len(dashboard.json()["daily_state"]["load_7d"]["trend"]) == 7
     assert dashboard.json()["current_date"]
@@ -154,6 +157,30 @@ def test_body_composition_endpoint_saves_history(tmp_path: Path, monkeypatch) ->
     assert history.status_code == 200
     assert history.json()["count"] == 1
     assert history.json()["latest"]["body_fat_percent"] == 47.8
+
+
+def test_body_composition_reads_fitbit_weight_without_manual_entry(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    test_database = Database(tmp_path / "fitbit-weight.db")
+    test_database.upsert_google_health_data_point(
+        "weight",
+        "weight-2026-07-31",
+        "2026-07-31T07:30:00+02:00",
+        "FITBIT",
+        {"weight": {"weightGrams": 80500}},
+    )
+    monkeypatch.setattr(api, "database", test_database)
+    client = TestClient(api.app)
+
+    history = client.get("/api/body-composition")
+
+    assert history.status_code == 200
+    assert history.json()["count"] == 1
+    assert history.json()["latest"]["source"] == "Fitbit"
+    assert history.json()["latest"]["weight_kg"] == 80.5
+    assert history.json()["latest"]["muscle_mass_kg"] is None
 
 
 def test_daily_checkin_endpoint_starts_and_updates_journal(

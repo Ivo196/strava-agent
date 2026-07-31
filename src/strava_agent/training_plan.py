@@ -263,7 +263,7 @@ def _goal_status(metrics: dict[str, Any], risk: str, weeks_left: int, completion
 
 def _adaptation_reason(checkin: dict[str, Any] | None, completion: float, risk: str) -> str:
     if not checkin:
-        return "Falta el cierre semanal de fatiga y rodilla; se mantiene una valoración prudente."
+        return "Estado calculado automáticamente con las actividades y la carga sincronizadas; el plan se mantiene estable."
     if risk == "Alto":
         return "Dolor o señales de alarma: se detiene la progresión y se sustituye la carga."
     if completion < 75:

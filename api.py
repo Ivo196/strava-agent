@@ -878,9 +878,10 @@ def _fitbit_insights(google_status: dict[str, Any]) -> dict[str, Any]:
             if all(key in civil_date for key in ("year", "month", "day"))
             else recorded.date().isoformat()
         )
+        local_recorded = recorded.astimezone()
         local_clock = (
-            f"{int(civil_time.get('hours', 0) if civil else recorded.hour):02d}:"
-            f"{int(civil_time.get('minutes', 0) if civil else recorded.minute):02d}"
+            f"{int(civil_time['hours'] if 'hours' in civil_time else local_recorded.hour):02d}:"
+            f"{int(civil_time['minutes'] if 'minutes' in civil_time else local_recorded.minute):02d}"
         )
         heart_rate_samples.append((recorded, local_date, local_clock, float(value)))
 
@@ -987,7 +988,7 @@ def _fitbit_sleep_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         nights[day] = max(nights.get(day, 0), float(value))
     return [
         {"date": day, "hours": round(hours, 1)}
-        for day, hours in sorted(nights.items())[-7:]
+        for day, hours in sorted(nights.items())[-90:]
     ]
 
 
@@ -1220,7 +1221,7 @@ def _fitbit_recovery_history(rows: list[dict[str, Any]]) -> list[dict[str, Any]]
             continue
         target = days.setdefault(recorded.date().isoformat(), {"date": recorded.date().isoformat()})
         target[key] = round(float(normalized[0]), 1)
-    return [values for _day, values in sorted(days.items())[-28:]]
+    return [values for _day, values in sorted(days.items())[-90:]]
 
 
 def _dashboard_demo_fitbit(
@@ -1377,7 +1378,11 @@ def _dashboard_daily_state(
         if str(night.get("date") or "") <= current_day
     ]
     latest_sleep = next(
-        (night for night in reversed(sleep_days) if night.get("date") == current_day),
+        (
+            night for night in reversed(sleep_days)
+            if night.get("date")
+            and 0 <= (analysis_date - date.fromisoformat(str(night["date"]))).days <= 2
+        ),
         None,
     )
     sleep_hours = float(latest_sleep["hours"]) if latest_sleep else None
@@ -1388,10 +1393,15 @@ def _dashboard_daily_state(
         if str(item.get("date") or "") <= current_day
     ]
     today_recovery = next(
-        (item for item in reversed(history) if item.get("date") == current_day),
+        (
+            item for item in reversed(history)
+            if item.get("date")
+            and 0 <= (analysis_date - date.fromisoformat(str(item["date"]))).days <= 2
+        ),
         {},
     )
-    prior_history = [item for item in history if item.get("date") != current_day]
+    recovery_date = today_recovery.get("date")
+    prior_history = [item for item in history if item.get("date") != recovery_date]
     hrv_baseline_values = [
         float(item["hrv"]) for item in prior_history if item.get("hrv") is not None
     ]
@@ -1596,11 +1606,25 @@ def _performance_daily_state(
         if str(item.get("date") or "") <= current_day
     ]
     today_signals = next(
-        (item for item in reversed(history) if item.get("date") == current_day),
+        (
+            item for item in reversed(history)
+            if item.get("date")
+            and 0 <= (analysis_date - date.fromisoformat(str(item["date"]))).days <= 2
+        ),
         {},
     )
-    prior = [item for item in history if item.get("date") != current_day][-28:]
+    signal_date = str(today_signals.get("date") or "")
+    prior = [item for item in history if item.get("date") != signal_date][-28:]
     sleep = state["morning_recovery"].get("sleep_hours")
+    sleep_date = next(
+        (
+            str(night.get("date")) for night in reversed(fitbit.get("sleep", {}).get("days", []))
+            if night.get("date")
+            and str(night.get("date")) <= current_day
+            and 0 <= (analysis_date - date.fromisoformat(str(night["date"]))).days <= 2
+        ),
+        "",
+    )
     sleep_goal = float(fitbit.get("sleep", {}).get("goal") or 8)
 
     definitions = [
@@ -1650,14 +1674,26 @@ def _performance_daily_state(
             else "low" if signal_score is not None and signal_score < 40
             else "neutral"
         )
+        measurement_date = sleep_date if key == "sleep" else signal_date
+        measurement_age = (
+            (analysis_date - date.fromisoformat(measurement_date)).days
+            if measurement_date
+            else None
+        )
+        freshness = (
+            "Hoy" if measurement_age == 0
+            else "Última noche" if measurement_age == 1
+            else f"Hace {measurement_age} días" if measurement_age is not None
+            else ""
+        )
         if value is None:
             detail = "Sin medición para hoy"
         elif key == "sleep":
-            detail = f"Objetivo personal {sleep_goal:g} h"
+            detail = f"{freshness} · Objetivo {sleep_goal:g} h"
         elif baseline is None or len(baseline_values) < 3:
-            detail = f"{len(baseline_values)}/3 días para una referencia"
+            detail = f"{freshness} · {len(baseline_values)}/3 días para una referencia"
         else:
-            detail = f"Base 28 d: {baseline:.1f} {unit}"
+            detail = f"{freshness} · Base 28 d: {baseline:.1f} {unit}"
         factors.append({
             "key": key,
             "label": label,
@@ -1666,6 +1702,7 @@ def _performance_daily_state(
             "detail": detail,
             "score": round(signal_score) if signal_score is not None else None,
             "baseline": round(baseline, 1) if baseline is not None else None,
+            "measurement_date": measurement_date or None,
         })
 
     calibrated = state["calibration"]["ready"]
@@ -1703,27 +1740,101 @@ def _performance_daily_state(
         analysis_date,
     )
     state["sleep_utility"] = _sleep_utility(fitbit, analysis_date)
+    resting_reference = today_signals.get("resting_hr")
+    heart_rate = fitbit.get("heart_rate", {})
+    heart_rate_date = str(heart_rate.get("date") or "")
+    heart_rate_fresh = bool(
+        heart_rate_date
+        and 0 <= (analysis_date - date.fromisoformat(heart_rate_date)).days <= 2
+    )
+
+    def activation_score(bpm: float) -> int:
+        reference = float(resting_reference or 55)
+        return round(max(0, min(100, (bpm - reference) / max(35, reference * 0.9) * 100)))
+
+    stress_timeline = []
+    series = heart_rate.get("series", []) if heart_rate_fresh else []
+    stride = max(1, math.ceil(len(series) / 24))
+    for point in series[::stride]:
+        bpm = float(point.get("bpm") or 0)
+        stress_timeline.append({
+            "time": str(point.get("time") or ""),
+            "bpm": round(bpm),
+            "score": activation_score(bpm),
+        })
+    latest_bpm = float(heart_rate.get("latest") or 0) if heart_rate_fresh else 0
+    physiological_scores = [
+        int(factor["score"])
+        for factor in factors
+        if factor["key"] in {"hrv", "resting_hr", "respiratory_rate", "temperature"}
+        and factor["score"] is not None
+    ]
+    stress_score = (
+        activation_score(latest_bpm)
+        if latest_bpm
+        else round(100 - sum(physiological_scores) / len(physiological_scores))
+        if physiological_scores
+        else None
+    )
+    stress_label = (
+        "Estrés elevado" if stress_score is not None and stress_score >= 70
+        else "Activado" if stress_score is not None and stress_score >= 40
+        else "Relajado" if stress_score is not None and stress_score >= 15
+        else "Recuperación" if stress_score is not None
+        else "Sin lectura reciente"
+    )
+    state["physiological_stress"] = {
+        "score": stress_score,
+        "label": stress_label,
+        "latest_bpm": round(latest_bpm) if latest_bpm else None,
+        "date": heart_rate_date or signal_date or None,
+        "timeline": stress_timeline,
+        "source": (
+            "Pulso pasivo intradía frente a tu pulso en reposo"
+            if latest_bpm
+            else "Estimación nocturna con HRV y constantes vitales"
+        ),
+        "confidence": "Alta" if latest_bpm and float(heart_rate.get("coverage_hours") or 0) >= 18 else "Media" if stress_score is not None else "Baja",
+        "note": "Mide activación fisiológica; ejercicio, calor, cafeína o enfermedad también pueden elevarla.",
+    }
+    current_load = next(
+        (float(item["total"]) for item in state["load_7d"]["trend"] if item["date"] == current_day),
+        0.0,
+    )
+    readiness_estimate = round(weighted_score / available_weight) if available_weight else 50
+    baseline_daily = float(state["load_7d"]["baseline"] or 70) / 7
+    readiness_multiplier = 0.75 + readiness_estimate / 200
+    target_mid = max(6, baseline_daily * readiness_multiplier)
+    state["load_7d"].update({
+        "current_today": round(current_load, 1),
+        "target_min": round(target_mid * 0.8, 1),
+        "target_max": round(target_mid * 1.2, 1),
+    })
+    drain = min(70, current_load * 0.7 + float(stress_score or 0) * 0.18)
+    energy_score = round(max(0, min(100, readiness_estimate - drain)))
+    state["energy"] = {
+        "score": energy_score,
+        "label": "Alta" if energy_score >= 70 else "Disponible" if energy_score >= 45 else "Baja",
+        "recharged": readiness_estimate,
+        "used": round(drain),
+        "explanation": f"+{readiness_estimate} por recuperación · −{round(drain)} por carga y activación",
+        "method": "Balance estimado entre recuperación nocturna, carga de hoy y activación fisiológica.",
+    }
+    state["trends"] = {
+        "recovery": history[-90:],
+        "sleep": [
+            night for night in fitbit.get("sleep", {}).get("days", [])
+            if str(night.get("date") or "") <= current_day
+        ][-90:],
+        "load": state["load_7d"]["trend"],
+    }
     state["journal"] = _journal_summary(
         daily_checkins,
         fitbit.get("sleep", {}).get("days", []),
         analysis_date,
     )
 
-    today_journal = state["journal"]["today"]
-    if today_journal and (
-        int(today_journal.get("fatigue") or 0) >= 4
-        or int(today_journal.get("soreness") or 0) >= 6
-        or str(today_journal.get("injury_note") or "").strip()
-    ):
-        state["recommendation"] = {
-            "title": "Tus sensaciones piden margen",
-            "body": (
-                "Combina los sensores con tu check-in: reduce intensidad y detén la sesión "
-                "si el dolor altera la técnica o empeora al calentar."
-            ),
-            "remaining": "Sesión suave o descanso",
-        }
-    elif state["load_7d"]["risk"] == "Alto":
+    if state["load_7d"]["risk"] == "Alto":
         state["recommendation"] = {
             "title": "Consolida antes de volver a cargar",
             "body": state["load_7d"]["recommendation"],
@@ -1748,6 +1859,8 @@ def _aggregate_load_7d(
     fitbit: dict[str, Any],
     analysis_date: date,
 ) -> dict[str, Any]:
+    week_start = analysis_date - timedelta(days=analysis_date.weekday())
+    week_end = week_start + timedelta(days=6)
     start = analysis_date - timedelta(days=34)
     daily: dict[str, dict[str, float]] = {}
 
@@ -1801,8 +1914,8 @@ def _aggregate_load_7d(
 
     trend = []
     categories = {key: 0.0 for key in ("running", "cycling", "strength", "general")}
-    for offset in range(6, -1, -1):
-        day = analysis_date - timedelta(days=offset)
+    for offset in range(7):
+        day = week_start + timedelta(days=offset)
         values = daily.get(day.isoformat(), {key: 0.0 for key in categories})
         total = sum(values.values())
         trend.append({
@@ -1814,11 +1927,11 @@ def _aggregate_load_7d(
             categories[key] += values[key]
     acute = sum(item["total"] for item in trend)
     baseline_weeks = []
-    for week_index in range(4):
-        week_end = analysis_date - timedelta(days=7 + week_index * 7)
+    for week_index in range(1, 5):
+        baseline_week_start = week_start - timedelta(weeks=week_index)
         week_total = 0.0
         for offset in range(7):
-            week_total += sum(daily.get((week_end - timedelta(days=offset)).isoformat(), {}).values())
+            week_total += sum(daily.get((baseline_week_start + timedelta(days=offset)).isoformat(), {}).values())
         if week_total > 0:
             baseline_weeks.append(week_total)
     baseline = sum(baseline_weeks) / len(baseline_weeks) if baseline_weeks else None
@@ -1838,6 +1951,8 @@ def _aggregate_load_7d(
         else "Aún no hay cuatro semanas comparables; usa la tendencia como registro, no como límite prescriptivo."
     )
     return {
+        "week_start": week_start.isoformat(),
+        "week_end": week_end.isoformat(),
         "total": round(acute, 1),
         "baseline": round(baseline, 1) if baseline is not None else None,
         "ratio": round(ratio, 2) if ratio is not None else None,
@@ -1887,6 +2002,7 @@ def _sleep_utility(fitbit: dict[str, Any], analysis_date: date) -> dict[str, Any
         "goal_hours": goal,
         "guidance": guidance,
         "consistency_basis": "regularidad de duración" if consistency is not None else "faltan 3 noches",
+        "trend": nights,
     }
 
 
@@ -2337,7 +2453,32 @@ def get_profile() -> dict[str, Any]:
 
 @app.get("/api/body-composition")
 def get_body_composition() -> dict[str, Any]:
-    measurements = database.list_body_composition()
+    stored = database.list_body_composition()
+    by_date = {str(item["measurement_date"]): item for item in stored}
+    fitbit_rows = database.list_google_health_data_points(["weight"], source="FITBIT")
+    for row in fitbit_rows:
+        recorded = _parse_health_datetime(row.get("recorded_at"))
+        normalized = normalized_recovery_value("weight", json.loads(row["value_json"]))
+        if recorded is None or normalized is None:
+            continue
+        measurement_date = recorded.date().isoformat()
+        if measurement_date in by_date:
+            continue
+        by_date[measurement_date] = {
+            "id": f"fitbit-{measurement_date}",
+            "measurement_date": measurement_date,
+            "source": "Fitbit",
+            "weight_kg": round(float(normalized[0]), 1),
+            "muscle_mass_kg": None,
+            "body_fat_percent": None,
+            "height_cm": None,
+            "age": None,
+            "sex": None,
+            "notes": "",
+            "created_at": row.get("created_at") or row.get("recorded_at"),
+            "updated_at": row.get("created_at") or row.get("recorded_at"),
+        }
+    measurements = sorted(by_date.values(), key=lambda item: item["measurement_date"], reverse=True)
     return {
         "latest": measurements[0] if measurements else None,
         "measurements": measurements,

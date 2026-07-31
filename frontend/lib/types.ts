@@ -246,12 +246,12 @@ export type CalendarActualActivity = {
 };
 
 export type BodyCompositionMeasurement = {
-  id: number;
+  id: number | string;
   measurement_date: string;
   source: string;
   weight_kg: number;
-  muscle_mass_kg: number;
-  body_fat_percent: number;
+  muscle_mass_kg: number | null;
+  body_fat_percent: number | null;
   height_cm: number | null;
   age: number | null;
   sex: "M" | "F" | null;
@@ -412,6 +412,32 @@ export type DashboardData = {
       }[];
       baseline_weeks: number;
       method: string;
+      current_today: number;
+      target_min: number;
+      target_max: number;
+    };
+    physiological_stress: {
+      score: number | null;
+      label: string;
+      latest_bpm: number | null;
+      date: string | null;
+      timeline: { time: string; bpm: number; score: number }[];
+      source: string;
+      confidence: "Baja" | "Media" | "Alta";
+      note: string;
+    };
+    energy: {
+      score: number;
+      label: string;
+      recharged: number;
+      used: number;
+      explanation: string;
+      method: string;
+    };
+    trends: {
+      recovery: { date: string; hrv?: number; resting_hr?: number; respiratory_rate?: number; temperature?: number; oxygen?: number }[];
+      sleep: { date: string; hours: number }[];
+      load: { date: string; total: number }[];
     };
     sleep_utility: {
       debt_hours: number | null;
@@ -423,6 +449,7 @@ export type DashboardData = {
       goal_hours: number;
       guidance: string;
       consistency_basis: string;
+      trend: { date: string; hours: number }[];
     };
     journal: {
       today: {

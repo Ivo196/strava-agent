@@ -3,505 +3,298 @@ import type { CSSProperties, ReactNode } from "react";
 import {
   Activity,
   ArrowRight,
-  BedDouble,
+  BatteryCharging,
   Bike,
   CalendarDays,
+  ChevronDown,
   ChevronRight,
-  CircleGauge,
-  Clock3,
   Dumbbell,
-  Droplets,
-  Flame,
   Footprints,
   Gauge,
   HeartPulse,
   MoonStar,
   Route,
-  ShieldCheck,
   Sparkles,
-  Thermometer,
   TrendingUp,
-  Wind,
+  Zap,
 } from "lucide-react";
+import { activityDisplayName } from "@/lib/activity-display";
 import type { DailyAgendaItem, DashboardData } from "@/lib/types";
-import { InteractiveWeek } from "@/components/interactive-week";
-import { activityDisplayName, activityDisplaySource } from "@/lib/activity-display";
-import { DailyJournal } from "@/components/daily-journal";
 
 const weekday = new Intl.DateTimeFormat("es-ES", { weekday: "short" });
-const time = new Intl.DateTimeFormat("es-ES", {
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "Europe/Paris",
-});
 
 function clamp(value: number) {
   return Math.max(0, Math.min(100, value));
 }
 
-function categoryIcon(category: DailyAgendaItem["category"], size = 18) {
+function categoryIcon(category: DailyAgendaItem["category"], size = 20) {
   if (category === "run") return <Footprints size={size} />;
   if (category === "strength") return <Dumbbell size={size} />;
   if (category === "bike") return <Bike size={size} />;
   return <MoonStar size={size} />;
 }
 
-function MetricTile({
-  icon,
+function StatusGauge({
   label,
   value,
-  unit,
+  suffix,
   percent,
   caption,
+  tone,
+  icon,
 }: {
-  icon: ReactNode;
   label: string;
   value: string | number;
-  unit?: string;
+  suffix: string;
   percent: number;
   caption: string;
+  tone: "recovery" | "stress" | "load" | "sleep";
+  icon: ReactNode;
 }) {
   return (
-    <article className="pace-metric">
-      <div className="pace-metric-head">
-        <span className="pace-icon">{icon}</span>
-        <span>{label}</span>
-      </div>
-      <strong>
-        {value}
-        {unit && <small>{unit}</small>}
-      </strong>
+    <article className={`pulse-gauge-card tone-${tone}`}>
       <div
-        className="pace-bullet"
+        className="pulse-gauge"
+        style={{ "--pulse-value": `${clamp(percent)}%` } as CSSProperties}
         role="progressbar"
-        aria-label={`${label}: ${value}${unit ? ` ${unit}` : ""}`}
+        aria-label={`${label}: ${value} ${suffix}`}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(clamp(percent))}
       >
-        <i style={{ width: `${clamp(percent)}%` }} />
-        <b aria-hidden="true" />
+        <span>{icon}</span>
+        <strong>{value}</strong>
+        <small>{suffix}</small>
       </div>
-      <p>{caption}</p>
+      <div className="pulse-gauge-copy">
+        <span>{label}</span>
+        <p>{caption}</p>
+      </div>
     </article>
   );
 }
 
-function EmptyLoad({ today }: { today: DailyAgendaItem | undefined }) {
-  return (
-    <div className="pace-load-empty">
-      <span className={`pace-activity-icon category-${today?.category ?? "rest"}`}>
-        {categoryIcon(today?.category ?? "rest", 22)}
-      </span>
-      <div>
-        <small>Plan de hoy</small>
-        <strong>{today?.title ?? "Día de recuperación"}</strong>
-        <p>{today?.detail ?? "Sin una sesión exigente programada."}</p>
-      </div>
-      <Link href="/plan" aria-label="Abrir el plan de entrenamiento">
-        Abrir plan <ChevronRight size={17} />
-      </Link>
-    </div>
-  );
-}
-
 export function HomeCommandCenter({ data }: { data: DashboardData }) {
-  const fitbit = data.devices.fitbit;
   const state = data.daily_state;
   const recovery = state.morning_recovery;
-  const load = state.today_load;
-  const loadWeek = state.load_7d;
-  const sleepUtility = state.sleep_utility;
+  const load = state.load_7d;
+  const stress = state.physiological_stress ?? {
+    score: null, label: "", latest_bpm: null, date: null, timeline: [],
+    source: "", confidence: "Baja" as const, note: "",
+  };
+  const energy = state.energy ?? {
+    score: recovery.score ?? 50, label: "", recharged: recovery.score ?? 50,
+    used: 0, explanation: "Construyendo el balance", method: "",
+  };
   const today = data.daily_agenda[0];
-  const steps = fitbit.steps.latest;
-  const sleep = fitbit.sleep.latest;
-  const activeEnergy = fitbit.active_energy.latest;
-  const totalCalories = fitbit.total_calories?.latest;
-  const dailyActivity = fitbit.daily_activity?.latest;
+  const latestRun = data.recent_activities[0];
   const weeklyTarget = data.next_week?.target_km || data.metrics.average_weekly_28d || 1;
   const weeklyPercent = clamp((data.metrics.distance_current_week / weeklyTarget) * 100);
-  const calibrationPercent = clamp(
+  const recoveryPercent = recovery.score ?? clamp(
     (state.calibration.nights / state.calibration.required) * 100,
   );
-  const gaugeValue = recovery.score ?? calibrationPercent;
-  const hasLoad = load.activities_count > 0;
-  const maxDailyLoad = Math.max(...loadWeek.trend.map((day) => day.total), 1);
-  const todayRun = data.recent_activities.find((activity) => activity.date === data.current_date);
+  const currentLoad = load.current_today ?? 0;
+  const targetMin = load.target_min ?? 0;
+  const targetMax = load.target_max ?? Math.max(load.total, 1);
+  const loadPercent = clamp((currentLoad / Math.max(targetMax, 1)) * 100);
+  const availableRecoveryFactors = recovery.factors.filter(
+    (factor) => factor.value !== "Sin dato",
+  );
+  const maxDailyLoad = Math.max(...load.trend.map((day) => day.total), 1);
 
   return (
-    <section className="pace-dashboard" aria-label="Estado de entrenamiento y recuperación">
-      <section className={`pace-recovery-hero recovery-${load.level}`}>
-        <div className="pace-hero-topline">
+    <section className="pulse-dashboard" aria-label="Resumen de rendimiento de hoy">
+      <section className="pulse-overview" aria-labelledby="pulse-overview-title">
+        <div className="pulse-section-heading">
           <div>
-            <span className="pace-kicker">Estado de hoy</span>
-            <span className="pace-data-time">Fitbit actualizado en vivo</span>
+            <span className="pace-kicker">Lectura rápida</span>
+            <h2 id="pulse-overview-title">Tu estado en cuatro indicadores</h2>
           </div>
-          <div className="pace-source-pills" aria-label="Fuentes de datos">
-            <span><ShieldCheck size={15} /> Salud: Fitbit</span>
-            <span><Footprints size={15} /> Carreras: Apple Watch</span>
-          </div>
+          <span className="pulse-confidence">
+            Confianza {state.confidence.level.toLowerCase()} · {state.confidence.available_signals}/{state.confidence.expected_signals}
+          </span>
         </div>
 
-        <div className="pace-hero-grid">
-          <div
-            className="pace-recovery-gauge"
-            style={{ "--gauge": `${gaugeValue}%` } as CSSProperties}
-            aria-label={
-              recovery.score == null
-                ? `${state.calibration.nights} de ${state.calibration.required} noches de calibración`
-                : `Recuperación ${recovery.score} de 100`
-            }
-          >
-            <div>
-              <strong>{recovery.score ?? state.calibration.nights}</strong>
-              <span>
-                {recovery.score == null
-                  ? `de ${state.calibration.required} noches`
-                  : "de 100"}
-              </span>
-            </div>
-          </div>
-
-          <div className="pace-recovery-copy">
-            <span className={`pace-status status-${recovery.factors[0]?.state ?? "neutral"}`}>
-              {recovery.score == null ? "Calibrando" : "Recuperación matinal"}
-            </span>
-            <h2>{recovery.label}</h2>
-            <p>{recovery.summary}</p>
-            <div className="pace-recommendation">
-              <Sparkles size={19} />
-              <div>
-                <strong>{state.recommendation.title}</strong>
-                <p>{state.recommendation.body}</p>
-              </div>
-              <span>{state.recommendation.remaining}</span>
-            </div>
-          </div>
-
-          <div className="pace-factor-list" aria-label="Factores de recuperación">
-            {recovery.factors.map((factor) => (
-              <article className={`pace-factor factor-${factor.state}`} key={factor.key}>
-                <span className="pace-factor-icon">
-                  {factor.key === "sleep" ? (
-                    <BedDouble size={18} />
-                  ) : factor.key === "hrv" ? (
-                    <Activity size={18} />
-                  ) : factor.key === "resting_hr" ? (
-                    <HeartPulse size={18} />
-                  ) : factor.key === "respiratory_rate" ? (
-                    <Wind size={18} />
-                  ) : factor.key === "temperature" ? (
-                    <Thermometer size={18} />
-                  ) : (
-                    <Droplets size={18} />
-                  )}
-                </span>
-                <div>
-                  <small>{factor.label}</small>
-                  <strong>{factor.value}</strong>
-                  <p>{factor.detail}</p>
-                </div>
-                {factor.state === "low" && <span className="pace-impact">Limita</span>}
-                {factor.state === "good" && <span className="pace-impact">A favor</span>}
-                {factor.state === "neutral" && <span className="pace-impact">Calibrando</span>}
-              </article>
-            ))}
-            <p className="pace-confidence">
-              Confianza {state.confidence.level.toLowerCase()} · {state.confidence.available_signals}/{state.confidence.expected_signals} señales
-              <span>{state.confidence.note}</span>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="pace-today-load">
-        <div className="pace-section-head">
-          <div>
-            <span className="pace-kicker">Carga de hoy</span>
-            <h2>{hasLoad ? load.label : "Todavía sin actividad"}</h2>
-          </div>
-          {hasLoad && (
-            <div className="pace-load-summary" aria-label="Resumen de carga de hoy">
-              <span><Clock3 size={15} /><strong>{load.duration_minutes}</strong> min</span>
-              <span><CircleGauge size={15} /><strong>{load.zone_minutes}</strong> min zona</span>
-              <span><Flame size={15} /><strong>{load.calories}</strong> kcal</span>
-            </div>
+        <div className="pulse-gauge-grid">
+          <StatusGauge
+            label="Recuperación"
+            value={recovery.score ?? state.calibration.nights}
+            suffix={recovery.score == null ? `de ${state.calibration.required} noches` : "de 100"}
+            percent={recoveryPercent}
+            caption={recovery.score == null ? "Construyendo tu base" : recovery.label}
+            tone="recovery"
+            icon={<HeartPulse size={16} />}
+          />
+          {stress.score != null && (
+            <StatusGauge
+              label="Activación"
+              value={stress.score}
+              suffix="de 100"
+              percent={stress.score}
+              caption={`${stress.label} · ${stress.confidence.toLowerCase()}`}
+              tone="stress"
+              icon={<Zap size={16} />}
+            />
           )}
+          <StatusGauge
+            label="Energía"
+            value={energy.score}
+            suffix="de 100"
+            percent={energy.score}
+            caption={energy.explanation}
+            tone="sleep"
+            icon={<BatteryCharging size={16} />}
+          />
+          <StatusGauge
+            label="Carga · hoy"
+            value={currentLoad}
+            suffix="puntos"
+            percent={loadPercent}
+            caption={`Objetivo ${targetMin}–${targetMax}`}
+            tone="load"
+            icon={<Gauge size={16} />}
+          />
         </div>
 
-        {hasLoad ? (
-          <div className="pace-activity-row">
-            {load.fitbit_exercises.map((exercise) => (
-              <article className="pace-activity-card" key={exercise.start_time}>
-                <span className="pace-activity-icon">
-                  {exercise.type === "BIKING" ? <Bike size={22} /> : <Footprints size={22} />}
-                </span>
-                <div>
-                  <small>
-                    Fitbit · {time.format(new Date(exercise.start_time))}
-                  </small>
-                  <strong>{exercise.label}</strong>
-                  <p>
-                    {exercise.duration_minutes} min
-                    {exercise.average_heartrate ? ` · ${exercise.average_heartrate} bpm` : ""}
-                    {exercise.calories ? ` · ${exercise.calories} kcal` : ""}
-                  </p>
-                </div>
-                <span className="pace-zone-badge">{exercise.zone_minutes} min zona</span>
-              </article>
-            ))}
-            {load.apple_runs > 0 && (
-              <Link className="pace-activity-card apple-run-card" href={todayRun ? `/activities/${todayRun.id}` : "/activities"}>
-                <span className="pace-activity-icon"><Footprints size={22} /></span>
-                <div>
-                  <small>Apple Watch</small>
-                  <strong>{load.apple_runs > 1 ? `${load.apple_runs} carreras` : "Carrera"}</strong>
-                  <p>
-                    {data.today_activity.distance_km} km · {Math.round(data.today_activity.moving_minutes)} min
-                  </p>
-                </div>
-                <ChevronRight size={18} />
-              </Link>
-            )}
+        <article className="pulse-action-card">
+          <span className={`pulse-action-icon category-${today?.category ?? "rest"}`}>
+            {categoryIcon(today?.category ?? "rest", 24)}
+          </span>
+          <div className="pulse-action-copy">
+            <span>Recomendación de hoy</span>
+            <h3>{state.recommendation.title}</h3>
+            <p>{state.recommendation.body}</p>
+            <div className="pulse-session-line">
+              <strong>{today?.title ?? "Recuperación"}</strong>
+              <small>{today?.detail ?? "Mantén el día flexible."}</small>
+            </div>
           </div>
-        ) : (
-          <EmptyLoad today={today} />
+          <Link href="/plan" aria-label="Abrir el plan completo">
+            Ver plan <ChevronRight size={17} />
+          </Link>
+        </article>
+
+        {stress.timeline.length >= 4 && (
+          <article className="pulse-stress-timeline" aria-labelledby="stress-timeline-title">
+            <div>
+              <span className="pace-kicker">Pulso pasivo disponible</span>
+              <h3 id="stress-timeline-title">Activación fisiológica del día</h3>
+              <p>{stress.note}</p>
+            </div>
+            <div className="stress-timeline-bars" aria-label="Activación fisiológica por hora">
+              {stress.timeline.map((point, index) => (
+                <span key={`${point.time}-${point.bpm}-${index}`} title={`${point.time} · ${point.bpm} bpm · activación ${point.score}`}>
+                  <i style={{ height: `${Math.max(8, point.score)}%` }} />
+                  <small>{point.time}</small>
+                </span>
+              ))}
+            </div>
+            <footer><span>{stress.source}</span><strong>Confianza {stress.confidence.toLowerCase()}</strong></footer>
+          </article>
         )}
       </section>
 
-      <section className="pace-day-metrics" aria-label="Cómo va el día">
-        <div className="pace-section-head compact">
+      <section className="pulse-load-card" aria-labelledby="pulse-load-title">
+        <div className="pulse-section-heading">
           <div>
-            <span className="pace-kicker">Cómo va tu día</span>
-            <h2>Movimiento y energía</h2>
+            <span className="pace-kicker">Tendencia</span>
+            <h2 id="pulse-load-title">Carga de lunes a domingo</h2>
           </div>
-          <span className="pace-live"><i /> En vivo</span>
+          <span className={`pulse-risk risk-${load.risk.toLowerCase().replace(" ", "-")}`}>
+            {load.risk === "Sin base" ? "Base en construcción" : `Riesgo ${load.risk.toLowerCase()}`}
+          </span>
         </div>
-        <div className="pace-metric-grid">
-          <MetricTile
-            icon={<Footprints size={18} />}
-            label="Pasos"
-            value={steps?.count.toLocaleString("es-ES") ?? "—"}
-            percent={steps ? (steps.count / fitbit.steps.goal) * 100 : 0}
-            caption={`Objetivo ${fitbit.steps.goal.toLocaleString("es-ES")}`}
-          />
-          <MetricTile
-            icon={<CircleGauge size={18} />}
-            label="Zona activa"
-            value={dailyActivity?.zone_minutes ?? "—"}
-            unit="min"
-            percent={
-              dailyActivity
-                ? (dailyActivity.zone_minutes / (fitbit.daily_activity?.zone_minutes_goal ?? 22)) * 100
-                : 0
-            }
-            caption={`Objetivo ${fitbit.daily_activity?.zone_minutes_goal ?? 22} min`}
-          />
-          <MetricTile
-            icon={<Flame size={18} />}
-            label="Energía activa"
-            value={activeEnergy?.kcal ?? "—"}
-            unit="kcal"
-            percent={activeEnergy ? (activeEnergy.kcal / fitbit.active_energy.goal) * 100 : 0}
-            caption={totalCalories ? `${totalCalories.kcal} kcal totales hoy` : "Sin metabolismo basal"}
-          />
-          <MetricTile
-            icon={<Route size={18} />}
-            label="Distancia diaria"
-            value={dailyActivity?.distance_km ?? "—"}
-            unit="km"
-            percent={dailyActivity ? (dailyActivity.distance_km / 8) * 100 : 0}
-            caption="Caminatas y desplazamientos"
-          />
-        </div>
-      </section>
 
-      <div className="pace-main-grid">
-        <section className="pace-week-card">
-          <div className="pace-section-head">
-            <div>
-              <span className="pace-kicker">Esta semana</span>
-              <h2>Entrenamiento y próximos días</h2>
-            </div>
-            <Link href="/plan">Abrir calendario <CalendarDays size={16} /></Link>
-          </div>
-
-          <div className="pace-week-score">
-            <div>
-              <strong>{data.metrics.distance_current_week}</strong>
-              <span>de {weeklyTarget} km</span>
-              <small>{Math.round(weeklyPercent)}% del objetivo</small>
-            </div>
-            <div className="pace-week-track" role="progressbar" aria-valuenow={Math.round(weeklyPercent)} aria-valuemin={0} aria-valuemax={100}>
-              <i style={{ width: `${weeklyPercent}%` }} />
-            </div>
-            <div className="pace-week-kpis">
-              <span><Footprints size={16} /><strong>{data.metrics.runs_current_week}</strong> carreras</span>
-              <span><Gauge size={16} /><strong>{data.metrics.load_7d}</strong> carga 7 d</span>
-              <span><TrendingUp size={16} /><strong>{data.metrics.longest_42d}</strong> km tirada larga</span>
-            </div>
-          </div>
-
-          <InteractiveWeek agenda={data.daily_agenda} />
-        </section>
-
-        <section className="pace-sleep-card">
-          <div className="pace-section-head">
-            <div>
-              <span className="pace-kicker">Última noche</span>
-              <h2>Sueño</h2>
-            </div>
-            <strong className={sleep && sleep.hours < 6 ? "sleep-low" : ""}>
-              {sleep ? `${sleep.hours} h` : "—"}
-            </strong>
-          </div>
-
-          <div className="pace-sleep-message">
-            <BedDouble size={20} />
-            <p>
-              {sleep && sleep.hours < 5
-                ? `Te faltaron ${(fitbit.sleep.goal - sleep.hours).toFixed(1)} horas para tu objetivo. Hoy el sueño es el principal limitante.`
-                : sleep
-                  ? `${sleep.efficiency ?? "—"}% de eficiencia. Mira la tendencia semanal, no una noche aislada.`
-                  : "Fitbit todavía no entregó el sueño de esta noche."}
-            </p>
-          </div>
-
-          <div className="pace-sleep-stages" aria-label="Etapas del sueño">
-            <i className="sleep-deep" style={{ flex: sleep?.deep_minutes ?? 0 }} />
-            <i className="sleep-rem" style={{ flex: sleep?.rem_minutes ?? 0 }} />
-            <i className="sleep-light" style={{ flex: sleep?.light_minutes ?? 0 }} />
-            <i className="sleep-awake" style={{ flex: sleep?.awake_minutes ?? 0 }} />
-          </div>
-          <div className="pace-sleep-legend">
-            <span><i className="sleep-deep" />Profundo <strong>{sleep?.deep_minutes ?? "—"} min</strong></span>
-            <span><i className="sleep-rem" />REM <strong>{sleep?.rem_minutes ?? "—"} min</strong></span>
-            <span><i className="sleep-light" />Ligero <strong>{sleep?.light_minutes ?? "—"} min</strong></span>
-            <span><i className="sleep-awake" />Despierto <strong>{sleep?.awake_minutes ?? "—"} min</strong></span>
-          </div>
-
-          <div className="pace-sleep-week" aria-label="Horas de sueño de los últimos siete días">
-            {fitbit.sleep.days.map((night) => (
-              <div key={night.date}>
-                <span><i style={{ height: `${Math.max(8, clamp((night.hours / fitbit.sleep.goal) * 100))}%` }} /></span>
-                <strong>{night.hours}h</strong>
-                <small>{weekday.format(new Date(`${night.date}T12:00:00`))}</small>
-              </div>
-            ))}
-          </div>
-          <div className="pace-calibration">
-            <span>
-              Línea personal Fitbit
-              <strong>{state.calibration.nights}/{state.calibration.required} noches</strong>
-            </span>
-            <div><i style={{ width: `${calibrationPercent}%` }} /></div>
-          </div>
-        </section>
-      </div>
-
-      <section className="performance-grid" aria-label="Carga y utilidad del sueño">
-        <article className="performance-load-card">
-          <div className="performance-section-heading">
-            <div>
-              <span className="pace-kicker">Carga multideporte · 7 días</span>
-              <h2>{loadWeek.total} puntos estimados</h2>
-            </div>
-            <span className={`load-risk risk-${loadWeek.risk.toLowerCase().replace(" ", "-")}`}>
-              {loadWeek.risk === "Sin base" ? "Base en construcción" : `Riesgo ${loadWeek.risk.toLowerCase()}`}
-            </span>
-          </div>
-          <div className="load-summary-strip">
-            <span><Footprints size={15} /> Carrera <strong>{loadWeek.categories.running}</strong></span>
-            <span><Bike size={15} /> Bici <strong>{loadWeek.categories.cycling}</strong></span>
-            <span><Dumbbell size={15} /> Fuerza <strong>{loadWeek.categories.strength}</strong></span>
-            <span><Activity size={15} /> Actividad <strong>{loadWeek.categories.general}</strong></span>
-          </div>
-          <div className="load-trend" aria-label="Tendencia diaria de carga de siete días">
-            {loadWeek.trend.map((day) => (
-              <div key={day.date}>
-                <span title={`${day.total} puntos`}>
-                  <i style={{ height: `${Math.max(4, (day.total / maxDailyLoad) * 100)}%` }} />
+        <div className="pulse-load-layout">
+          <div className="pulse-bars" aria-label="Carga diaria durante siete días">
+            {load.trend.map((day) => (
+              <div className={day.date === data.current_date ? "is-current" : ""} key={day.date}>
+                <span title={`${day.total} puntos de carga`}>
+                  <i style={{ height: `${Math.max(3, (day.total / maxDailyLoad) * 100)}%` }} />
                 </span>
                 <strong>{day.total}</strong>
                 <small>{weekday.format(new Date(`${day.date}T12:00:00`))}</small>
               </div>
             ))}
           </div>
-          <div className="baseline-callout">
-            <TrendingUp size={18} />
-            <div>
-              <strong>
-                {loadWeek.baseline == null
-                  ? "Referencia personal en construcción"
-                  : `${Math.round((loadWeek.ratio ?? 0) * 100)}% de tu semana habitual`}
-              </strong>
-              <p>{loadWeek.recommendation}</p>
-              <small>{loadWeek.method}</small>
-            </div>
-          </div>
-        </article>
 
-        <article className="sleep-utility-card">
-          <div className="performance-section-heading">
-            <div>
-              <span className="pace-kicker">Sueño útil para entrenar</span>
-              <h2>{sleepUtility.nights ? `${sleepUtility.nights} noches analizadas` : "Esperando datos"}</h2>
+          <div className="pulse-load-context">
+            <div className="pulse-category-bar" aria-label="Distribución de carga por deporte">
+              {load.categories.running > 0 && <i className="cat-run" style={{ flex: load.categories.running }} />}
+              {load.categories.cycling > 0 && <i className="cat-bike" style={{ flex: load.categories.cycling }} />}
+              {load.categories.strength > 0 && <i className="cat-strength" style={{ flex: load.categories.strength }} />}
+              {load.categories.general > 0 && <i className="cat-general" style={{ flex: load.categories.general }} />}
             </div>
-            <BedDouble size={24} />
+            <div className="pulse-category-legend">
+              <span><i className="cat-run" /> Carrera <strong>{load.categories.running}</strong></span>
+              <span><i className="cat-bike" /> Bici <strong>{load.categories.cycling}</strong></span>
+              <span><i className="cat-strength" /> Fuerza <strong>{load.categories.strength}</strong></span>
+              <span><i className="cat-general" /> Actividad <strong>{load.categories.general}</strong></span>
+            </div>
+            <p>{load.recommendation}</p>
           </div>
-          <div className="sleep-utility-metrics">
-            <span><small>Deuda 7 d</small><strong>{sleepUtility.debt_hours == null ? "—" : `${sleepUtility.debt_hours} h`}</strong></span>
-            <span><small>Consistencia</small><strong>{sleepUtility.consistency == null ? "—" : `${sleepUtility.consistency}%`}</strong></span>
-            <span><small>Eficiencia</small><strong>{sleepUtility.efficiency == null ? "—" : `${sleepUtility.efficiency}%`}</strong></span>
-            <span><small>Media</small><strong>{sleepUtility.average_hours == null ? "—" : `${sleepUtility.average_hours} h`}</strong></span>
-          </div>
-          <div className="sleep-guidance">
-            <Sparkles size={18} />
-            <p>{sleepUtility.guidance}</p>
-          </div>
-          <p className="utility-method">
-            La consistencia usa {sleepUtility.consistency_basis}; no inventamos horarios cuando Fitbit no los entrega.
-          </p>
-        </article>
+        </div>
       </section>
 
-      <DailyJournal
-        date={data.current_date}
-        journal={state.journal}
-        disabled={Boolean(data.demo_scenario)}
-      />
+      <section className="pulse-progress-row" aria-label="Progreso y última carrera">
+        <article className="pulse-progress-card">
+          <div>
+            <span>Semana de carrera</span>
+            <strong>{data.metrics.distance_current_week} <small>de {weeklyTarget} km</small></strong>
+          </div>
+          <div className="pulse-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(weeklyPercent)}>
+            <i style={{ width: `${weeklyPercent}%` }} />
+          </div>
+          <Link href="/plan"><CalendarDays size={16} /> Plan completo</Link>
+        </article>
 
-      <section className="pace-recent">
-        <div className="pace-section-head">
-          <div>
-            <span className="pace-kicker">Apple Watch</span>
-            <h2>Carreras recientes</h2>
-          </div>
-          <Link href="/activities">Ver historial <ArrowRight size={16} /></Link>
-        </div>
-        <div className="pace-recent-list">
-          {data.recent_activities.slice(0, 4).map((activity) => (
-            <Link href={`/activities/${activity.id}`} key={activity.id}>
-              <span className="pace-activity-icon"><Route size={19} /></span>
-              <div>
-                <small>{activityDisplaySource(activity)}</small>
-                <strong>{activityDisplayName(activity)}</strong>
-              </div>
-              <span><strong>{activity.distance_km}</strong> km</span>
-              <span><strong>{activity.pace}</strong> /km</span>
-              <ChevronRight size={18} />
-            </Link>
-          ))}
-        </div>
-        <Link className="pace-coach-link" href="/coach">
-          <span><Sparkles size={20} /></span>
-          <div>
-            <strong>¿Quieres entender por qué cambió tu estado?</strong>
-            <p>El coach puede cruzar sueño, carga, calendario y tus carreras.</p>
-          </div>
-          Preguntar al coach <ArrowRight size={17} />
-        </Link>
+        {latestRun ? (
+          <Link className="pulse-latest-run" href={`/activities/${latestRun.id}`}>
+            <span><Route size={20} /></span>
+            <div>
+              <small>Última carrera</small>
+              <strong>{activityDisplayName(latestRun)}</strong>
+            </div>
+            <p><strong>{latestRun.distance_km}</strong> km <b>{latestRun.pace}</b></p>
+            <ChevronRight size={18} />
+          </Link>
+        ) : (
+          <Link className="pulse-latest-run" href="/settings">
+            <span><Route size={20} /></span>
+            <div><small>Carreras</small><strong>Conecta Apple Health</strong></div>
+            <ChevronRight size={18} />
+          </Link>
+        )}
       </section>
+
+      {availableRecoveryFactors.length > 0 && (
+        <details className="pulse-disclosure">
+          <summary>
+            <span><Activity size={18} /><strong>¿Qué explica tu recuperación?</strong></span>
+            <small>{availableRecoveryFactors.length} señales disponibles</small>
+            <ChevronDown size={18} />
+          </summary>
+          <div className="pulse-signal-grid">
+            {availableRecoveryFactors.map((factor) => (
+              <article key={factor.key}>
+                <div><span>{factor.label}</span><strong>{factor.value}</strong></div>
+                {factor.score != null && (
+                  <div className={`pulse-signal-bar state-${factor.state}`}>
+                    <i style={{ width: `${factor.score}%` }} />
+                  </div>
+                )}
+                <small>{factor.detail}</small>
+              </article>
+            ))}
+          </div>
+        </details>
+      )}
+
+      <Link className="pulse-coach-link" href="/coach">
+        <Sparkles size={18} />
+        <span><strong>¿Necesitas contexto?</strong> Pregunta al Coach sobre sueño, carga o la sesión de hoy.</span>
+        Abrir Coach <ArrowRight size={17} />
+      </Link>
     </section>
   );
 }
