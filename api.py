@@ -5,6 +5,7 @@ import sys
 import json
 import math
 import secrets
+from statistics import median
 from bisect import bisect_left
 from copy import deepcopy
 from contextlib import asynccontextmanager, suppress
@@ -1706,21 +1707,39 @@ def _performance_daily_state(
         })
 
     calibrated = state["calibration"]["ready"]
-    score = round(weighted_score / available_weight) if calibrated and available_weight else None
+    available_signals = sum(factor["score"] is not None for factor in factors)
+    score = (
+        round(weighted_score / available_weight)
+        if available_weight and (calibrated or available_signals >= 3)
+        else None
+    )
     if score is not None and sleep is not None:
         if float(sleep) < 5:
             score = min(score, 39)
         elif float(sleep) < 6:
             score = min(score, 55)
-    available_signals = sum(factor["score"] is not None for factor in factors)
     confidence_level = (
         "Alta" if calibrated and available_signals >= 5
-        else "Media" if calibrated and available_signals >= 3
+        else "Media" if available_signals >= 4
         else "Baja"
+    )
+    recovery_label = (
+        "Buena recuperación" if score is not None and score >= 70
+        else "Recuperación media" if score is not None and score >= 45
+        else "Recuperación limitada" if score is not None
+        else state["morning_recovery"]["label"]
     )
     state["morning_recovery"].update({
         "score": score,
+        "label": recovery_label,
+        "summary": (
+            f"Estimación provisional con {state['calibration']['nights']} de "
+            f"{state['calibration']['required']} noches; se afinará con más datos."
+            if score is not None and not calibrated
+            else state["morning_recovery"]["summary"]
+        ),
         "factors": factors,
+        "provisional": bool(score is not None and not calibrated),
         "method": "Promedio ponderado de señales disponibles frente a tu propia base de 28 días.",
     })
     state["confidence"] = {
@@ -1729,8 +1748,10 @@ def _performance_daily_state(
         "expected_signals": len(definitions),
         "baseline_days": max(baseline_counts.values(), default=0),
         "note": (
-            "La puntuación no se muestra hasta reunir sueño, HRV y pulso suficientes."
-            if not calibrated
+            "Estimación provisional: seguirá afinándose hasta completar siete noches."
+            if score is not None and not calibrated
+            else "La puntuación aparecerá cuando haya al menos tres señales comparables."
+            if score is None
             else "Más señales y noches estables aumentan la confianza; no es un diagnóstico."
         ),
     }
@@ -1763,19 +1784,28 @@ def _performance_daily_state(
             "score": activation_score(bpm),
         })
     latest_bpm = float(heart_rate.get("latest") or 0) if heart_rate_fresh else 0
+    recent_passive_values = [
+        float(point.get("bpm") or 0)
+        for point in series[-6:]
+        if float(point.get("bpm") or 0) > 0
+    ]
+    passive_bpm = float(median(recent_passive_values)) if recent_passive_values else latest_bpm
     physiological_scores = [
         int(factor["score"])
         for factor in factors
         if factor["key"] in {"hrv", "resting_hr", "respiratory_rate", "temperature"}
         and factor["score"] is not None
     ]
-    stress_score = (
-        activation_score(latest_bpm)
-        if latest_bpm
-        else round(100 - sum(physiological_scores) / len(physiological_scores))
+    daytime_activation = activation_score(passive_bpm) if passive_bpm else None
+    nightly_strain = (
+        round(100 - sum(physiological_scores) / len(physiological_scores))
         if physiological_scores
         else None
     )
+    if daytime_activation is not None and nightly_strain is not None:
+        stress_score = round(daytime_activation * 0.65 + nightly_strain * 0.35)
+    else:
+        stress_score = daytime_activation if daytime_activation is not None else nightly_strain
     stress_label = (
         "Estrés elevado" if stress_score is not None and stress_score >= 70
         else "Activado" if stress_score is not None and stress_score >= 40
@@ -1790,11 +1820,26 @@ def _performance_daily_state(
         "date": heart_rate_date or signal_date or None,
         "timeline": stress_timeline,
         "source": (
-            "Pulso pasivo intradía frente a tu pulso en reposo"
-            if latest_bpm
+            "Cálculo automático Fitbit · pulso pasivo + señales nocturnas"
+            if daytime_activation is not None and nightly_strain is not None
+            else "Cálculo automático Fitbit · pulso pasivo"
+            if daytime_activation is not None
             else "Estimación nocturna con HRV y constantes vitales"
         ),
-        "confidence": "Alta" if latest_bpm and float(heart_rate.get("coverage_hours") or 0) >= 18 else "Media" if stress_score is not None else "Baja",
+        "confidence": (
+            "Alta"
+            if daytime_activation is not None
+            and nightly_strain is not None
+            and float(heart_rate.get("coverage_hours") or 0) >= 18
+            else "Media" if stress_score is not None else "Baja"
+        ),
+        "components": {
+            "daytime_activation": daytime_activation,
+            "nightly_strain": nightly_strain,
+            "passive_bpm": round(passive_bpm) if passive_bpm else None,
+            "coverage_hours": float(heart_rate.get("coverage_hours") or 0),
+        },
+        "method": "65% activación reciente del pulso pasivo y 35% tensión nocturna; usa solo las partes disponibles.",
         "note": "Mide activación fisiológica; ejercicio, calor, cafeína o enfermedad también pueden elevarla.",
     }
     current_load = next(

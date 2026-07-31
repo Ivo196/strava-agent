@@ -362,6 +362,7 @@ export type DashboardData = {
       label: string;
       summary: string;
       sleep_hours: number | null;
+      provisional?: boolean;
       factors: {
         key: "sleep" | "hrv" | "resting_hr" | "respiratory_rate" | "temperature" | "oxygen";
         label: string;
@@ -424,6 +425,13 @@ export type DashboardData = {
       timeline: { time: string; bpm: number; score: number }[];
       source: string;
       confidence: "Baja" | "Media" | "Alta";
+      components: {
+        daytime_activation: number | null;
+        nightly_strain: number | null;
+        passive_bpm: number | null;
+        coverage_hours: number;
+      };
+      method: string;
       note: string;
     };
     energy: {

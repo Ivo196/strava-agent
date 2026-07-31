@@ -3956,3 +3956,125 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .apex-week-progress > div i, .apex-metric-track i, .run-card, .apex-primary-action, .apex-coach-link { transition: none; }
 }
+
+/* Recovery v2 — automatic Fitbit interpretation with labeled gauges */
+.recovery-page-v2 { --gauge-good: #78c6ff; --gauge-balanced: #a98bff; --gauge-warning: #f1b65a; --gauge-bad: #ff7185; --gauge-neutral: #687386; }
+.recovery-page-head { margin-bottom: 26px; }
+.recovery-data-status { display: flex; align-items: center; gap: 10px; min-width: 156px; padding: 13px 15px; border: 1px solid rgba(120,198,255,.18); border-radius: 14px; background: rgba(120,198,255,.04); }
+.recovery-data-status > i { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--orange); box-shadow: 0 0 0 6px rgba(120,198,255,.07); }
+.recovery-data-status strong, .recovery-data-status small { display: block; }
+.recovery-data-status strong { color: #e6edf3; font-size: 11px; }
+.recovery-data-status small { margin-top: 3px; color: #758294; font-size: 8px; text-transform: uppercase; }
+
+.recovery-gauge-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+.recovery-gauge-card { --gauge-color: var(--gauge-neutral); min-width: 0; padding: 17px; border: 1px solid rgba(218,232,211,.1); border-radius: 18px; background: rgba(13,16,14,.86); box-shadow: var(--shadow); }
+.recovery-gauge-card.gauge-good, .signal-gauge-card.gauge-good { --gauge-color: var(--gauge-good); }
+.recovery-gauge-card.gauge-balanced, .signal-gauge-card.gauge-balanced { --gauge-color: var(--gauge-balanced); }
+.recovery-gauge-card.gauge-warning, .signal-gauge-card.gauge-warning { --gauge-color: var(--gauge-warning); }
+.recovery-gauge-card.gauge-bad, .signal-gauge-card.gauge-bad { --gauge-color: var(--gauge-bad); }
+.recovery-gauge-card.gauge-neutral, .signal-gauge-card.gauge-neutral { --gauge-color: var(--gauge-neutral); }
+.recovery-gauge-card > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.recovery-gauge-card > header span { display: inline-flex; align-items: center; gap: 7px; color: #8b97a7; font-size: 8px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.recovery-gauge-card > header span svg { color: var(--gauge-color); }
+.recovery-gauge-card > header > strong { padding: 5px 7px; color: var(--gauge-color); border-radius: 999px; background: color-mix(in srgb,var(--gauge-color) 9%,transparent); font-size: 8px; letter-spacing: .04em; text-transform: uppercase; }
+.recovery-dial { --dial-value: 0deg; position: relative; width: 180px; height: 94px; margin: 18px auto 0; overflow: hidden; }
+.recovery-dial > i { position: absolute; inset: 0 auto auto 50%; width: 180px; height: 180px; transform: translateX(-50%); border-radius: 50%; background: conic-gradient(from 270deg,var(--gauge-color) 0deg var(--dial-value),rgba(148,163,184,.12) var(--dial-value) 180deg,transparent 180deg 360deg); }
+.recovery-dial > i::after { position: absolute; inset: 24px; content: ""; border-radius: 50%; background: #0d100e; box-shadow: inset 0 1px rgba(255,255,255,.025); }
+.recovery-dial > div { position: absolute; inset: 46px 0 auto; display: flex; align-items: baseline; justify-content: center; gap: 4px; color: #f2f6f8; }
+.recovery-dial > div strong { font: 680 31px/.9 "Fira Code",ui-monospace,monospace; letter-spacing: -.07em; }
+.recovery-dial > div small { color: #748092; font-size: 8px; }
+.recovery-gauge-scale { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; color: #566273; font-size: 7px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+.recovery-gauge-card > p { min-height: 28px; margin: 11px 0 0; overflow: hidden; color: #7d8998; font-size: 9px; line-height: 1.45; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+.recovery-context-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; margin-top: 10px; }
+.night-card-v2, .stress-auto-card { min-height: 326px; padding: 21px; border: 1px solid rgba(218,232,211,.1); border-radius: 18px; background: rgba(13,16,14,.86); box-shadow: var(--shadow); }
+.night-card-v2 { display: flex; flex-direction: column; }
+.night-card-v2 > header span { color: #a98bff; }
+.night-summary-line { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin: 29px 0 21px; }
+.night-summary-line > strong { color: #f2f4f8; font: 680 54px/.85 "Fira Code",ui-monospace,monospace; letter-spacing: -.08em; }
+.night-summary-line > strong small { color: #756c8c; font-size: 9px; letter-spacing: 0; }
+.night-summary-line > span { color: #8d82a7; font-size: 9px; }
+.night-card-v2 .sleep-stage-track { height: 13px; }
+.night-card-v2 > footer { display: grid; grid-template-columns: 18px minmax(0,1fr); gap: 8px; align-items: start; margin-top: auto; padding-top: 17px; color: #7d8796; border-top: 1px solid var(--line); font-size: 9px; line-height: 1.45; }
+.night-card-v2 > footer svg { color: #a98bff; }
+.recovery-empty-copy { margin: auto 0; color: #737e8d; font-size: 10px; }
+
+.stress-auto-card { display: flex; flex-direction: column; }
+.stress-auto-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.stress-auto-card > header div > span { display: inline-flex; align-items: center; gap: 7px; color: #f1b65a; font-size: 8px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.stress-auto-card > header div > span svg { color: var(--gauge-warning); }
+.stress-auto-card > header div > strong { display: block; margin-top: 6px; color: #e9edf2; font-size: 16px; }
+.stress-auto-card > header > small { color: #7c8795; font-size: 8px; text-transform: uppercase; }
+.stress-auto-card > p { margin: 15px 0 0; color: #8b96a4; font-size: 9px; }
+.stress-component-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 7px; margin-top: 17px; }
+.stress-component-grid > span { min-width: 0; padding: 10px; border: 1px solid rgba(218,232,211,.08); border-radius: 11px; background: rgba(255,255,255,.014); }
+.stress-component-grid small, .stress-component-grid strong { display: block; }
+.stress-component-grid small { min-height: 20px; color: #6f7b8a; font-size: 7px; line-height: 1.35; text-transform: uppercase; }
+.stress-component-grid strong { margin-top: 6px; color: #dce2e8; font: 650 16px "Fira Code",ui-monospace,monospace; }
+.stress-component-grid strong b { margin-left: 3px; color: #697585; font-size: 7px; font-weight: 500; }
+.stress-mini-chart { display: flex; align-items: end; gap: 3px; height: 68px; margin-top: 17px; padding: 9px 8px 0; border-bottom: 1px solid rgba(218,232,211,.09); background: repeating-linear-gradient(to top,rgba(218,232,211,.045) 0 1px,transparent 1px 25%); }
+.stress-mini-chart i { flex: 1; min-width: 2px; max-width: 9px; border-radius: 999px 999px 2px 2px; background: linear-gradient(180deg,#ff7185,#f1b65a 55%,#78c6ff); }
+.stress-auto-card > footer { display: grid; gap: 4px; margin-top: auto; padding-top: 13px; }
+.stress-auto-card > footer span { color: #8f9aa7; font-size: 8px; line-height: 1.4; }
+.stress-auto-card > footer small { color: #646f7e; font-size: 8px; line-height: 1.4; }
+
+.body-signals-v2 { padding: 22px; }
+.signal-gauge-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.signal-gauge-card { --gauge-color: var(--gauge-neutral); min-width: 0; padding: 14px; border: 1px solid rgba(218,232,211,.085); border-radius: 13px; background: rgba(255,255,255,.014); }
+.signal-gauge-card > header { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
+.signal-gauge-card > header span { display: inline-flex; align-items: center; gap: 7px; min-width: 0; color: #7d8997; font-size: 8px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.signal-gauge-card > header span svg { width: 15px; height: 15px; flex: 0 0 auto; color: var(--gauge-color); }
+.signal-gauge-card > header > strong { flex: 0 0 auto; color: var(--gauge-color); font-size: 7px; letter-spacing: .04em; text-transform: uppercase; }
+.signal-gauge-value { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 15px; }
+.signal-gauge-value > strong { overflow: hidden; color: #e0e6eb; font: 640 17px "Fira Code",ui-monospace,monospace; text-overflow: ellipsis; white-space: nowrap; }
+.signal-gauge-value > span { color: #657181; font-size: 8px; }
+.signal-gauge-card > div[role="progressbar"] { height: 6px; margin-top: 12px; overflow: hidden; border-radius: 999px; background: rgba(148,163,184,.1); }
+.signal-gauge-card > div[role="progressbar"] i { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: var(--gauge-color); transition: width .25s ease-out; }
+.signal-gauge-card > footer { display: flex; justify-content: space-between; gap: 10px; margin-top: 9px; color: #687383; font-size: 7px; line-height: 1.4; }
+.signal-gauge-card > footer small { flex: 0 0 auto; color: #7d8997; }
+.recovery-extra-strip { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); margin-top: 8px; overflow: hidden; border: 1px solid rgba(218,232,211,.08); border-radius: 12px; }
+.recovery-extra-strip > span { display: grid; grid-template-columns: 20px 1fr auto; gap: 7px; align-items: center; min-height: 50px; padding: 0 13px; border-right: 1px solid var(--line); }
+.recovery-extra-strip > span:last-child { border-right: 0; }
+.recovery-extra-strip svg { color: #758295; }
+.recovery-extra-strip small { color: #687484; font-size: 8px; text-transform: uppercase; }
+.recovery-extra-strip strong { overflow: hidden; color: #cbd3db; font: 600 10px "Fira Code",ui-monospace,monospace; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 1120px) {
+  .recovery-gauge-grid { grid-template-columns: 1fr 1fr; }
+  .recovery-context-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  .recovery-page-head { flex-direction: row; }
+  .recovery-data-status { min-width: 0; padding: 11px; }
+  .recovery-data-status span { display: none; }
+  .recovery-gauge-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .recovery-gauge-card { padding: 13px; border-radius: 15px; }
+  .recovery-gauge-card > header { align-items: flex-start; flex-direction: column; }
+  .recovery-gauge-card > header > strong { align-self: flex-start; }
+  .recovery-dial { width: 132px; height: 70px; margin-top: 13px; }
+  .recovery-dial > i { width: 132px; height: 132px; }
+  .recovery-dial > i::after { inset: 18px; }
+  .recovery-dial > div { inset-block-start: 35px; }
+  .recovery-dial > div strong { font-size: 23px; }
+  .recovery-gauge-scale { font-size: 6px; }
+  .recovery-gauge-card > p { font-size: 8px; }
+  .night-card-v2, .stress-auto-card { min-height: 0; padding: 17px; }
+  .stress-component-grid { grid-template-columns: 1fr 1fr; }
+  .signal-gauge-grid { grid-template-columns: 1fr; }
+  .recovery-extra-strip { grid-template-columns: 1fr; }
+  .recovery-extra-strip > span { border-right: 0; border-bottom: 1px solid var(--line); }
+  .recovery-extra-strip > span:last-child { border-bottom: 0; }
+}
+
+@media (max-width: 390px) {
+  .recovery-dial { width: 122px; height: 65px; }
+  .recovery-dial > i { width: 122px; height: 122px; }
+  .recovery-dial > i::after { inset: 17px; }
+  .recovery-dial > div { inset-block-start: 32px; }
+  .recovery-gauge-card > header span { font-size: 7px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-gauge-card > div[role="progressbar"] i { transition: none; }
+}

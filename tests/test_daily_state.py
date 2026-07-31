@@ -240,3 +240,93 @@ def test_performance_state_uses_previous_night_without_rendering_false_gaps() ->
     assert state["physiological_stress"]["source"].startswith("Estimación nocturna")
     assert 0 <= state["energy"]["score"] <= 100
     assert state["load_7d"]["target_min"] < state["load_7d"]["target_max"]
+
+
+def test_fitbit_stress_is_calculated_automatically_from_day_and_night_signals() -> None:
+    fitbit = {
+        "sleep": {
+            "goal": 8,
+            "days": [
+                {"date": f"2026-07-{day:02d}", "hours": 7.6}
+                for day in range(25, 32)
+            ],
+        },
+        "recovery_history": [
+            {
+                "date": f"2026-07-{day:02d}",
+                "hrv": 90 + day % 3,
+                "resting_hr": 50,
+                "respiratory_rate": 14.5,
+                "temperature": 0.1,
+                "oxygen": 96,
+            }
+            for day in range(25, 32)
+        ],
+        "heart_rate": {
+            "date": "2026-08-01",
+            "latest": 72,
+            "coverage_hours": 20,
+            "series": [
+                {"time": f"{hour:02d}:00", "bpm": bpm}
+                for hour, bpm in enumerate([58, 61, 64, 69, 71, 72, 70, 73])
+            ],
+        },
+        "exercises": [],
+        "daily_activity": {"days": []},
+    }
+
+    state = api._performance_daily_state(
+        fitbit,
+        {"count": 0, "moving_minutes": 0, "training_load": 0, "calories": 0},
+        date(2026, 8, 1),
+        activity_rows=[],
+        daily_checkins=[],
+    )
+
+    stress = state["physiological_stress"]
+    assert stress["score"] is not None
+    assert stress["source"].startswith("Cálculo automático Fitbit")
+    assert stress["components"]["daytime_activation"] is not None
+    assert stress["components"]["nightly_strain"] is not None
+    assert stress["components"]["coverage_hours"] == 20
+    assert "65%" in stress["method"]
+
+
+def test_recovery_score_is_provisional_before_seven_nights() -> None:
+    fitbit = {
+        "sleep": {
+            "goal": 8,
+            "days": [
+                {"date": f"2026-07-{day:02d}", "hours": 7.4}
+                for day in range(26, 32)
+            ],
+        },
+        "recovery_history": [
+            {
+                "date": f"2026-07-{day:02d}",
+                "hrv": 88 + day % 4,
+                "resting_hr": 51,
+                "respiratory_rate": 14.3,
+                "temperature": 0.1,
+                "oxygen": 96,
+            }
+            for day in range(26, 32)
+        ],
+        "exercises": [],
+        "daily_activity": {"days": []},
+    }
+
+    state = api._performance_daily_state(
+        fitbit,
+        {"count": 0, "moving_minutes": 0, "training_load": 0, "calories": 0},
+        date(2026, 8, 1),
+        activity_rows=[],
+        daily_checkins=[],
+    )
+
+    assert state["calibration"]["ready"] is False
+    assert state["confidence"]["available_signals"] == 6
+    assert isinstance(state["morning_recovery"]["score"], int)
+    assert state["morning_recovery"]["provisional"] is True
+    assert state["morning_recovery"]["summary"].startswith("Estimación provisional")
+    assert state["confidence"]["note"].startswith("Estimación provisional")
