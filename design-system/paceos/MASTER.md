@@ -19,18 +19,18 @@
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#1E40AF` | `--color-primary` |
-| On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#3B82F6` | `--color-secondary` |
-| Accent/CTA | `#D97706` | `--color-accent` |
-| Background | `#F8FAFC` | `--color-background` |
-| Foreground | `#1E3A8A` | `--color-foreground` |
-| Muted | `#E9EEF6` | `--color-muted` |
-| Border | `#DBEAFE` | `--color-border` |
+| Primary | `#C7F36B` | `--color-primary` |
+| On Primary | `#10140E` | `--color-on-primary` |
+| Secondary | `#A98BFF` | `--color-secondary` |
+| Accent/CTA | `#C7F36B` | `--color-accent` |
+| Background | `#070908` | `--color-background` |
+| Foreground | `#F3F6EF` | `--color-foreground` |
+| Muted | `#8F998E` | `--color-muted` |
+| Border | `rgba(218, 232, 211, .12)` | `--color-border` |
 | Destructive | `#DC2626` | `--color-destructive` |
 | Ring | `#1E40AF` | `--color-ring` |
 
-**Color Notes:** Blue data + amber highlights [Accent adjusted from #F59E0B for WCAG 3:1]
+**Color Notes:** Dark-only, near-black base with one energy-lime action color. Violet is reserved for sleep and amber for workload warnings.
 
 ### Typography
 
@@ -161,9 +161,9 @@
 
 ## Style Guidelines
 
-**Style:** Aurora UI
+**Style:** Modern Dark / Minimal Performance
 
-**Keywords:** Vibrant gradients, smooth blend, Northern Lights effect, mesh gradient, luminous, atmospheric, abstract
+**Keywords:** Dark-first, minimal chrome, oversized performance data, restrained glow, compact hierarchy, elevated neutral surfaces
 
 **Best For:** Modern SaaS, creative agencies, branding, music platforms, lifestyle, premium products, hero sections
 

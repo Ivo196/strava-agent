@@ -23,9 +23,9 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
   return (
     <div className="page-wrap">
       <header className="simple-header">
-        <span className="eyebrow">Chicago 2026 · Semana {data.current_week_number ?? "—"}</span>
-        <h1>Calendario de entrenamiento.</h1>
-        <p>El calendario avanza solo con la fecha actual. La semana vigente se abre y se marca automáticamente con tus entrenamientos completados.</p>
+        <span className="eyebrow">Semana {data.current_week_number ?? "—"} · Chicago 2026</span>
+        <h1>Calendario</h1>
+        <p>Lo que toca y lo que realmente hiciste.</p>
       </header>
       <div className="locked-plan-note"><LockKeyhole size={18} /><div><strong>Plan bloqueado</strong><span>{data.policy} Cualquier cambio se hará únicamente si lo decidimos juntos.</span></div></div>
 

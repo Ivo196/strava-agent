@@ -1,13 +1,14 @@
 import Link from "next/link";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
-  Activity,
   ArrowRight,
   BatteryCharging,
   Bike,
   CalendarDays,
-  ChevronDown,
+  Check,
   ChevronRight,
+  CircleDashed,
+  Clock3,
   Dumbbell,
   Footprints,
   Gauge,
@@ -15,13 +16,14 @@ import {
   MoonStar,
   Route,
   Sparkles,
-  TrendingUp,
+  Watch,
   Zap,
 } from "lucide-react";
 import { activityDisplayName } from "@/lib/activity-display";
 import type { DailyAgendaItem, DashboardData } from "@/lib/types";
 
 const weekday = new Intl.DateTimeFormat("es-ES", { weekday: "short" });
+const dayNumber = new Intl.DateTimeFormat("es-ES", { day: "numeric" });
 
 function clamp(value: number) {
   return Math.max(0, Math.min(100, value));
@@ -34,42 +36,32 @@ function categoryIcon(category: DailyAgendaItem["category"], size = 20) {
   return <MoonStar size={size} />;
 }
 
-function StatusGauge({
+function MetricTile({
   label,
   value,
-  suffix,
-  percent,
+  unit,
   caption,
-  tone,
+  percent,
   icon,
+  tone,
 }: {
   label: string;
   value: string | number;
-  suffix: string;
-  percent: number;
+  unit?: string;
   caption: string;
-  tone: "recovery" | "stress" | "load" | "sleep";
+  percent: number;
   icon: ReactNode;
+  tone: "lime" | "violet" | "amber" | "blue";
 }) {
   return (
-    <article className={`pulse-gauge-card tone-${tone}`}>
-      <div
-        className="pulse-gauge"
-        style={{ "--pulse-value": `${clamp(percent)}%` } as CSSProperties}
-        role="progressbar"
-        aria-label={`${label}: ${value} ${suffix}`}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(clamp(percent))}
-      >
-        <span>{icon}</span>
-        <strong>{value}</strong>
-        <small>{suffix}</small>
-      </div>
-      <div className="pulse-gauge-copy">
-        <span>{label}</span>
-        <p>{caption}</p>
-      </div>
+    <article className={`apex-metric apex-tone-${tone}`}>
+      <header>
+        <span>{icon}{label}</span>
+        <i aria-hidden="true" />
+      </header>
+      <strong>{value}<small>{unit}</small></strong>
+      <div className="apex-metric-track" aria-hidden="true"><i style={{ width: `${clamp(percent)}%` }} /></div>
+      <p>{caption}</p>
     </article>
   );
 }
@@ -77,223 +69,141 @@ function StatusGauge({
 export function HomeCommandCenter({ data }: { data: DashboardData }) {
   const state = data.daily_state;
   const recovery = state.morning_recovery;
-  const load = state.load_7d;
-  const stress = state.physiological_stress ?? {
-    score: null, label: "", latest_bpm: null, date: null, timeline: [],
-    source: "", confidence: "Baja" as const, note: "",
-  };
-  const energy = state.energy ?? {
-    score: recovery.score ?? 50, label: "", recharged: recovery.score ?? 50,
-    used: 0, explanation: "Construyendo el balance", method: "",
-  };
-  const today = data.daily_agenda[0];
-  const latestRun = data.recent_activities[0];
-  const weeklyTarget = data.next_week?.target_km || data.metrics.average_weekly_28d || 1;
-  const weeklyPercent = clamp((data.metrics.distance_current_week / weeklyTarget) * 100);
-  const recoveryPercent = recovery.score ?? clamp(
-    (state.calibration.nights / state.calibration.required) * 100,
+  const stress = state.physiological_stress;
+  const energy = state.energy;
+  const today = data.daily_agenda.find((item) => item.date === data.current_date) ?? data.daily_agenda[0];
+  const week = data.daily_agenda.slice(0, 7);
+  const targetKm = data.next_week?.target_km || today?.week_target_km || data.metrics.average_weekly_28d || 1;
+  const weeklyPercent = clamp((data.metrics.distance_current_week / targetKm) * 100);
+  const sleepHours = recovery.sleep_hours ?? state.sleep_utility.average_hours;
+  const recoveryPercent = recovery.score ?? clamp((state.calibration.nights / state.calibration.required) * 100);
+  const todayAppleRun = today?.actual_activities.find(
+    (activity) => activity.source === "Apple Watch" && activity.type === "RUNNING",
   );
-  const currentLoad = load.current_today ?? 0;
-  const targetMin = load.target_min ?? 0;
-  const targetMax = load.target_max ?? Math.max(load.total, 1);
-  const loadPercent = clamp((currentLoad / Math.max(targetMax, 1)) * 100);
-  const availableRecoveryFactors = recovery.factors.filter(
-    (factor) => factor.value !== "Sin dato",
-  );
-  const maxDailyLoad = Math.max(...load.trend.map((day) => day.total), 1);
+  const todayRunDetail = data.recent_activities.find((activity) => activity.date.startsWith(data.current_date));
+  const todayCompleted = today?.completed || Boolean(todayAppleRun);
+  const hrv = recovery.factors.find((factor) => factor.key === "hrv");
+  const restingHr = recovery.factors.find((factor) => factor.key === "resting_hr");
 
   return (
-    <section className="pulse-dashboard" aria-label="Resumen de rendimiento de hoy">
-      <section className="pulse-overview" aria-labelledby="pulse-overview-title">
-        <div className="pulse-section-heading">
-          <div>
-            <span className="pace-kicker">Lectura rápida</span>
-            <h2 id="pulse-overview-title">Tu estado en cuatro indicadores</h2>
+    <section className="apex-dashboard" aria-label="Resumen de entrenamiento y recuperación">
+      <section className="apex-today" aria-labelledby="apex-today-title">
+        <div className="apex-section-index" aria-hidden="true">01</div>
+        <div className="apex-today-main">
+          <div className="apex-section-label"><span>Hoy</span><i />{todayCompleted ? "Completado" : "Por hacer"}</div>
+          <div className="apex-session-icon">{categoryIcon(today?.category ?? "rest", 29)}</div>
+          <div className="apex-session-copy">
+            <p>{today?.relative_label ?? "Sesión del día"}</p>
+            <h2 id="apex-today-title">{today?.title ?? "Recuperación"}</h2>
+            <span>{today?.detail ?? "Mantén el día flexible y escucha al cuerpo."}</span>
           </div>
-          <span className="pulse-confidence">
-            Confianza {state.confidence.level.toLowerCase()} · {state.confidence.available_signals}/{state.confidence.expected_signals}
-          </span>
-        </div>
-
-        <div className="pulse-gauge-grid">
-          <StatusGauge
-            label="Recuperación"
-            value={recovery.score ?? state.calibration.nights}
-            suffix={recovery.score == null ? `de ${state.calibration.required} noches` : "de 100"}
-            percent={recoveryPercent}
-            caption={recovery.score == null ? "Construyendo tu base" : recovery.label}
-            tone="recovery"
-            icon={<HeartPulse size={16} />}
-          />
-          {stress.score != null && (
-            <StatusGauge
-              label="Activación"
-              value={stress.score}
-              suffix="de 100"
-              percent={stress.score}
-              caption={`${stress.label} · ${stress.confidence.toLowerCase()}`}
-              tone="stress"
-              icon={<Zap size={16} />}
-            />
-          )}
-          <StatusGauge
-            label="Energía"
-            value={energy.score}
-            suffix="de 100"
-            percent={energy.score}
-            caption={energy.explanation}
-            tone="sleep"
-            icon={<BatteryCharging size={16} />}
-          />
-          <StatusGauge
-            label="Carga · hoy"
-            value={currentLoad}
-            suffix="puntos"
-            percent={loadPercent}
-            caption={`Objetivo ${targetMin}–${targetMax}`}
-            tone="load"
-            icon={<Gauge size={16} />}
-          />
-        </div>
-
-        <article className="pulse-action-card">
-          <span className={`pulse-action-icon category-${today?.category ?? "rest"}`}>
-            {categoryIcon(today?.category ?? "rest", 24)}
-          </span>
-          <div className="pulse-action-copy">
-            <span>Recomendación de hoy</span>
-            <h3>{state.recommendation.title}</h3>
-            <p>{state.recommendation.body}</p>
-            <div className="pulse-session-line">
-              <strong>{today?.title ?? "Recuperación"}</strong>
-              <small>{today?.detail ?? "Mantén el día flexible."}</small>
-            </div>
-          </div>
-          <Link href="/plan" aria-label="Abrir el plan completo">
-            Ver plan <ChevronRight size={17} />
+          <Link className="apex-primary-action" href="/plan">
+            Abrir sesión <ArrowRight size={17} />
           </Link>
-        </article>
-
-        {stress.timeline.length >= 4 && (
-          <article className="pulse-stress-timeline" aria-labelledby="stress-timeline-title">
-            <div>
-              <span className="pace-kicker">Pulso pasivo disponible</span>
-              <h3 id="stress-timeline-title">Activación fisiológica del día</h3>
-              <p>{stress.note}</p>
-            </div>
-            <div className="stress-timeline-bars" aria-label="Activación fisiológica por hora">
-              {stress.timeline.map((point, index) => (
-                <span key={`${point.time}-${point.bpm}-${index}`} title={`${point.time} · ${point.bpm} bpm · activación ${point.score}`}>
-                  <i style={{ height: `${Math.max(8, point.score)}%` }} />
-                  <small>{point.time}</small>
-                </span>
-              ))}
-            </div>
-            <footer><span>{stress.source}</span><strong>Confianza {stress.confidence.toLowerCase()}</strong></footer>
-          </article>
-        )}
+        </div>
+        <aside className="apex-coach-note">
+          <Sparkles size={17} />
+          <div><span>Tu ajuste de hoy</span><strong>{state.recommendation.title}</strong><p>{state.recommendation.body}</p></div>
+        </aside>
       </section>
 
-      <section className="pulse-load-card" aria-labelledby="pulse-load-title">
-        <div className="pulse-section-heading">
-          <div>
-            <span className="pace-kicker">Tendencia</span>
-            <h2 id="pulse-load-title">Carga de lunes a domingo</h2>
-          </div>
-          <span className={`pulse-risk risk-${load.risk.toLowerCase().replace(" ", "-")}`}>
-            {load.risk === "Sin base" ? "Base en construcción" : `Riesgo ${load.risk.toLowerCase()}`}
-          </span>
+      <section className="apex-week" aria-labelledby="apex-week-title">
+        <div className="apex-section-head">
+          <div><span className="apex-section-index" aria-hidden="true">02</span><div><small>Esta semana</small><h2 id="apex-week-title">El plan, de un vistazo</h2></div></div>
+          <Link href="/plan">Calendario <ChevronRight size={16} /></Link>
         </div>
-
-        <div className="pulse-load-layout">
-          <div className="pulse-bars" aria-label="Carga diaria durante siete días">
-            {load.trend.map((day) => (
-              <div className={day.date === data.current_date ? "is-current" : ""} key={day.date}>
-                <span title={`${day.total} puntos de carga`}>
-                  <i style={{ height: `${Math.max(3, (day.total / maxDailyLoad) * 100)}%` }} />
-                </span>
-                <strong>{day.total}</strong>
-                <small>{weekday.format(new Date(`${day.date}T12:00:00`))}</small>
-              </div>
-            ))}
-          </div>
-
-          <div className="pulse-load-context">
-            <div className="pulse-category-bar" aria-label="Distribución de carga por deporte">
-              {load.categories.running > 0 && <i className="cat-run" style={{ flex: load.categories.running }} />}
-              {load.categories.cycling > 0 && <i className="cat-bike" style={{ flex: load.categories.cycling }} />}
-              {load.categories.strength > 0 && <i className="cat-strength" style={{ flex: load.categories.strength }} />}
-              {load.categories.general > 0 && <i className="cat-general" style={{ flex: load.categories.general }} />}
-            </div>
-            <div className="pulse-category-legend">
-              <span><i className="cat-run" /> Carrera <strong>{load.categories.running}</strong></span>
-              <span><i className="cat-bike" /> Bici <strong>{load.categories.cycling}</strong></span>
-              <span><i className="cat-strength" /> Fuerza <strong>{load.categories.strength}</strong></span>
-              <span><i className="cat-general" /> Actividad <strong>{load.categories.general}</strong></span>
-            </div>
-            <p>{load.recommendation}</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="pulse-progress-row" aria-label="Progreso y última carrera">
-        <article className="pulse-progress-card">
-          <div>
-            <span>Semana de carrera</span>
-            <strong>{data.metrics.distance_current_week} <small>de {weeklyTarget} km</small></strong>
-          </div>
-          <div className="pulse-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(weeklyPercent)}>
-            <i style={{ width: `${weeklyPercent}%` }} />
-          </div>
-          <Link href="/plan"><CalendarDays size={16} /> Plan completo</Link>
-        </article>
-
-        {latestRun ? (
-          <Link className="pulse-latest-run" href={`/activities/${latestRun.id}`}>
-            <span><Route size={20} /></span>
-            <div>
-              <small>Última carrera</small>
-              <strong>{activityDisplayName(latestRun)}</strong>
-            </div>
-            <p><strong>{latestRun.distance_km}</strong> km <b>{latestRun.pace}</b></p>
-            <ChevronRight size={18} />
-          </Link>
-        ) : (
-          <Link className="pulse-latest-run" href="/settings">
-            <span><Route size={20} /></span>
-            <div><small>Carreras</small><strong>Conecta Apple Health</strong></div>
-            <ChevronRight size={18} />
-          </Link>
-        )}
-      </section>
-
-      {availableRecoveryFactors.length > 0 && (
-        <details className="pulse-disclosure">
-          <summary>
-            <span><Activity size={18} /><strong>¿Qué explica tu recuperación?</strong></span>
-            <small>{availableRecoveryFactors.length} señales disponibles</small>
-            <ChevronDown size={18} />
-          </summary>
-          <div className="pulse-signal-grid">
-            {availableRecoveryFactors.map((factor) => (
-              <article key={factor.key}>
-                <div><span>{factor.label}</span><strong>{factor.value}</strong></div>
-                {factor.score != null && (
-                  <div className={`pulse-signal-bar state-${factor.state}`}>
-                    <i style={{ width: `${factor.score}%` }} />
-                  </div>
-                )}
-                <small>{factor.detail}</small>
+        <div className="apex-week-layout">
+          <div className="apex-week-days">
+            {week.map((item) => (
+              <article className={`${item.date === data.current_date ? "is-today" : ""}${item.completed ? " is-done" : ""}`} key={item.date}>
+                <header><span>{weekday.format(new Date(`${item.date}T12:00:00`))}</span><strong>{dayNumber.format(new Date(`${item.date}T12:00:00`))}</strong></header>
+                <i>{item.completed ? <Check size={15} /> : categoryIcon(item.category, 15)}</i>
+                <p>{item.title}</p>
               </article>
             ))}
           </div>
-        </details>
+          <aside className="apex-week-progress">
+            <span>Volumen semanal</span>
+            <strong>{data.metrics.distance_current_week}<small> / {targetKm} km</small></strong>
+            <div role="progressbar" aria-label="Progreso del volumen semanal" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(weeklyPercent)}><i style={{ width: `${weeklyPercent}%` }} /></div>
+            <p>{data.metrics.runs_current_week} carreras · {Math.round(weeklyPercent)}%</p>
+          </aside>
+        </div>
+      </section>
+
+      {todayAppleRun && (
+        <section className="apex-run" aria-labelledby="apex-run-title">
+          <div className="apex-section-index" aria-hidden="true">03</div>
+          <div className="apex-run-mark"><Route size={25} /></div>
+          <div className="apex-run-copy">
+            <span>Apple Watch · Carrera de hoy</span>
+            <h2 id="apex-run-title">{todayRunDetail ? activityDisplayName(todayRunDetail) : todayAppleRun.label}</h2>
+          </div>
+          <div className="apex-run-stats">
+            <span><strong>{todayAppleRun.distance_km ?? data.today_activity.distance_km}</strong><small>km</small></span>
+            <span><strong>{todayRunDetail?.pace ?? "—"}</strong><small>ritmo</small></span>
+            <span><strong>{todayAppleRun.average_heartrate ?? data.today_activity.average_heartrate ?? "—"}</strong><small>bpm</small></span>
+            <span><strong>{todayAppleRun.duration_minutes ?? data.today_activity.moving_minutes}</strong><small>min</small></span>
+          </div>
+          <Link href={todayRunDetail ? `/activities/${todayRunDetail.id}` : "/activities"} aria-label="Abrir detalles de la carrera de hoy"><ChevronRight size={19} /></Link>
+        </section>
       )}
 
-      <Link className="pulse-coach-link" href="/coach">
-        <Sparkles size={18} />
-        <span><strong>¿Necesitas contexto?</strong> Pregunta al Coach sobre sueño, carga o la sesión de hoy.</span>
-        Abrir Coach <ArrowRight size={17} />
+      <section className="apex-vitals" aria-labelledby="apex-vitals-title">
+        <div className="apex-section-head">
+          <div><span className="apex-section-index" aria-hidden="true">{todayAppleRun ? "04" : "03"}</span><div><small>Señales del cuerpo</small><h2 id="apex-vitals-title">Listo para decidir</h2></div></div>
+          <span className="apex-source"><Watch size={14} /> Fitbit + Apple Health</span>
+        </div>
+        <div className="apex-metric-grid">
+          <MetricTile
+            label="Sueño"
+            value={sleepHours ?? "—"}
+            unit={sleepHours != null ? "h" : undefined}
+            percent={sleepHours == null ? 0 : (sleepHours / state.sleep_utility.goal_hours) * 100}
+            caption={state.sleep_utility.debt_hours != null ? `${state.sleep_utility.debt_hours} h de deuda` : "Esperando datos de Fitbit"}
+            tone="violet"
+            icon={<MoonStar size={16} />}
+          />
+          <MetricTile
+            label="Estrés"
+            value={stress.score ?? "—"}
+            unit={stress.score != null ? "/100" : undefined}
+            percent={stress.score ?? 0}
+            caption={stress.score == null ? "Sin señal suficiente" : stress.label}
+            tone="amber"
+            icon={<Zap size={16} />}
+          />
+          <MetricTile
+            label="Recuperación"
+            value={recovery.score ?? state.calibration.nights}
+            unit={recovery.score == null ? `/${state.calibration.required}` : "/100"}
+            percent={recoveryPercent}
+            caption={recovery.score == null ? "Calibrando tu base" : recovery.label}
+            tone="lime"
+            icon={<HeartPulse size={16} />}
+          />
+          <MetricTile
+            label="Energía"
+            value={energy.score}
+            unit="/100"
+            percent={energy.score}
+            caption={energy.label}
+            tone="blue"
+            icon={<BatteryCharging size={16} />}
+          />
+        </div>
+        <div className="apex-signal-strip">
+          <span><HeartPulse size={15} /><small>HRV</small><strong>{hrv?.value ?? "—"}</strong></span>
+          <span><Gauge size={15} /><small>Pulso reposo</small><strong>{restingHr?.value ?? "—"}</strong></span>
+          <span><Clock3 size={15} /><small>Carga hoy</small><strong>{state.load_7d.current_today} pts</strong></span>
+          <Link href="/sleep">Ver recuperación <ArrowRight size={15} /></Link>
+        </div>
+      </section>
+
+      <Link className="apex-coach-link" href="/coach">
+        <CircleDashed size={18} />
+        <span><strong>Coach</strong> · pregunta por tu sesión, carga o recuperación</span>
+        <ArrowRight size={16} />
       </Link>
     </section>
   );

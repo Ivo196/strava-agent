@@ -27,9 +27,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     <div className="page-wrap dashboard-page">
       <header className="pulse-page-header">
         <div>
-          <span className="eyebrow">PaceOS · Chicago 2026</span>
-          <h1>{name ? `Hola, ${name}. Este es tu estado.` : "Tu estado de hoy."}</h1>
-          <p>Lo importante para decidir cómo entrenar.</p>
+          <span className="eyebrow">PaceOS · Tu plan diario</span>
+          <h1>{name ? `Hola, ${name}.` : "Tu día empieza aquí."}</h1>
+          <p>Primero, lo que toca hoy.</p>
         </div>
         <div className="pulse-race-chip" aria-label={`${data.days_to_race} días para el Maratón de Chicago`}>
           <Flag size={18} />

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ChartNoAxesColumnIncreasing, Dumbbell, MoonStar, Settings, TrendingUp } from "lucide-react";
+import { CalendarDays, Footprints, HeartPulse, House, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { LiveDataRefresh } from "@/components/live-data-refresh";
 import { ChicagoMark } from "@/components/chicago-mark";
@@ -18,11 +18,10 @@ type NavigationItem = {
 };
 
 const navigation: NavigationItem[] = [
-  { href: "/", label: "Hoy", icon: ChartNoAxesColumnIncreasing },
-  { href: "/trends", label: "Tendencias", mobileLabel: "Tendencias", icon: TrendingUp },
-  { href: "/sleep", label: "Sueño", icon: MoonStar },
-  { href: "/plan", label: "Entrenamiento", mobileLabel: "Entreno", icon: Dumbbell },
-  { href: "/settings", label: "Tú", icon: Settings },
+  { href: "/", label: "Hoy", icon: House },
+  { href: "/plan", label: "Calendario", icon: CalendarDays },
+  { href: "/activities", label: "Carreras", icon: Footprints },
+  { href: "/sleep", label: "Recuperación", mobileLabel: "Recuperar", icon: HeartPulse },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -52,6 +51,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+        <Link className={pathname.startsWith("/settings") ? "nav-link nav-settings active" : "nav-link nav-settings"} href="/settings">
+          <Settings size={19} strokeWidth={1.8} aria-hidden="true" />
+          Ajustes
+        </Link>
         <div className="sidebar-today">
           <span>Hoy</span>
           <strong>{today || "Actualizando fecha…"}</strong>
