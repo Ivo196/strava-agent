@@ -28,6 +28,7 @@ from strava_agent.apple_health import import_health_auto_export, result_dict
 from strava_agent.ai_coach import ask_coach, build_coach_context
 from strava_agent.database import Database
 from strava_agent.metrics import (
+    activity_training_load,
     activities_frame,
     dashboard_metrics,
     format_pace,
@@ -186,6 +187,17 @@ class WeeklyCheckinInput(BaseModel):
     altered_gait: bool = False
     swelling: bool = False
     pain_walking: bool = False
+    notes: str = Field(default="", max_length=1000)
+
+
+class DailyCheckinInput(BaseModel):
+    local_date: date
+    fatigue: int = Field(ge=1, le=5)
+    stress: int = Field(ge=1, le=5)
+    soreness: int = Field(ge=0, le=10)
+    injury_note: str = Field(default="", max_length=500)
+    alcohol_units: float = Field(default=0, ge=0, le=20)
+    caffeine_after_14: bool = False
     notes: str = Field(default="", max_length=1000)
 
 
@@ -399,10 +411,12 @@ def dashboard(today: date | None = None, scenario: str | None = None) -> dict[st
             "calories": None,
             "average_heartrate": None,
         }
-    daily_state = _dashboard_daily_state(
+    daily_state = _performance_daily_state(
         health["devices"]["fitbit"],
         dashboard_today_activity,
         analysis_date,
+        activity_rows=rows,
+        daily_checkins=database.list_daily_checkins(),
     )
     return {
         "current_date": analysis_date.isoformat(),
@@ -1188,6 +1202,9 @@ def _fitbit_recovery_history(rows: list[dict[str, Any]]) -> list[dict[str, Any]]
     supported = {
         "daily-heart-rate-variability": "hrv",
         "daily-resting-heart-rate": "resting_hr",
+        "daily-oxygen-saturation": "oxygen",
+        "daily-respiratory-rate": "respiratory_rate",
+        "daily-sleep-temperature-derivations": "temperature",
     }
     days: dict[str, dict[str, Any]] = {}
     for row in rows:
@@ -1563,6 +1580,365 @@ def _dashboard_daily_state(
     }
 
 
+def _performance_daily_state(
+    fitbit: dict[str, Any],
+    apple_activity: dict[str, Any],
+    analysis_date: date,
+    *,
+    activity_rows: list[dict[str, Any]],
+    daily_checkins: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Compose explainable wellness signals without pretending missing data exists."""
+    state = _dashboard_daily_state(fitbit, apple_activity, analysis_date)
+    current_day = analysis_date.isoformat()
+    history = [
+        item for item in fitbit.get("recovery_history", [])
+        if str(item.get("date") or "") <= current_day
+    ]
+    today_signals = next(
+        (item for item in reversed(history) if item.get("date") == current_day),
+        {},
+    )
+    prior = [item for item in history if item.get("date") != current_day][-28:]
+    sleep = state["morning_recovery"].get("sleep_hours")
+    sleep_goal = float(fitbit.get("sleep", {}).get("goal") or 8)
+
+    definitions = [
+        ("sleep", "Sueño", sleep, "h", 0.32),
+        ("hrv", "HRV nocturna", today_signals.get("hrv"), "ms", 0.20),
+        ("resting_hr", "Pulso en reposo", today_signals.get("resting_hr"), "bpm", 0.16),
+        ("respiratory_rate", "Respiración", today_signals.get("respiratory_rate"), "rpm", 0.12),
+        ("temperature", "Temperatura", today_signals.get("temperature"), "°C", 0.10),
+        ("oxygen", "SpO₂", today_signals.get("oxygen"), "%", 0.10),
+    ]
+    factors: list[dict[str, Any]] = []
+    weighted_score = 0.0
+    available_weight = 0.0
+    baseline_counts: dict[str, int] = {}
+    for key, label, value, unit, weight in definitions:
+        baseline_values = [
+            float(item[key]) for item in prior if item.get(key) is not None
+        ]
+        baseline_counts[key] = len(baseline_values)
+        baseline = sum(baseline_values) / len(baseline_values) if baseline_values else None
+        signal_score: float | None = None
+        if key == "sleep" and value is not None:
+            signal_score = max(0, min(100, float(value) / sleep_goal * 100))
+        elif value is not None and baseline is not None and len(baseline_values) >= 3:
+            number = float(value)
+            if key == "hrv":
+                signal_score = 50 + ((number / baseline) - 1) * 250 if baseline else 50
+            elif key == "resting_hr":
+                signal_score = 50 - ((number / baseline) - 1) * 250 if baseline else 50
+            elif key == "oxygen":
+                signal_score = 75 if number >= 95 else 45 if number >= 92 else 20
+            elif key == "temperature":
+                signal_score = 80 - abs(number - baseline) * 55
+            else:
+                deviation = abs((number / baseline) - 1) if baseline else 0
+                signal_score = 80 - deviation * 500
+            signal_score = max(0, min(100, signal_score))
+        elif key == "oxygen" and value is not None:
+            number = float(value)
+            signal_score = 75 if number >= 95 else 45 if number >= 92 else 20
+
+        if signal_score is not None:
+            weighted_score += signal_score * weight
+            available_weight += weight
+        factor_state = (
+            "good" if signal_score is not None and signal_score >= 60
+            else "low" if signal_score is not None and signal_score < 40
+            else "neutral"
+        )
+        if value is None:
+            detail = "Sin medición para hoy"
+        elif key == "sleep":
+            detail = f"Objetivo personal {sleep_goal:g} h"
+        elif baseline is None or len(baseline_values) < 3:
+            detail = f"{len(baseline_values)}/3 días para una referencia"
+        else:
+            detail = f"Base 28 d: {baseline:.1f} {unit}"
+        factors.append({
+            "key": key,
+            "label": label,
+            "value": f"{float(value):g} {unit}" if value is not None else "Sin dato",
+            "state": factor_state,
+            "detail": detail,
+            "score": round(signal_score) if signal_score is not None else None,
+            "baseline": round(baseline, 1) if baseline is not None else None,
+        })
+
+    calibrated = state["calibration"]["ready"]
+    score = round(weighted_score / available_weight) if calibrated and available_weight else None
+    if score is not None and sleep is not None:
+        if float(sleep) < 5:
+            score = min(score, 39)
+        elif float(sleep) < 6:
+            score = min(score, 55)
+    available_signals = sum(factor["score"] is not None for factor in factors)
+    confidence_level = (
+        "Alta" if calibrated and available_signals >= 5
+        else "Media" if calibrated and available_signals >= 3
+        else "Baja"
+    )
+    state["morning_recovery"].update({
+        "score": score,
+        "factors": factors,
+        "method": "Promedio ponderado de señales disponibles frente a tu propia base de 28 días.",
+    })
+    state["confidence"] = {
+        "level": confidence_level,
+        "available_signals": available_signals,
+        "expected_signals": len(definitions),
+        "baseline_days": max(baseline_counts.values(), default=0),
+        "note": (
+            "La puntuación no se muestra hasta reunir sueño, HRV y pulso suficientes."
+            if not calibrated
+            else "Más señales y noches estables aumentan la confianza; no es un diagnóstico."
+        ),
+    }
+    state["load_7d"] = _aggregate_load_7d(
+        activity_rows,
+        fitbit,
+        analysis_date,
+    )
+    state["sleep_utility"] = _sleep_utility(fitbit, analysis_date)
+    state["journal"] = _journal_summary(
+        daily_checkins,
+        fitbit.get("sleep", {}).get("days", []),
+        analysis_date,
+    )
+
+    today_journal = state["journal"]["today"]
+    if today_journal and (
+        int(today_journal.get("fatigue") or 0) >= 4
+        or int(today_journal.get("soreness") or 0) >= 6
+        or str(today_journal.get("injury_note") or "").strip()
+    ):
+        state["recommendation"] = {
+            "title": "Tus sensaciones piden margen",
+            "body": (
+                "Combina los sensores con tu check-in: reduce intensidad y detén la sesión "
+                "si el dolor altera la técnica o empeora al calentar."
+            ),
+            "remaining": "Sesión suave o descanso",
+        }
+    elif state["load_7d"]["risk"] == "Alto":
+        state["recommendation"] = {
+            "title": "Consolida antes de volver a cargar",
+            "body": state["load_7d"]["recommendation"],
+            "remaining": "Prioriza recuperación",
+        }
+    return state
+
+
+def _activity_category(sport_type: str) -> str:
+    normalized = sport_type.lower().replace("_", "")
+    if "run" in normalized:
+        return "running"
+    if "bike" in normalized or "cycl" in normalized:
+        return "cycling"
+    if "strength" in normalized or "weight" in normalized:
+        return "strength"
+    return "general"
+
+
+def _aggregate_load_7d(
+    activity_rows: list[dict[str, Any]],
+    fitbit: dict[str, Any],
+    analysis_date: date,
+) -> dict[str, Any]:
+    start = analysis_date - timedelta(days=34)
+    daily: dict[str, dict[str, float]] = {}
+
+    def add(day: str, category: str, value: float) -> None:
+        target = daily.setdefault(day, {
+            "running": 0.0, "cycling": 0.0, "strength": 0.0, "general": 0.0,
+        })
+        target[category] += max(0, value)
+
+    for row in activity_rows:
+        recorded = _parse_health_datetime(row.get("start_date_local") or row.get("start_date"))
+        if recorded is None or recorded.date() < start or recorded.date() > analysis_date:
+            continue
+        add(
+            recorded.date().isoformat(),
+            _activity_category(str(row.get("sport_type") or "")),
+            activity_training_load(row),
+        )
+    exercise_zones: dict[str, float] = {}
+    for exercise in fitbit.get("exercises", []):
+        day = str(exercise.get("date") or "")
+        if not day:
+            continue
+        try:
+            exercise_day = date.fromisoformat(day)
+        except ValueError:
+            continue
+        if exercise_day < start or exercise_day > analysis_date:
+            continue
+        category = _activity_category(str(exercise.get("type") or ""))
+        duration = float(exercise.get("duration_minutes") or 0)
+        zone = float(exercise.get("zone_minutes") or 0)
+        add(day, category, zone + duration * (0.35 if category == "strength" else 0.2))
+        exercise_zones[day] = exercise_zones.get(day, 0) + zone
+    for activity_day in fitbit.get("daily_activity", {}).get("days", []):
+        day = str(activity_day.get("date") or "")
+        if not day:
+            continue
+        try:
+            parsed_day = date.fromisoformat(day)
+        except ValueError:
+            continue
+        if parsed_day < start or parsed_day > analysis_date:
+            continue
+        remaining_zone = max(
+            0,
+            float(activity_day.get("zone_minutes") or 0) - exercise_zones.get(day, 0),
+        )
+        active = float(activity_day.get("active_minutes") or 0)
+        add(day, "general", remaining_zone * 0.45 + active * 0.08)
+
+    trend = []
+    categories = {key: 0.0 for key in ("running", "cycling", "strength", "general")}
+    for offset in range(6, -1, -1):
+        day = analysis_date - timedelta(days=offset)
+        values = daily.get(day.isoformat(), {key: 0.0 for key in categories})
+        total = sum(values.values())
+        trend.append({
+            "date": day.isoformat(),
+            "total": round(total, 1),
+            **{key: round(values[key], 1) for key in categories},
+        })
+        for key in categories:
+            categories[key] += values[key]
+    acute = sum(item["total"] for item in trend)
+    baseline_weeks = []
+    for week_index in range(4):
+        week_end = analysis_date - timedelta(days=7 + week_index * 7)
+        week_total = 0.0
+        for offset in range(7):
+            week_total += sum(daily.get((week_end - timedelta(days=offset)).isoformat(), {}).values())
+        if week_total > 0:
+            baseline_weeks.append(week_total)
+    baseline = sum(baseline_weeks) / len(baseline_weeks) if baseline_weeks else None
+    ratio = acute / baseline if baseline else None
+    risk = "Sin base" if ratio is None else "Bajo"
+    if ratio is not None and ratio > 1.5:
+        risk = "Alto"
+    elif ratio is not None and ratio > 1.25:
+        risk = "Moderado"
+    recommendation = (
+        "La carga aguda supera claramente tu referencia reciente; evita añadir intensidad y observa sueño y sensaciones."
+        if risk == "Alto"
+        else "La carga está algo por encima de tu referencia; mantén la siguiente sesión controlada."
+        if risk == "Moderado"
+        else "La carga está dentro de tu rango reciente; progresa solo si recuperación y sensaciones acompañan."
+        if baseline is not None
+        else "Aún no hay cuatro semanas comparables; usa la tendencia como registro, no como límite prescriptivo."
+    )
+    return {
+        "total": round(acute, 1),
+        "baseline": round(baseline, 1) if baseline is not None else None,
+        "ratio": round(ratio, 2) if ratio is not None else None,
+        "risk": risk,
+        "recommendation": recommendation,
+        "categories": {key: round(value, 1) for key, value in categories.items()},
+        "trend": trend,
+        "baseline_weeks": len(baseline_weeks),
+        "method": "Carga interna estimada con duración, frecuencia cardiaca o minutos en zona; no es una medida clínica.",
+    }
+
+
+def _sleep_utility(fitbit: dict[str, Any], analysis_date: date) -> dict[str, Any]:
+    goal = float(fitbit.get("sleep", {}).get("goal") or 8)
+    nights = [
+        night for night in fitbit.get("sleep", {}).get("days", [])
+        if str(night.get("date") or "") <= analysis_date.isoformat()
+    ][-7:]
+    hours = [float(night["hours"]) for night in nights if night.get("hours") is not None]
+    debt = sum(max(0, goal - value) for value in hours)
+    average = sum(hours) / len(hours) if hours else None
+    variability = None
+    consistency = None
+    if len(hours) >= 3:
+        mean = sum(hours) / len(hours)
+        variability = math.sqrt(sum((value - mean) ** 2 for value in hours) / len(hours))
+        consistency = round(max(0, min(100, 100 - variability * 35)))
+    latest = fitbit.get("sleep", {}).get("latest") or {}
+    efficiency = latest.get("efficiency")
+    if not hours:
+        guidance = "Sin noches suficientes: sincroniza el sueño y guía el entrenamiento por sensaciones."
+    elif debt >= 5:
+        guidance = "Deuda alta: protege la próxima noche y evita encadenar sesiones intensas."
+    elif debt >= 2:
+        guidance = "Hay deuda acumulada: conserva el volumen, pero recorta intensidad si aparece fatiga."
+    elif efficiency is not None and float(efficiency) < 85:
+        guidance = "La duración acompaña, pero la eficiencia fue baja; mantén flexible la sesión clave."
+    else:
+        guidance = "El sueño reciente respalda el plan, siempre que el calentamiento confirme buenas sensaciones."
+    return {
+        "debt_hours": round(debt, 1) if hours else None,
+        "average_hours": round(average, 1) if average is not None else None,
+        "efficiency": round(float(efficiency)) if efficiency is not None else None,
+        "consistency": consistency,
+        "variability_hours": round(variability, 2) if variability is not None else None,
+        "nights": len(hours),
+        "goal_hours": goal,
+        "guidance": guidance,
+        "consistency_basis": "regularidad de duración" if consistency is not None else "faltan 3 noches",
+    }
+
+
+def _journal_summary(
+    entries: list[dict[str, Any]],
+    sleep_days: list[dict[str, Any]],
+    analysis_date: date,
+) -> dict[str, Any]:
+    today = next(
+        (entry for entry in entries if entry.get("local_date") == analysis_date.isoformat()),
+        None,
+    )
+    sleep_by_day = {
+        str(night.get("date")): float(night["hours"])
+        for night in sleep_days if night.get("hours") is not None
+    }
+    paired = [
+        (entry, sleep_by_day[str(entry.get("local_date"))])
+        for entry in entries if str(entry.get("local_date")) in sleep_by_day
+    ]
+    insights: list[str] = []
+    if len(paired) >= 7:
+        low_fatigue = [hours for entry, hours in paired if int(entry.get("fatigue") or 0) <= 2]
+        high_fatigue = [hours for entry, hours in paired if int(entry.get("fatigue") or 0) >= 4]
+        if len(low_fatigue) >= 3 and len(high_fatigue) >= 3:
+            difference = sum(low_fatigue) / len(low_fatigue) - sum(high_fatigue) / len(high_fatigue)
+            insights.append(
+                f"En {len(paired)} días comparables, los días de menor fatiga coincidieron con {abs(difference):.1f} h "
+                f"{'más' if difference >= 0 else 'menos'} de sueño de media. Es una asociación, no causalidad."
+            )
+        alcohol = [hours for entry, hours in paired if float(entry.get("alcohol_units") or 0) > 0]
+        no_alcohol = [hours for entry, hours in paired if float(entry.get("alcohol_units") or 0) == 0]
+        if len(alcohol) >= 3 and len(no_alcohol) >= 3:
+            delta = sum(no_alcohol) / len(no_alcohol) - sum(alcohol) / len(alcohol)
+            insights.append(
+                f"Las noches registradas sin alcohol coincidieron con {abs(delta):.1f} h "
+                f"{'más' if delta >= 0 else 'menos'} de sueño. No demuestra causa y puede haber otros factores."
+            )
+    return {
+        "today": today,
+        "entry_count": len(entries),
+        "paired_days": len(paired),
+        "insights": insights,
+        "minimum_for_insights": 7,
+        "message": (
+            "Aún no hay suficientes días comparables para mostrar asociaciones."
+            if len(paired) < 7
+            else "Las asociaciones son descriptivas y nunca implican causalidad."
+        ),
+    }
+
+
 def _fitbit_step_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     totals: dict[str, int] = {}
     for row in rows:
@@ -1935,6 +2311,23 @@ def save_checkin(checkin: WeeklyCheckinInput) -> dict[str, Any]:
     payload["week_start"] = week_start.isoformat()
     database.save_weekly_checkin(payload)
     return {"checkin": database.latest_weekly_checkin()}
+
+
+@app.get("/api/daily-checkin")
+def get_daily_checkin(local_date: date | None = None) -> dict[str, Any]:
+    target = (local_date or date.today()).isoformat()
+    entries = database.list_daily_checkins()
+    return {
+        "checkin": database.get_daily_checkin(target),
+        "entry_count": len(entries),
+    }
+
+
+@app.post("/api/daily-checkin")
+def save_daily_checkin(checkin: DailyCheckinInput) -> dict[str, Any]:
+    entry = database.save_daily_checkin(checkin.model_dump(mode="json"))
+    _invalidate_health_insights_cache()
+    return {"checkin": entry, "entry_count": len(database.list_daily_checkins())}
 
 
 @app.get("/api/profile")

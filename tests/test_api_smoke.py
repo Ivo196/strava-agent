@@ -26,7 +26,13 @@ def test_dashboard_and_coach_status_are_available() -> None:
         "morning_recovery",
         "today_load",
         "recommendation",
+        "confidence",
+        "load_7d",
+        "sleep_utility",
+        "journal",
     }
+    assert len(dashboard.json()["daily_state"]["morning_recovery"]["factors"]) == 6
+    assert len(dashboard.json()["daily_state"]["load_7d"]["trend"]) == 7
     assert dashboard.json()["current_date"]
     assert set(dashboard.json()["today_activity"]) == {
         "count",
@@ -148,6 +154,31 @@ def test_body_composition_endpoint_saves_history(tmp_path: Path, monkeypatch) ->
     assert history.status_code == 200
     assert history.json()["count"] == 1
     assert history.json()["latest"]["body_fat_percent"] == 47.8
+
+
+def test_daily_checkin_endpoint_starts_and_updates_journal(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(api, "database", Database(tmp_path / "journal.db"))
+    client = TestClient(api.app)
+
+    response = client.post("/api/daily-checkin", json={
+        "local_date": "2026-07-31",
+        "fatigue": 3,
+        "stress": 2,
+        "soreness": 1,
+        "injury_note": "",
+        "alcohol_units": 0,
+        "caffeine_after_14": False,
+        "notes": "Normal",
+    })
+    fetched = client.get("/api/daily-checkin?local_date=2026-07-31")
+
+    assert response.status_code == 200
+    assert fetched.status_code == 200
+    assert fetched.json()["checkin"]["fatigue"] == 3
+    assert fetched.json()["entry_count"] == 1
 
 
 def test_plan_completion_endpoint_persists_and_removes(

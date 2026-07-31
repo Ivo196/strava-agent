@@ -1319,6 +1319,79 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
   100% { opacity: .35; transform: scaleX(1); }
 }
 
+/* Performance intelligence: original PaceOS recovery, load, sleep and journal layer. */
+.pace-hero-grid { grid-template-columns: 160px minmax(0, 1fr); }
+.pace-factor-list { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pace-confidence { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin: 1px 0 0; padding: 10px 12px; color: #b7c9df; border-left: 3px solid #60a5fa; background: rgba(59,130,246,.055); font-size: 10px; font-weight: 750; }
+.pace-confidence span { color: #7f94ae; font-weight: 500; }
+.performance-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(340px, .75fr); gap: 14px; }
+.performance-load-card, .sleep-utility-card, .performance-journal { min-width: 0; padding: 22px; border: 1px solid var(--pace-border); border-radius: 16px; background: linear-gradient(145deg, rgba(12,24,46,.94), rgba(5,12,26,.92)); box-shadow: 0 18px 50px rgba(0,0,0,.22); }
+.performance-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.performance-section-heading h2 { margin: 5px 0 0; font-size: clamp(20px,2vw,28px); letter-spacing: -.035em; }
+.performance-section-heading > svg { color: #7cb5ff; }
+.load-risk, .journal-count { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px; border-radius: 999px; font-size: 9px; font-weight: 850; text-transform: uppercase; }
+.load-risk { color: #a7f3d0; background: rgba(16,185,129,.1); }
+.load-risk.risk-sin-base { color: #bfdbfe; background: rgba(59,130,246,.1); }
+.load-risk.risk-moderado { color: #fde68a; background: rgba(245,158,11,.1); }
+.load-risk.risk-alto { color: #fecdd3; background: rgba(244,63,94,.11); }
+.journal-count { color: #b8d8ff; background: rgba(59,130,246,.1); }
+.load-summary-strip { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
+.load-summary-strip span { display: grid; grid-template-columns: 20px minmax(0,1fr); align-items: center; gap: 3px 7px; min-width: 0; padding: 11px; color: #8499b5; border: 1px solid rgba(125,168,231,.13); border-radius: 9px; background: rgba(3,10,24,.3); font-size: 9px; }
+.load-summary-strip svg { grid-row: 1 / span 2; color: #6faeff; }
+.load-summary-strip strong { color: #edf5ff; font: 650 16px "Fira Code", ui-monospace, monospace; }
+.load-trend { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 8px; min-height: 152px; margin-top: 18px; }
+.load-trend > div { display: grid; grid-template-rows: 1fr auto auto; gap: 5px; min-width: 0; text-align: center; }
+.load-trend span { position: relative; min-height: 94px; overflow: hidden; border-radius: 7px; background: rgba(96,165,250,.075); }
+.load-trend i { position: absolute; inset: auto 0 0; min-height: 4px; border-radius: 7px 7px 0 0; background: linear-gradient(180deg,#60a5fa,#2563eb); transition: height .25s ease; }
+.load-trend strong { color: #dbeafe; font: 600 9px "Fira Code",ui-monospace,monospace; }
+.load-trend small { color: #7187a4; font-size: 8px; text-transform: uppercase; }
+.baseline-callout, .sleep-guidance { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 11px; margin-top: 16px; padding: 13px; border: 1px solid rgba(96,165,250,.16); border-radius: 10px; background: rgba(37,99,235,.06); }
+.baseline-callout > svg, .sleep-guidance > svg { width: 34px; height: 34px; padding: 8px; color: #7db5ff; border-radius: 8px; background: rgba(59,130,246,.1); }
+.baseline-callout strong { font-size: 11px; }
+.baseline-callout p, .sleep-guidance p { margin: 4px 0 0; color: #99abc1; font-size: 10px; line-height: 1.5; }
+.baseline-callout small { display: block; margin-top: 6px; color: #6f849e; font-size: 8px; line-height: 1.4; }
+.sleep-utility-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; overflow: hidden; border: 1px solid rgba(96,165,250,.14); border-radius: 10px; background: rgba(96,165,250,.14); }
+.sleep-utility-metrics span { min-width: 0; padding: 15px; background: rgba(4,12,26,.96); }
+.sleep-utility-metrics small, .sleep-utility-metrics strong { display: block; }
+.sleep-utility-metrics small { color: #7e93ae; font-size: 8px; font-weight: 800; text-transform: uppercase; }
+.sleep-utility-metrics strong { margin-top: 7px; color: #e8f2ff; font: 650 20px "Fira Code",ui-monospace,monospace; }
+.utility-method { margin: 12px 0 0; color: #7187a2; font-size: 9px; line-height: 1.5; }
+.journal-form { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
+.journal-form label { display: grid; align-content: start; gap: 7px; color: #a9bad0; font-size: 10px; font-weight: 750; }
+.journal-form input, .journal-form select, .journal-form textarea { width: 100%; min-height: 44px; padding: 10px 11px; color: #edf5ff; border: 1px solid rgba(125,168,231,.22); border-radius: 8px; outline: none; background: rgba(3,10,24,.58); font: inherit; transition: border-color .2s ease, box-shadow .2s ease; }
+.journal-form textarea { min-height: 76px; resize: vertical; }
+.journal-form input:focus-visible, .journal-form select:focus-visible, .journal-form textarea:focus-visible, .journal-form button:focus-visible { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96,165,250,.18); }
+.journal-form input:disabled, .journal-form select:disabled, .journal-form textarea:disabled { opacity: .52; cursor: not-allowed; }
+.journal-wide { grid-column: span 2; }
+.journal-checkbox { display: flex !important; flex-direction: row; align-items: center; min-height: 44px; }
+.journal-checkbox input { width: 18px; min-height: 18px; accent-color: #3b82f6; }
+.journal-form button { min-height: 44px; padding: 0 15px; color: white; border: 1px solid #3b82f6; border-radius: 8px; background: #2563eb; cursor: pointer; font-weight: 800; transition: background .2s ease, border-color .2s ease; }
+.journal-form button:hover { background: #1d4ed8; }
+.journal-form button:disabled { opacity: .55; cursor: not-allowed; }
+.journal-message { grid-column: 1 / -1; margin: 0; color: #9eead9; font-size: 10px; }
+.journal-insights { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(125,168,231,.13); }
+.journal-insights strong { color: #dcecff; font-size: 11px; }
+.journal-insights p { margin: 6px 0 0; color: #8499b4; font-size: 10px; line-height: 1.5; }
+
+@media (max-width: 1000px) {
+  .performance-grid { grid-template-columns: 1fr; }
+  .journal-form { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 720px) {
+  .pace-factor-list { grid-template-columns: 1fr; }
+  .pace-confidence { display: grid; }
+  .performance-load-card, .sleep-utility-card, .performance-journal { padding: 16px; border-radius: 13px; }
+  .performance-section-heading { align-items: flex-start; }
+  .load-summary-strip { grid-template-columns: 1fr 1fr; }
+  .journal-form { grid-template-columns: 1fr; }
+  .journal-wide { grid-column: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .load-trend i { transition: none; }
+}
+
 @keyframes itemRise {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -3305,4 +3378,13 @@ a.pace-activity-card:hover {
   .pace-calibration > div i {
     animation: none !important;
   }
+}
+
+/* Keep the expanded six-signal explanation below the hero at every desktop size. */
+.pace-hero-grid { grid-template-columns: 160px minmax(0, 1fr); }
+.pace-factor-list { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+@media (max-width: 720px) {
+  .pace-hero-grid { grid-template-columns: 1fr; }
+  .pace-factor-list { grid-template-columns: 1fr; }
 }

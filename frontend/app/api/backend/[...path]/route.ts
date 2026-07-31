@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 
 const ALLOWED_PATHS = new Set([
   "checkin",
+  "daily-checkin",
   "coach/chat",
   "data-version",
   "profile",

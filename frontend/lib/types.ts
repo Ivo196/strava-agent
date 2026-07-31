@@ -363,12 +363,15 @@ export type DashboardData = {
       summary: string;
       sleep_hours: number | null;
       factors: {
-        key: "sleep" | "hrv" | "resting_hr";
+        key: "sleep" | "hrv" | "resting_hr" | "respiratory_rate" | "temperature" | "oxygen";
         label: string;
         value: string;
         state: "low" | "neutral" | "good";
         detail: string;
+        score: number | null;
+        baseline: number | null;
       }[];
+      method: string;
     };
     today_load: {
       level: "none" | "light" | "moderate" | "high";
@@ -384,6 +387,59 @@ export type DashboardData = {
       title: string;
       body: string;
       remaining: string;
+    };
+    confidence: {
+      level: "Baja" | "Media" | "Alta";
+      available_signals: number;
+      expected_signals: number;
+      baseline_days: number;
+      note: string;
+    };
+    load_7d: {
+      total: number;
+      baseline: number | null;
+      ratio: number | null;
+      risk: "Sin base" | "Bajo" | "Moderado" | "Alto";
+      recommendation: string;
+      categories: { running: number; cycling: number; strength: number; general: number };
+      trend: {
+        date: string;
+        total: number;
+        running: number;
+        cycling: number;
+        strength: number;
+        general: number;
+      }[];
+      baseline_weeks: number;
+      method: string;
+    };
+    sleep_utility: {
+      debt_hours: number | null;
+      average_hours: number | null;
+      efficiency: number | null;
+      consistency: number | null;
+      variability_hours: number | null;
+      nights: number;
+      goal_hours: number;
+      guidance: string;
+      consistency_basis: string;
+    };
+    journal: {
+      today: {
+        local_date: string;
+        fatigue: number;
+        stress: number;
+        soreness: number;
+        injury_note: string;
+        alcohol_units: number;
+        caffeine_after_14: number;
+        notes: string;
+      } | null;
+      entry_count: number;
+      paired_days: number;
+      insights: string[];
+      minimum_for_insights: number;
+      message: string;
     };
   };
   next_week: TrainingWeek | null;

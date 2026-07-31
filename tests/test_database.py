@@ -134,3 +134,26 @@ def test_data_version_changes_when_training_data_changes(tmp_path: Path) -> None
     database.upsert_activity(sample_activity())
 
     assert database.data_version() != initial
+
+
+def test_daily_checkin_upserts_without_touching_weekly_checkin(tmp_path: Path) -> None:
+    database = Database(tmp_path / "coach.db")
+    initial = database.data_version()
+
+    saved = database.save_daily_checkin({
+        "local_date": "2026-07-31",
+        "fatigue": 3,
+        "stress": 2,
+        "soreness": 1,
+        "injury_note": "",
+        "alcohol_units": 0,
+        "caffeine_after_14": False,
+        "notes": "Buenas sensaciones",
+    })
+    database.save_daily_checkin({**saved, "fatigue": 4})
+
+    entries = database.list_daily_checkins()
+    assert len(entries) == 1
+    assert entries[0]["fatigue"] == 4
+    assert database.latest_weekly_checkin() is None
+    assert database.data_version() != initial

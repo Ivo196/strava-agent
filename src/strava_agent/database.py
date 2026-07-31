@@ -67,6 +67,21 @@ CREATE TABLE IF NOT EXISTS weekly_checkins (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS daily_checkins (
+    local_date TEXT PRIMARY KEY,
+    fatigue INTEGER NOT NULL,
+    stress INTEGER NOT NULL,
+    soreness INTEGER NOT NULL,
+    injury_note TEXT NOT NULL DEFAULT '',
+    alcohol_units REAL NOT NULL DEFAULT 0,
+    caffeine_after_14 INTEGER NOT NULL DEFAULT 0,
+    notes TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_checkins_date
+ON daily_checkins(local_date);
+
 CREATE TABLE IF NOT EXISTS plan_session_completions (
     session_date TEXT PRIMARY KEY,
     completed INTEGER NOT NULL DEFAULT 1,
@@ -281,6 +296,53 @@ class Database:
             ).fetchone()
         return dict(row) if row else None
 
+    def save_daily_checkin(self, checkin: dict[str, Any]) -> dict[str, Any]:
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT INTO daily_checkins(
+                       local_date, fatigue, stress, soreness, injury_note,
+                       alcohol_units, caffeine_after_14, notes, updated_at
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(local_date) DO UPDATE SET
+                       fatigue=excluded.fatigue,
+                       stress=excluded.stress,
+                       soreness=excluded.soreness,
+                       injury_note=excluded.injury_note,
+                       alcohol_units=excluded.alcohol_units,
+                       caffeine_after_14=excluded.caffeine_after_14,
+                       notes=excluded.notes,
+                       updated_at=excluded.updated_at""",
+                (
+                    checkin["local_date"],
+                    int(checkin["fatigue"]),
+                    int(checkin["stress"]),
+                    int(checkin["soreness"]),
+                    checkin.get("injury_note", ""),
+                    float(checkin.get("alcohol_units") or 0),
+                    int(bool(checkin.get("caffeine_after_14", False))),
+                    checkin.get("notes", ""),
+                    utc_now_iso(),
+                ),
+            )
+        return self.get_daily_checkin(str(checkin["local_date"])) or {}
+
+    def get_daily_checkin(self, local_date: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM daily_checkins WHERE local_date = ?",
+                (local_date,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def list_daily_checkins(self, limit: int = 90) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """SELECT * FROM daily_checkins
+                   ORDER BY local_date DESC LIMIT ?""",
+                (max(1, min(limit, 365)),),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def set_plan_session_completed(self, session_date: str, completed: bool) -> None:
         with self.connect() as connection:
             if completed:
@@ -492,6 +554,7 @@ class Database:
                        COALESCE((SELECT MAX(updated_at) FROM google_health_oauth), ''),
                        COALESCE((SELECT MAX(updated_at) FROM athlete_profile), ''),
                        COALESCE((SELECT MAX(updated_at) FROM weekly_checkins), ''),
+                       COALESCE((SELECT MAX(updated_at) FROM daily_checkins), ''),
                        COALESCE((SELECT MAX(updated_at) FROM plan_session_completions), ''),
                        COALESCE((SELECT MAX(updated_at) FROM body_composition_measurements), '')"""
             ).fetchone()

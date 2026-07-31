@@ -10,6 +10,7 @@ import {
   CircleGauge,
   Clock3,
   Dumbbell,
+  Droplets,
   Flame,
   Footprints,
   Gauge,
@@ -18,11 +19,14 @@ import {
   Route,
   ShieldCheck,
   Sparkles,
+  Thermometer,
   TrendingUp,
+  Wind,
 } from "lucide-react";
 import type { DailyAgendaItem, DashboardData } from "@/lib/types";
 import { InteractiveWeek } from "@/components/interactive-week";
 import { activityDisplayName, activityDisplaySource } from "@/lib/activity-display";
+import { DailyJournal } from "@/components/daily-journal";
 
 const weekday = new Intl.DateTimeFormat("es-ES", { weekday: "short" });
 const time = new Intl.DateTimeFormat("es-ES", {
@@ -106,6 +110,8 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
   const state = data.daily_state;
   const recovery = state.morning_recovery;
   const load = state.today_load;
+  const loadWeek = state.load_7d;
+  const sleepUtility = state.sleep_utility;
   const today = data.daily_agenda[0];
   const steps = fitbit.steps.latest;
   const sleep = fitbit.sleep.latest;
@@ -119,6 +125,7 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
   );
   const gaugeValue = recovery.score ?? calibrationPercent;
   const hasLoad = load.activities_count > 0;
+  const maxDailyLoad = Math.max(...loadWeek.trend.map((day) => day.total), 1);
   const todayRun = data.recent_activities.find((activity) => activity.date === data.current_date);
 
   return (
@@ -179,8 +186,14 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
                     <BedDouble size={18} />
                   ) : factor.key === "hrv" ? (
                     <Activity size={18} />
-                  ) : (
+                  ) : factor.key === "resting_hr" ? (
                     <HeartPulse size={18} />
+                  ) : factor.key === "respiratory_rate" ? (
+                    <Wind size={18} />
+                  ) : factor.key === "temperature" ? (
+                    <Thermometer size={18} />
+                  ) : (
+                    <Droplets size={18} />
                   )}
                 </span>
                 <div>
@@ -193,6 +206,10 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
                 {factor.state === "neutral" && <span className="pace-impact">Calibrando</span>}
               </article>
             ))}
+            <p className="pace-confidence">
+              Confianza {state.confidence.level.toLowerCase()} · {state.confidence.available_signals}/{state.confidence.expected_signals} señales
+              <span>{state.confidence.note}</span>
+            </p>
           </div>
         </div>
       </section>
@@ -381,6 +398,78 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
           </div>
         </section>
       </div>
+
+      <section className="performance-grid" aria-label="Carga y utilidad del sueño">
+        <article className="performance-load-card">
+          <div className="performance-section-heading">
+            <div>
+              <span className="pace-kicker">Carga multideporte · 7 días</span>
+              <h2>{loadWeek.total} puntos estimados</h2>
+            </div>
+            <span className={`load-risk risk-${loadWeek.risk.toLowerCase().replace(" ", "-")}`}>
+              {loadWeek.risk === "Sin base" ? "Base en construcción" : `Riesgo ${loadWeek.risk.toLowerCase()}`}
+            </span>
+          </div>
+          <div className="load-summary-strip">
+            <span><Footprints size={15} /> Carrera <strong>{loadWeek.categories.running}</strong></span>
+            <span><Bike size={15} /> Bici <strong>{loadWeek.categories.cycling}</strong></span>
+            <span><Dumbbell size={15} /> Fuerza <strong>{loadWeek.categories.strength}</strong></span>
+            <span><Activity size={15} /> Actividad <strong>{loadWeek.categories.general}</strong></span>
+          </div>
+          <div className="load-trend" aria-label="Tendencia diaria de carga de siete días">
+            {loadWeek.trend.map((day) => (
+              <div key={day.date}>
+                <span title={`${day.total} puntos`}>
+                  <i style={{ height: `${Math.max(4, (day.total / maxDailyLoad) * 100)}%` }} />
+                </span>
+                <strong>{day.total}</strong>
+                <small>{weekday.format(new Date(`${day.date}T12:00:00`))}</small>
+              </div>
+            ))}
+          </div>
+          <div className="baseline-callout">
+            <TrendingUp size={18} />
+            <div>
+              <strong>
+                {loadWeek.baseline == null
+                  ? "Referencia personal en construcción"
+                  : `${Math.round((loadWeek.ratio ?? 0) * 100)}% de tu semana habitual`}
+              </strong>
+              <p>{loadWeek.recommendation}</p>
+              <small>{loadWeek.method}</small>
+            </div>
+          </div>
+        </article>
+
+        <article className="sleep-utility-card">
+          <div className="performance-section-heading">
+            <div>
+              <span className="pace-kicker">Sueño útil para entrenar</span>
+              <h2>{sleepUtility.nights ? `${sleepUtility.nights} noches analizadas` : "Esperando datos"}</h2>
+            </div>
+            <BedDouble size={24} />
+          </div>
+          <div className="sleep-utility-metrics">
+            <span><small>Deuda 7 d</small><strong>{sleepUtility.debt_hours == null ? "—" : `${sleepUtility.debt_hours} h`}</strong></span>
+            <span><small>Consistencia</small><strong>{sleepUtility.consistency == null ? "—" : `${sleepUtility.consistency}%`}</strong></span>
+            <span><small>Eficiencia</small><strong>{sleepUtility.efficiency == null ? "—" : `${sleepUtility.efficiency}%`}</strong></span>
+            <span><small>Media</small><strong>{sleepUtility.average_hours == null ? "—" : `${sleepUtility.average_hours} h`}</strong></span>
+          </div>
+          <div className="sleep-guidance">
+            <Sparkles size={18} />
+            <p>{sleepUtility.guidance}</p>
+          </div>
+          <p className="utility-method">
+            La consistencia usa {sleepUtility.consistency_basis}; no inventamos horarios cuando Fitbit no los entrega.
+          </p>
+        </article>
+      </section>
+
+      <DailyJournal
+        date={data.current_date}
+        journal={state.journal}
+        disabled={Boolean(data.demo_scenario)}
+      />
 
       <section className="pace-recent">
         <div className="pace-section-head">

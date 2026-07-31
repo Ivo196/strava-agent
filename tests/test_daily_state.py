@@ -134,3 +134,55 @@ def test_fake_dashboard_scenarios_recalculate_consistently(
         assert state["morning_recovery"]["label"] == "Buena recuperación"
     if scenario == "heavy-load":
         assert state["recommendation"]["title"] == "Entrenamiento del día completado"
+
+
+def test_performance_state_uses_six_signals_and_multisport_load() -> None:
+    days = [f"2026-07-{day:02d}" for day in range(13, 21)]
+    fitbit = {
+        "sleep": {
+            "goal": 8,
+            "latest": {"date": days[-1], "hours": 7.5, "efficiency": 91},
+            "days": [{"date": day, "hours": 7.5} for day in days],
+        },
+        "recovery_history": [
+            {
+                "date": day,
+                "hrv": 95 + index,
+                "resting_hr": 50,
+                "respiratory_rate": 14.2,
+                "temperature": 0.1,
+                "oxygen": 96,
+            }
+            for index, day in enumerate(days)
+        ],
+        "exercises": [{
+            "date": days[-1],
+            "type": "STRENGTH_TRAINING",
+            "duration_minutes": 40,
+            "zone_minutes": 12,
+        }],
+        "daily_activity": {"days": [{
+            "date": days[-1], "zone_minutes": 25, "active_minutes": 50,
+        }]},
+    }
+    state = api._performance_daily_state(
+        fitbit,
+        {"count": 0, "moving_minutes": 0, "training_load": 0, "calories": 0},
+        date(2026, 7, 20),
+        activity_rows=[{
+            "start_date_local": "2026-07-19T08:00:00+02:00",
+            "sport_type": "Run",
+            "moving_time_s": 3600,
+            "suffer_score": 55,
+        }],
+        daily_checkins=[],
+    )
+
+    assert len(state["morning_recovery"]["factors"]) == 6
+    assert state["confidence"]["available_signals"] == 6
+    assert isinstance(state["morning_recovery"]["score"], int)
+    assert state["load_7d"]["categories"]["running"] == 55
+    assert state["load_7d"]["categories"]["strength"] > 0
+    assert state["load_7d"]["risk"] == "Sin base"
+    assert state["sleep_utility"]["debt_hours"] == 3.5
+    assert state["journal"]["insights"] == []
