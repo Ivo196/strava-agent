@@ -176,6 +176,12 @@ def test_sync_saves_available_google_health_points(tmp_path: Path) -> None:
         if "/active-zone-minutes/" in url
     )
     assert "active_zone_minutes.interval.start_time" in zone_minutes_request["filter"]
+    activity_level_request = next(
+        params
+        for url, params in service.session.gets
+        if "/activity-level/" in url
+    )
+    assert "activity_level.interval.start_time" in activity_level_request["filter"]
 
     service.sync()
     incremental_request = [
@@ -240,6 +246,29 @@ def test_health_points_can_be_filtered_by_source(tmp_path: Path) -> None:
 
     assert len(rows) == 1
     assert rows[0]["source"] == "FITBIT"
+
+
+def test_health_points_can_be_loaded_by_time_window(tmp_path: Path) -> None:
+    database = Database(tmp_path / "coach.db")
+    for hour in (8, 12, 18):
+        database.upsert_google_health_data_point(
+            "heart-rate",
+            f"fitbit-{hour}",
+            f"2026-07-18T{hour:02d}:00:00Z",
+            "FITBIT",
+            {"heartRate": {"beatsPerMinute": 60 + hour}},
+        )
+
+    rows = database.list_google_health_data_points_since(
+        "heart-rate",
+        source="FITBIT",
+        recorded_after="2026-07-18T12:00:00Z",
+    )
+
+    assert [row["recorded_at"] for row in rows] == [
+        "2026-07-18T12:00:00Z",
+        "2026-07-18T18:00:00Z",
+    ]
 
 
 def test_normalizes_recovery_values() -> None:

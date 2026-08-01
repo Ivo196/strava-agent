@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 import json
 
 import api
@@ -270,6 +270,13 @@ def test_fitbit_stress_is_calculated_automatically_from_day_and_night_signals() 
                 {"time": f"{hour:02d}:00", "bpm": bpm}
                 for hour, bpm in enumerate([58, 61, 64, 69, 71, 72, 70, 73])
             ],
+            "stress_series": [
+                {"time": f"{hour:02d}:00", "bpm": bpm}
+                for hour, bpm in enumerate([58, 61, 64, 69, 71, 72, 70, 73])
+            ],
+            "stress_coverage_hours": 6,
+            "stress_classification_available": True,
+            "stress_excluded_samples": 24,
         },
         "exercises": [],
         "daily_activity": {"days": []},
@@ -285,11 +292,14 @@ def test_fitbit_stress_is_calculated_automatically_from_day_and_night_signals() 
 
     stress = state["physiological_stress"]
     assert stress["score"] is not None
-    assert stress["source"].startswith("Cálculo automático Fitbit")
+    assert stress["source"].startswith("Estimación Google Health v4")
     assert stress["components"]["daytime_activation"] is not None
     assert stress["components"]["nightly_strain"] is not None
-    assert stress["components"]["coverage_hours"] == 20
-    assert "65%" in stress["method"]
+    assert stress["components"]["coverage_hours"] == 6
+    assert stress["components"]["total_coverage_hours"] == 20
+    assert stress["components"]["classified"] is True
+    assert stress["components"]["excluded_samples"] == 24
+    assert "60%" in stress["method"]
 
 
 def test_recovery_score_is_provisional_before_seven_nights() -> None:
@@ -330,3 +340,132 @@ def test_recovery_score_is_provisional_before_seven_nights() -> None:
     assert state["morning_recovery"]["provisional"] is True
     assert state["morning_recovery"]["summary"].startswith("Estimación provisional")
     assert state["confidence"]["note"].startswith("Estimación provisional")
+
+
+def test_fitbit_insights_load_the_full_recent_heart_rate_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    start = datetime(2026, 8, 1, 6, tzinfo=UTC)
+    heart_rows = []
+    for minute in range(601):
+        recorded = start + timedelta(minutes=minute)
+        heart_rows.append({
+            "data_type": "heart-rate",
+            "recorded_at": recorded.isoformat().replace("+00:00", "Z"),
+            "source": "FITBIT",
+            "value_json": json.dumps({
+                "dataSource": {
+                    "platform": "FITBIT",
+                    "recordingMethod": "PASSIVELY_MEASURED",
+                },
+                "heartRate": {
+                    "sampleTime": {
+                        "physicalTime": recorded.isoformat().replace("+00:00", "Z"),
+                        "civilTime": {
+                            "date": {"year": 2026, "month": 8, "day": 1},
+                            "time": {"hours": recorded.hour, "minutes": recorded.minute},
+                        },
+                    },
+                    "beatsPerMinute": "62",
+                },
+            }),
+        })
+
+    class WindowDatabase:
+        def list_google_health_data_points_since(self, *args: object, **kwargs: object) -> list[dict[str, str]]:
+            return heart_rows
+
+        def list_latest_google_health_data_points(self, *args: object, **kwargs: object) -> list[dict[str, str]]:
+            raise AssertionError("No debe truncar el pulso a las últimas 5.000 muestras")
+
+        def list_google_health_data_points(self, *args: object, **kwargs: object) -> list[dict[str, str]]:
+            return []
+
+    monkeypatch.setattr(api, "database", WindowDatabase())
+    fitbit = api._fitbit_insights({
+        "fitbit_sensor_first": heart_rows[0]["recorded_at"],
+        "fitbit_sensor_last": heart_rows[-1]["recorded_at"],
+        "fitbit_sensor_points": len(heart_rows),
+    })
+
+    assert fitbit["heart_rate"]["coverage_hours"] == 10
+    assert fitbit["heart_rate"]["stress_coverage_hours"] == 10
+    assert len(fitbit["heart_rate"]["series"]) <= 96
+
+
+def test_fitbit_stress_series_excludes_sleep_and_active_intervals(monkeypatch: pytest.MonkeyPatch) -> None:
+    start = datetime(2026, 8, 1, 8, tzinfo=UTC)
+    heart_rows = []
+    for minute in range(241):
+        recorded = start + timedelta(minutes=minute)
+        heart_rows.append({
+            "data_type": "heart-rate",
+            "recorded_at": recorded.isoformat().replace("+00:00", "Z"),
+            "source": "FITBIT",
+            "value_json": json.dumps({
+                "dataSource": {
+                    "platform": "FITBIT",
+                    "recordingMethod": "PASSIVELY_MEASURED",
+                },
+                "heartRate": {
+                    "sampleTime": {
+                        "physicalTime": recorded.isoformat().replace("+00:00", "Z"),
+                        "civilTime": {
+                            "date": {"year": 2026, "month": 8, "day": 1},
+                            "time": {"hours": recorded.hour, "minutes": recorded.minute},
+                        },
+                    },
+                    "beatsPerMinute": "64",
+                },
+            }),
+        })
+
+    def context_row(data_type: str, payload_name: str, start_hour: int, end_hour: int, **payload: str) -> dict[str, str]:
+        return {
+            "data_type": data_type,
+            "recorded_at": f"2026-08-01T{start_hour:02d}:00:00Z",
+            "source": "FITBIT",
+            "value_json": json.dumps({
+                "dataSource": {"platform": "FITBIT", "recordingMethod": "DERIVED"},
+                payload_name: {
+                    "interval": {
+                        "startTime": f"2026-08-01T{start_hour:02d}:00:00Z",
+                        "endTime": f"2026-08-01T{end_hour:02d}:00:00Z",
+                    },
+                    **payload,
+                },
+            }),
+        }
+
+    context_rows = [
+        context_row("sedentary-period", "sedentaryPeriod", 8, 10),
+        context_row(
+            "activity-level",
+            "activityLevel",
+            10,
+            11,
+            activityLevelType="MODERATELY_ACTIVE",
+        ),
+        context_row("sleep", "sleep", 11, 12),
+    ]
+
+    class ContextDatabase:
+        def list_google_health_data_points_since(self, *args: object, **kwargs: object) -> list[dict[str, str]]:
+            return heart_rows
+
+        def list_latest_google_health_data_points(self, *args: object, **kwargs: object) -> list[dict[str, str]]:
+            return []
+
+        def list_google_health_data_points(self, *args: object, **kwargs: object) -> list[dict[str, str]]:
+            return context_rows
+
+    monkeypatch.setattr(api, "database", ContextDatabase())
+    fitbit = api._fitbit_insights({
+        "fitbit_sensor_first": heart_rows[0]["recorded_at"],
+        "fitbit_sensor_last": heart_rows[-1]["recorded_at"],
+        "fitbit_sensor_points": len(heart_rows),
+    })
+
+    heart_rate = fitbit["heart_rate"]
+    assert heart_rate["stress_classification_available"] is True
+    assert heart_rate["stress_coverage_hours"] == 2
+    assert heart_rate["stress_excluded_samples"] == 121
+    assert heart_rate["stress_series"][-1]["time"] == "09:59"

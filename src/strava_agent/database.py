@@ -954,3 +954,20 @@ class Database:
                 (data_type, source, limit),
             ).fetchall()
         return [dict(row) for row in reversed(rows)]
+
+    def list_google_health_data_points_since(
+        self,
+        data_type: str,
+        *,
+        source: str,
+        recorded_after: str,
+    ) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """SELECT data_type, recorded_at, source, value_json
+                   FROM google_health_data_points
+                   WHERE data_type = ? AND source = ? AND recorded_at >= ?
+                   ORDER BY recorded_at""",
+                (data_type, source, recorded_after),
+            ).fetchall()
+        return [dict(row) for row in rows]

@@ -62,6 +62,7 @@ class GoogleHealthCredentials:
 
 
 DATA_TYPES: dict[str, tuple[str, str, int]] = {
+    "activity-level": ("activity_level.interval.start_time", "physical", 14),
     "daily-heart-rate-variability": ("daily_heart_rate_variability.date", "daily", 42),
     "daily-resting-heart-rate": ("daily_resting_heart_rate.date", "daily", 42),
     "daily-oxygen-saturation": ("daily_oxygen_saturation.date", "daily", 42),

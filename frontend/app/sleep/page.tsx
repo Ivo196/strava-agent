@@ -116,7 +116,7 @@ export default async function SleepPage() {
     <div className="page-wrap recovery-page recovery-page-v2">
       <header className="simple-header section-page-header recovery-page-head">
         <div>
-          <span className="eyebrow">Fitbit · Cálculo automático</span>
+          <span className="eyebrow">Google Health · Estimación automática</span>
           <h1>Recuperación</h1>
           <p>Sueño, estrés y señales vitales comparadas con tu propia base.</p>
         </div>
@@ -141,7 +141,7 @@ export default async function SleepPage() {
           score={stress.score}
           tone={stressStatus.tone}
           status={stressStatus.label}
-          detail="Automático · pulso pasivo + noche"
+          detail="Estimado · pulso sedentario + noche"
           icon={<Zap size={16} />}
           scale={["Bajo", "Medio", "Alto"]}
         />
@@ -185,13 +185,13 @@ export default async function SleepPage() {
         </article>
 
         <article className="stress-auto-card">
-          <header><div><span><Zap size={16} /> Estrés automático</span><strong>{stress.label}</strong></div><small>{stress.confidence} confianza</small></header>
+          <header><div><span><Zap size={16} /> Estrés estimado</span><strong>{stress.label}</strong></div><small>{stress.confidence} confianza</small></header>
           <p>{stress.source}</p>
           <div className="stress-component-grid">
             <span><small>Activación reciente</small><strong>{stress.components.daytime_activation ?? "—"}<b>/100</b></strong></span>
             <span><small>Tensión nocturna</small><strong>{stress.components.nightly_strain ?? "—"}<b>/100</b></strong></span>
             <span><small>Pulso pasivo</small><strong>{stress.components.passive_bpm ?? "—"}<b>bpm</b></strong></span>
-            <span><small>Cobertura</small><strong>{stress.components.coverage_hours}<b>h</b></strong></span>
+            <span><small>Cobertura útil</small><strong>{stress.components.coverage_hours}<b>h</b></strong></span>
           </div>
           {stress.timeline.length > 0 && (
             <div className="stress-mini-chart" aria-label="Activación fisiológica durante el día">

@@ -6,7 +6,7 @@ import json
 import math
 import secrets
 from statistics import median
-from bisect import bisect_left
+from bisect import bisect_left, bisect_right
 from copy import deepcopy
 from contextlib import asynccontextmanager, suppress
 from datetime import date, datetime, timedelta
@@ -831,13 +831,25 @@ def _device_insights(
 
 
 def _fitbit_insights(google_status: dict[str, Any]) -> dict[str, Any]:
-    rows = database.list_latest_google_health_data_points(
-        "heart-rate",
-        source="FITBIT",
-        limit=5000,
-    )
+    latest_sensor_time = _parse_health_datetime(google_status.get("fitbit_sensor_last"))
+    if latest_sensor_time is not None:
+        heart_rate_cutoff = (
+            latest_sensor_time - timedelta(hours=36)
+        ).isoformat().replace("+00:00", "Z")
+        rows = database.list_google_health_data_points_since(
+            "heart-rate",
+            source="FITBIT",
+            recorded_after=heart_rate_cutoff,
+        )
+    else:
+        rows = database.list_latest_google_health_data_points(
+            "heart-rate",
+            source="FITBIT",
+            limit=5000,
+        )
     rows.extend(database.list_google_health_data_points(
         [
+            "activity-level",
             "daily-heart-rate-variability",
             "daily-resting-heart-rate",
             "daily-oxygen-saturation",
@@ -858,7 +870,7 @@ def _fitbit_insights(google_status: dict[str, Any]) -> dict[str, Any]:
         ],
         source="FITBIT",
     ))
-    heart_rate_samples: list[tuple[datetime, str, str, float]] = []
+    heart_rate_samples: list[dict[str, Any]] = []
     for row in rows:
         if row["data_type"] != "heart-rate" or row["source"] != "FITBIT":
             continue
@@ -884,30 +896,142 @@ def _fitbit_insights(google_status: dict[str, Any]) -> dict[str, Any]:
             f"{int(civil_time['hours'] if 'hours' in civil_time else local_recorded.hour):02d}:"
             f"{int(civil_time['minutes'] if 'minutes' in civil_time else local_recorded.minute):02d}"
         )
-        heart_rate_samples.append((recorded, local_date, local_clock, float(value)))
+        heart_rate_samples.append({
+            "recorded": recorded,
+            "date": local_date,
+            "time": local_clock,
+            "bpm": float(value),
+            "motion_context": str((payload.get("metadata") or {}).get("motionContext") or ""),
+        })
 
-    heart_rate_samples.sort(key=lambda sample: sample[0])
-    latest_date = heart_rate_samples[-1][1] if heart_rate_samples else None
+    heart_rate_samples.sort(key=lambda sample: sample["recorded"])
+    latest_date = heart_rate_samples[-1]["date"] if heart_rate_samples else None
     latest_day = [
-        sample for sample in heart_rate_samples if sample[1] == latest_date
+        sample for sample in heart_rate_samples if sample["date"] == latest_date
     ]
-    series: list[dict[str, Any]] = []
-    if latest_day:
-        bucket_size = max(1, math.ceil(len(latest_day) / 96))
-        for index in range(0, len(latest_day), bucket_size):
-            bucket = latest_day[index : index + bucket_size]
-            series.append(
-                {
-                    "time": bucket[-1][2],
-                    "bpm": round(sum(sample[3] for sample in bucket) / len(bucket)),
-                }
-            )
-    values = [sample[3] for sample in latest_day]
+
+    def interval_for(
+        point: dict[str, Any],
+        payload_name: str,
+    ) -> tuple[datetime, datetime] | None:
+        interval = (point.get(payload_name) or {}).get("interval") or {}
+        start = _parse_health_datetime(interval.get("startTime"))
+        end = _parse_health_datetime(interval.get("endTime"))
+        return (start, end) if start is not None and end is not None else None
+
+    sleep_intervals: list[tuple[datetime, datetime]] = []
+    exercise_intervals: list[tuple[datetime, datetime]] = []
+    sedentary_intervals: list[tuple[datetime, datetime]] = []
+    active_intervals: list[tuple[datetime, datetime]] = []
+    for row in rows:
+        if row["data_type"] == "heart-rate":
+            continue
+        point = json.loads(row["value_json"])
+        if row["data_type"] == "sleep":
+            interval = interval_for(point, "sleep")
+            if interval:
+                sleep_intervals.append(interval)
+        elif row["data_type"] == "exercise":
+            interval = interval_for(point, "exercise")
+            if interval:
+                exercise_intervals.append(interval)
+        elif row["data_type"] == "sedentary-period":
+            interval = interval_for(point, "sedentaryPeriod")
+            if interval:
+                sedentary_intervals.append(interval)
+        elif row["data_type"] == "activity-level":
+            payload = point.get("activityLevel") or {}
+            interval = interval_for(point, "activityLevel")
+            if interval:
+                if payload.get("activityLevelType") == "SEDENTARY":
+                    sedentary_intervals.append(interval)
+                elif payload.get("activityLevelType") not in {
+                    None,
+                    "ACTIVITY_LEVEL_TYPE_UNSPECIFIED",
+                }:
+                    active_intervals.append(interval)
+
+    def merge_intervals(
+        intervals: list[tuple[datetime, datetime]],
+    ) -> tuple[list[tuple[datetime, datetime]], list[datetime]]:
+        merged: list[tuple[datetime, datetime]] = []
+        for start, end in sorted(intervals):
+            if merged and start <= merged[-1][1]:
+                merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+            else:
+                merged.append((start, end))
+        return merged, [start for start, _end in merged]
+
+    sleep_intervals, sleep_starts = merge_intervals(sleep_intervals)
+    exercise_intervals, exercise_starts = merge_intervals(exercise_intervals)
+    sedentary_intervals, sedentary_starts = merge_intervals(sedentary_intervals)
+    active_intervals, active_starts = merge_intervals(active_intervals)
+
+    def inside(
+        recorded: datetime,
+        intervals: list[tuple[datetime, datetime]],
+        starts: list[datetime],
+    ) -> bool:
+        index = bisect_right(starts, recorded) - 1
+        return index >= 0 and recorded <= intervals[index][1]
+
+    observation_start = latest_day[0]["recorded"] if latest_day else None
+    observation_end = latest_day[-1]["recorded"] if latest_day else None
+    contextual_intervals = sedentary_intervals + active_intervals
+    classification_available = bool(
+        observation_start is not None
+        and observation_end is not None
+        and any(end >= observation_start and start <= observation_end for start, end in contextual_intervals)
+    ) or any(sample["motion_context"] in {"SEDENTARY", "ACTIVE"} for sample in latest_day)
+    stress_samples: list[dict[str, Any]] = []
+    excluded_samples = 0
+    for sample in latest_day:
+        recorded = sample["recorded"]
+        excluded_context = (
+            inside(recorded, sleep_intervals, sleep_starts)
+            or inside(recorded, exercise_intervals, exercise_starts)
+            or inside(recorded, active_intervals, active_starts)
+            or sample["motion_context"] == "ACTIVE"
+        )
+        confirmed_sedentary = (
+            sample["motion_context"] == "SEDENTARY"
+            or inside(recorded, sedentary_intervals, sedentary_starts)
+        )
+        if excluded_context or (classification_available and not confirmed_sedentary):
+            excluded_samples += 1
+            continue
+        stress_samples.append(sample)
+
+    def bucketed_series(
+        samples: list[dict[str, Any]],
+        maximum: int = 96,
+    ) -> list[dict[str, Any]]:
+        if not samples:
+            return []
+        bucket_size = max(1, math.ceil(len(samples) / maximum))
+        result: list[dict[str, Any]] = []
+        for index in range(0, len(samples), bucket_size):
+            bucket = samples[index : index + bucket_size]
+            result.append({
+                "time": bucket[-1]["time"],
+                "bpm": round(sum(float(sample["bpm"]) for sample in bucket) / len(bucket)),
+            })
+        return result
+
+    series = bucketed_series(latest_day)
+    stress_series = bucketed_series(stress_samples)
+    values = [float(sample["bpm"]) for sample in latest_day]
     coverage_hours = (
-        (latest_day[-1][0] - latest_day[0][0]).total_seconds() / 3600
+        (latest_day[-1]["recorded"] - latest_day[0]["recorded"]).total_seconds() / 3600
         if len(latest_day) > 1
         else 0
     )
+    stress_coverage_hours = len(
+        {
+            int(sample["recorded"].timestamp() // 60)
+            for sample in stress_samples
+        }
+    ) / 60
     recovery = _fitbit_recovery_metrics(rows)
     sleep_days = _fitbit_sleep_days(rows)
     sleep_detail = _fitbit_sleep_detail(rows)
@@ -933,12 +1057,16 @@ def _fitbit_insights(google_status: dict[str, Any]) -> dict[str, Any]:
         "sensor_samples": google_status["fitbit_sensor_points"],
         "heart_rate": {
             "date": latest_date,
-            "latest": round(latest_day[-1][3]) if latest_day else None,
+            "latest": round(latest_day[-1]["bpm"]) if latest_day else None,
             "average": round(sum(values) / len(values), 1) if values else None,
             "minimum": round(min(values)) if values else None,
             "maximum": round(max(values)) if values else None,
             "coverage_hours": round(coverage_hours, 1),
             "series": series,
+            "stress_series": stress_series,
+            "stress_coverage_hours": round(stress_coverage_hours, 1),
+            "stress_classification_available": classification_available,
+            "stress_excluded_samples": excluded_samples,
         },
         "sleep": {
             "latest": (
@@ -1771,39 +1899,64 @@ def _performance_daily_state(
 
     def activation_score(bpm: float) -> int:
         reference = float(resting_reference or 55)
-        return round(max(0, min(100, (bpm - reference) / max(35, reference * 0.9) * 100)))
+        expected_awake = reference * 1.12
+        response_span = max(18, reference * 0.4)
+        return round(max(0, min(100, (bpm - expected_awake) / response_span * 100)))
+
+    def percentile(values: list[int], ratio: float) -> float:
+        ordered = sorted(values)
+        if not ordered:
+            return 0
+        position = (len(ordered) - 1) * ratio
+        lower = math.floor(position)
+        upper = math.ceil(position)
+        if lower == upper:
+            return float(ordered[lower])
+        return ordered[lower] + (ordered[upper] - ordered[lower]) * (position - lower)
 
     stress_timeline = []
-    series = heart_rate.get("series", []) if heart_rate_fresh else []
+    if heart_rate_fresh and "stress_series" in heart_rate:
+        series = heart_rate.get("stress_series") or []
+    else:
+        series = heart_rate.get("series", []) if heart_rate_fresh else []
     stride = max(1, math.ceil(len(series) / 24))
     for point in series[::stride]:
         bpm = float(point.get("bpm") or 0)
+        score_point = activation_score(bpm)
         stress_timeline.append({
             "time": str(point.get("time") or ""),
             "bpm": round(bpm),
-            "score": activation_score(bpm),
+            "score": score_point,
         })
     latest_bpm = float(heart_rate.get("latest") or 0) if heart_rate_fresh else 0
-    recent_passive_values = [
+    passive_values = [
         float(point.get("bpm") or 0)
-        for point in series[-6:]
+        for point in series
         if float(point.get("bpm") or 0) > 0
     ]
-    passive_bpm = float(median(recent_passive_values)) if recent_passive_values else latest_bpm
+    passive_bpm = float(median(passive_values)) if passive_values else 0
+    all_activation_scores = [activation_score(value) for value in passive_values]
     physiological_scores = [
         int(factor["score"])
         for factor in factors
         if factor["key"] in {"hrv", "resting_hr", "respiratory_rate", "temperature"}
         and factor["score"] is not None
     ]
-    daytime_activation = activation_score(passive_bpm) if passive_bpm else None
+    daytime_activation = (
+        round(
+            float(median(all_activation_scores)) * 0.6
+            + percentile(all_activation_scores, 0.75) * 0.4
+        )
+        if all_activation_scores
+        else None
+    )
     nightly_strain = (
         round(100 - sum(physiological_scores) / len(physiological_scores))
         if physiological_scores
         else None
     )
     if daytime_activation is not None and nightly_strain is not None:
-        stress_score = round(daytime_activation * 0.65 + nightly_strain * 0.35)
+        stress_score = round(daytime_activation * 0.6 + nightly_strain * 0.4)
     else:
         stress_score = daytime_activation if daytime_activation is not None else nightly_strain
     stress_label = (
@@ -1813,6 +1966,29 @@ def _performance_daily_state(
         else "Recuperación" if stress_score is not None
         else "Sin lectura reciente"
     )
+    stress_coverage = float(
+        heart_rate.get("stress_coverage_hours", heart_rate.get("coverage_hours")) or 0
+    )
+    total_coverage = float(heart_rate.get("coverage_hours") or 0)
+    classification_available = bool(heart_rate.get("stress_classification_available"))
+    nightly_signal_count = len(physiological_scores)
+    stress_confidence = (
+        "Alta"
+        if daytime_activation is not None
+        and nightly_strain is not None
+        and classification_available
+        and stress_coverage >= 4
+        and nightly_signal_count >= 3
+        else "Media"
+        if stress_score is not None
+        and ((classification_available and stress_coverage >= 1) or nightly_signal_count >= 3)
+        else "Baja"
+    )
+    daytime_source = (
+        "pulso sedentario clasificado"
+        if classification_available
+        else "pulso pasivo provisional"
+    )
     state["physiological_stress"] = {
         "score": stress_score,
         "label": stress_label,
@@ -1820,27 +1996,25 @@ def _performance_daily_state(
         "date": heart_rate_date or signal_date or None,
         "timeline": stress_timeline,
         "source": (
-            "Cálculo automático Fitbit · pulso pasivo + señales nocturnas"
+            f"Estimación Google Health v4 · {daytime_source} + señales nocturnas"
             if daytime_activation is not None and nightly_strain is not None
-            else "Cálculo automático Fitbit · pulso pasivo"
+            else f"Estimación Google Health v4 · {daytime_source}"
             if daytime_activation is not None
             else "Estimación nocturna con HRV y constantes vitales"
         ),
-        "confidence": (
-            "Alta"
-            if daytime_activation is not None
-            and nightly_strain is not None
-            and float(heart_rate.get("coverage_hours") or 0) >= 18
-            else "Media" if stress_score is not None else "Baja"
-        ),
+        "confidence": stress_confidence,
         "components": {
             "daytime_activation": daytime_activation,
             "nightly_strain": nightly_strain,
             "passive_bpm": round(passive_bpm) if passive_bpm else None,
-            "coverage_hours": float(heart_rate.get("coverage_hours") or 0),
+            "coverage_hours": stress_coverage,
+            "total_coverage_hours": total_coverage,
+            "classified": classification_available,
+            "excluded_samples": int(heart_rate.get("stress_excluded_samples") or 0),
+            "nightly_signals": nightly_signal_count,
         },
-        "method": "65% activación reciente del pulso pasivo y 35% tensión nocturna; usa solo las partes disponibles.",
-        "note": "Mide activación fisiológica; ejercicio, calor, cafeína o enfermedad también pueden elevarla.",
+        "method": "60% activación cardíaca despierto y sedentario + 40% tensión nocturna; usa solo las partes disponibles.",
+        "note": "Estimación fisiológica personal, no estrés percibido ni diagnóstico. Se excluyen sueño y actividad física identificable.",
     }
     current_load = next(
         (float(item["total"]) for item in state["load_7d"]["trend"] if item["date"] == current_day),

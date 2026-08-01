@@ -141,6 +141,10 @@ export type DeviceInsights = {
       maximum: number | null;
       coverage_hours: number;
       series: { time: string; bpm: number }[];
+      stress_series: { time: string; bpm: number }[];
+      stress_coverage_hours: number;
+      stress_classification_available: boolean;
+      stress_excluded_samples: number;
     };
     sleep: {
       latest: {
@@ -430,6 +434,10 @@ export type DashboardData = {
         nightly_strain: number | null;
         passive_bpm: number | null;
         coverage_hours: number;
+        total_coverage_hours: number;
+        classified: boolean;
+        excluded_samples: number;
+        nightly_signals: number;
       };
       method: string;
       note: string;
