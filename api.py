@@ -71,6 +71,18 @@ DASHBOARD_DEMO_SCENARIOS = {
     "calibrating",
 }
 
+# Personal-baseline comparisons used by the recovery explanation layer. These
+# thresholds describe meaningful day-to-day movement; they are not clinical
+# limits and intentionally live outside the presentation code.
+RECOVERY_FACTOR_THRESHOLDS = {
+    "sleep": {"help_deficit_hours": 0.25, "brake_deficit_hours": 0.5},
+    "hrv": {"help_percent": 5.0, "brake_percent": -5.0},
+    "resting_hr": {"help_delta": -2.0, "brake_delta": 2.0},
+    "respiratory_rate": {"stable_delta": 0.5, "brake_delta": 1.0},
+    "temperature": {"stable_delta": 0.2, "brake_delta": 0.4},
+    "oxygen": {"stable_delta": 0.5, "brake_delta": -1.0, "low_floor": 92.0},
+}
+
 
 def _invalidate_health_insights_cache() -> None:
     with health_insights_cache_lock:
@@ -1719,6 +1731,163 @@ def _dashboard_daily_state(
     }
 
 
+def _factor_comparison(
+    key: str,
+    value: float | None,
+    baseline: float | None,
+    *,
+    sleep_goal: float,
+) -> dict[str, Any]:
+    """Explain whether a real measurement helps or brakes recovery."""
+    if value is None:
+        return {
+            "impact": "neutral",
+            "status_label": "Sin dato",
+            "difference": None,
+            "difference_percent": None,
+            "difference_text": "Sin comparación",
+        }
+
+    reference = sleep_goal if key == "sleep" else baseline
+    if reference is None:
+        return {
+            "impact": "neutral",
+            "status_label": "Construyendo base",
+            "difference": None,
+            "difference_percent": None,
+            "difference_text": "Falta base personal",
+        }
+
+    difference = float(value) - float(reference)
+    difference_percent = difference / float(reference) * 100 if reference else None
+    impact = "neutral"
+    status_label = "Cerca de tu base"
+    difference_text = f"{difference:+.1f}"
+
+    if key == "sleep":
+        deficit = sleep_goal - float(value)
+        threshold = RECOVERY_FACTOR_THRESHOLDS[key]
+        if deficit <= threshold["help_deficit_hours"]:
+            impact, status_label = "help", "Objetivo cubierto"
+        elif deficit >= threshold["brake_deficit_hours"]:
+            impact, status_label = "brake", "Sueño insuficiente"
+        minutes = round(abs(difference) * 60)
+        difference_text = (
+            "Objetivo cubierto"
+            if minutes < 5
+            else f"{'+' if difference > 0 else '−'}{minutes} min vs objetivo"
+        )
+    elif key == "hrv":
+        threshold = RECOVERY_FACTOR_THRESHOLDS[key]
+        if difference_percent is not None and difference_percent >= threshold["help_percent"]:
+            impact, status_label = "help", "Por encima de tu base"
+        elif difference_percent is not None and difference_percent <= threshold["brake_percent"]:
+            impact, status_label = "brake", "Por debajo de tu base"
+        difference_text = f"{difference_percent:+.0f}% vs base" if difference_percent is not None else "Sin comparación"
+    elif key == "resting_hr":
+        threshold = RECOVERY_FACTOR_THRESHOLDS[key]
+        if difference <= threshold["help_delta"]:
+            impact, status_label = "help", "Pulso favorable"
+        elif difference >= threshold["brake_delta"]:
+            impact, status_label = "brake", "Pulso elevado"
+        difference_text = f"{difference:+.0f} bpm vs base"
+    elif key in {"respiratory_rate", "temperature"}:
+        threshold = RECOVERY_FACTOR_THRESHOLDS[key]
+        if abs(difference) <= threshold["stable_delta"]:
+            impact, status_label = "help", "Estable"
+        elif abs(difference) >= threshold["brake_delta"]:
+            impact, status_label = "brake", "Fuera de tu rango reciente"
+        unit = "rpm" if key == "respiratory_rate" else "°C"
+        difference_text = f"{difference:+.1f} {unit} vs base"
+    elif key == "oxygen":
+        threshold = RECOVERY_FACTOR_THRESHOLDS[key]
+        if float(value) < threshold["low_floor"] or difference <= threshold["brake_delta"]:
+            impact, status_label = "brake", "Por debajo de tu base"
+        elif abs(difference) <= threshold["stable_delta"] or difference > 0:
+            impact, status_label = "help", "Estable"
+        difference_text = f"{difference:+.1f} pp vs base"
+
+    return {
+        "impact": impact,
+        "status_label": status_label,
+        "difference": round(difference, 2),
+        "difference_percent": round(difference_percent, 1) if difference_percent is not None else None,
+        "difference_text": difference_text,
+    }
+
+
+def _recovery_guidance(
+    *,
+    recovery_score: int | None,
+    activation_score: int | None,
+    sleep_hours: float | None,
+    sleep_goal: float,
+    sleep_debt: float | None,
+    load: dict[str, Any],
+    confidence: str,
+    factors: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Create one cautious, actionable recommendation from available signals."""
+    reasons = [
+        str(factor["difference_text"])
+        for factor in factors
+        if factor.get("impact") == "brake"
+    ][:2]
+    current_load = float(load.get("current_today") or 0)
+    target_max = float(load.get("target_max") or 0)
+    load_high = bool(target_max and current_load > target_max) or load.get("risk") == "Alto"
+    activation_high = activation_score is not None and activation_score >= 65
+    sleep_low = sleep_hours is not None and sleep_hours < max(6, sleep_goal - 1.5)
+    debt_high = sleep_debt is not None and sleep_debt >= 5
+
+    if recovery_score is None:
+        return {
+            "level": "uncertain",
+            "title": "Decide con el calentamiento",
+            "body": "Aún faltan señales comparables. Mantén la sesión flexible y usa tus sensaciones para ajustar la intensidad.",
+            "reasons": reasons,
+        }
+    if load_high:
+        return {
+            "level": "limit",
+            "title": "La carga de hoy ya es suficiente",
+            "body": "Evita añadir intensidad. Prioriza comida, hidratación y movimiento suave para absorber la carga registrada.",
+            "reasons": reasons or ["Carga por encima del rango recomendado"],
+        }
+    if recovery_score < 45 or activation_high or sleep_low or debt_high:
+        cause = (
+            "La activación fisiológica está alta"
+            if activation_high
+            else "El sueño reciente está limitando la recuperación"
+            if sleep_low or debt_high
+            else "La recuperación está por debajo de tu rango habitual"
+        )
+        return {
+            "level": "limit",
+            "title": "Baja la exigencia hoy",
+            "body": f"{cause}. Cambia intensidad por una sesión suave o recuperación y vuelve a evaluar mañana.",
+            "reasons": reasons,
+        }
+    if (
+        recovery_score >= 70
+        and (activation_score is None or activation_score < 40)
+        and (sleep_hours is None or sleep_hours >= sleep_goal - 0.5)
+        and confidence != "Baja"
+    ):
+        return {
+            "level": "go",
+            "title": "Puedes seguir el plan previsto",
+            "body": "Las señales acompañan. Calienta de forma progresiva y ajusta solo si las sensaciones no confirman la lectura.",
+            "reasons": reasons,
+        }
+    return {
+        "level": "flex",
+        "title": "Mantén el plan flexible",
+        "body": "La recuperación es utilizable, pero no perfecta. Empieza controlado y decide la intensidad después del calentamiento.",
+        "reasons": reasons,
+    }
+
+
 def _performance_daily_state(
     fitbit: dict[str, Any],
     apple_activity: dict[str, Any],
@@ -1827,11 +1996,19 @@ def _performance_daily_state(
             "key": key,
             "label": label,
             "value": f"{float(value):g} {unit}" if value is not None else "Sin dato",
+            "numeric_value": round(float(value), 2) if value is not None else None,
+            "unit": unit,
             "state": factor_state,
             "detail": detail,
             "score": round(signal_score) if signal_score is not None else None,
             "baseline": round(baseline, 1) if baseline is not None else None,
             "measurement_date": measurement_date or None,
+            **_factor_comparison(
+                key,
+                float(value) if value is not None else None,
+                baseline,
+                sleep_goal=sleep_goal,
+            ),
         })
 
     calibrated = state["calibration"]["ready"]
@@ -2029,6 +2206,23 @@ def _performance_daily_state(
         "target_min": round(target_mid * 0.8, 1),
         "target_max": round(target_mid * 1.2, 1),
     })
+    state["load_7d"]["today_status"] = (
+        "Alta"
+        if current_load > state["load_7d"]["target_max"]
+        else "Baja"
+        if current_load < state["load_7d"]["target_min"]
+        else "Adecuada"
+    )
+    state["recovery_guidance"] = _recovery_guidance(
+        recovery_score=score,
+        activation_score=stress_score,
+        sleep_hours=float(sleep) if sleep is not None else None,
+        sleep_goal=sleep_goal,
+        sleep_debt=state["sleep_utility"]["debt_hours"],
+        load=state["load_7d"],
+        confidence=confidence_level,
+        factors=factors,
+    )
     drain = min(70, current_load * 0.7 + float(stress_score or 0) * 0.18)
     energy_score = round(max(0, min(100, readiness_estimate - drain)))
     state["energy"] = {
@@ -2045,7 +2239,7 @@ def _performance_daily_state(
             night for night in fitbit.get("sleep", {}).get("days", [])
             if str(night.get("date") or "") <= current_day
         ][-90:],
-        "load": state["load_7d"]["trend"],
+        "load": state["load_7d"]["history"],
     }
     state["journal"] = _journal_summary(
         daily_checkins,
@@ -2144,6 +2338,14 @@ def _aggregate_load_7d(
         })
         for key in categories:
             categories[key] += values[key]
+    history = []
+    for offset in range(27, -1, -1):
+        day = analysis_date - timedelta(days=offset)
+        values = daily.get(day.isoformat(), {key: 0.0 for key in categories})
+        history.append({
+            "date": day.isoformat(),
+            "total": round(sum(values.values()), 1),
+        })
     acute = sum(item["total"] for item in trend)
     baseline_weeks = []
     for week_index in range(1, 5):
@@ -2179,6 +2381,7 @@ def _aggregate_load_7d(
         "recommendation": recommendation,
         "categories": {key: round(value, 1) for key, value in categories.items()},
         "trend": trend,
+        "history": history,
         "baseline_weeks": len(baseline_weeks),
         "method": "Carga interna estimada con duración, frecuencia cardiaca o minutos en zona; no es una medida clínica.",
     }

@@ -207,6 +207,9 @@ export type DeviceInsights = {
       date: string;
       hrv?: number;
       resting_hr?: number;
+      respiratory_rate?: number;
+      temperature?: number;
+      oxygen?: number;
     }[];
     recovery: {
       hrv: DeviceMetric;
@@ -371,10 +374,18 @@ export type DashboardData = {
         key: "sleep" | "hrv" | "resting_hr" | "respiratory_rate" | "temperature" | "oxygen";
         label: string;
         value: string;
+        numeric_value: number | null;
+        unit: string;
         state: "low" | "neutral" | "good";
         detail: string;
         score: number | null;
         baseline: number | null;
+        measurement_date: string | null;
+        impact: "help" | "brake" | "neutral";
+        status_label: string;
+        difference: number | null;
+        difference_percent: number | null;
+        difference_text: string;
       }[];
       method: string;
     };
@@ -415,11 +426,13 @@ export type DashboardData = {
         strength: number;
         general: number;
       }[];
+      history: { date: string; total: number }[];
       baseline_weeks: number;
       method: string;
       current_today: number;
       target_min: number;
       target_max: number;
+      today_status: "Baja" | "Adecuada" | "Alta";
     };
     physiological_stress: {
       score: number | null;
@@ -449,6 +462,12 @@ export type DashboardData = {
       used: number;
       explanation: string;
       method: string;
+    };
+    recovery_guidance: {
+      level: "go" | "flex" | "limit" | "uncertain";
+      title: string;
+      body: string;
+      reasons: string[];
     };
     trends: {
       recovery: { date: string; hrv?: number; resting_hr?: number; respiratory_rate?: number; temperature?: number; oxygen?: number }[];

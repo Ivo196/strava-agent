@@ -179,6 +179,8 @@ def test_performance_state_uses_six_signals_and_multisport_load() -> None:
     )
 
     assert len(state["morning_recovery"]["factors"]) == 6
+    assert all("numeric_value" in factor for factor in state["morning_recovery"]["factors"])
+    assert all("impact" in factor for factor in state["morning_recovery"]["factors"])
     assert state["confidence"]["available_signals"] == 6
     assert isinstance(state["morning_recovery"]["score"], int)
     assert state["load_7d"]["categories"]["running"] == 55
@@ -195,7 +197,10 @@ def test_performance_state_uses_six_signals_and_multisport_load() -> None:
         "2026-07-25",
         "2026-07-26",
     ]
+    assert len(state["load_7d"]["history"]) == 28
+    assert state["load_7d"]["today_status"] in {"Baja", "Adecuada", "Alta"}
     assert state["sleep_utility"]["debt_hours"] == 3.5
+    assert state["recovery_guidance"]["level"] in {"go", "flex", "limit", "uncertain"}
     assert state["journal"]["insights"] == []
 
 
@@ -340,6 +345,36 @@ def test_recovery_score_is_provisional_before_seven_nights() -> None:
     assert state["morning_recovery"]["provisional"] is True
     assert state["morning_recovery"]["summary"].startswith("Estimación provisional")
     assert state["confidence"]["note"].startswith("Estimación provisional")
+
+
+def test_recovery_explanation_uses_real_baseline_differences() -> None:
+    hrv = api._factor_comparison("hrv", 105, 100, sleep_goal=8)
+    resting = api._factor_comparison("resting_hr", 53, 50, sleep_goal=8)
+    temperature = api._factor_comparison("temperature", 0.1, 0.0, sleep_goal=8)
+
+    assert hrv["impact"] == "help"
+    assert hrv["difference_text"] == "+5% vs base"
+    assert resting["impact"] == "brake"
+    assert resting["difference_text"] == "+3 bpm vs base"
+    assert temperature["impact"] == "help"
+    assert temperature["status_label"] == "Estable"
+
+
+def test_recovery_guidance_limits_training_when_activation_is_high() -> None:
+    guidance = api._recovery_guidance(
+        recovery_score=72,
+        activation_score=78,
+        sleep_hours=7.8,
+        sleep_goal=8,
+        sleep_debt=0.8,
+        load={"current_today": 10, "target_max": 20, "risk": "Bajo"},
+        confidence="Alta",
+        factors=[],
+    )
+
+    assert guidance["level"] == "limit"
+    assert guidance["title"] == "Baja la exigencia hoy"
+    assert "activación fisiológica" in guidance["body"]
 
 
 def test_fitbit_insights_load_the_full_recent_heart_rate_window(monkeypatch: pytest.MonkeyPatch) -> None:

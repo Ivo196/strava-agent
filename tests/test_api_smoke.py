@@ -32,6 +32,7 @@ def test_dashboard_and_coach_status_are_available() -> None:
             "journal",
             "physiological_stress",
             "energy",
+            "recovery_guidance",
             "trends",
         }
     assert len(dashboard.json()["daily_state"]["morning_recovery"]["factors"]) == 6
