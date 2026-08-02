@@ -1,0 +1,184 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { ChevronRight, Clock3, Gauge, HeartPulse, Mountain } from "lucide-react";
+import { isGenericAppleRun } from "@/lib/activity-display";
+import type { Activity, RunProgressData } from "@/lib/types";
+
+type HistoryRange = "7" | "28" | "90" | "all";
+type HistoryGroup = { key: string; label: string; activities: Activity[]; distance: number };
+
+const filters: { key: HistoryRange; label: string }[] = [
+  { key: "7", label: "7 días" },
+  { key: "28", label: "28 días" },
+  { key: "90", label: "3 meses" },
+  { key: "all", label: "Todo" },
+];
+
+const activityDate = new Intl.DateTimeFormat("es-ES", { weekday: "short", day: "numeric", month: "short" });
+const monthYear = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" });
+const dayMonth = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" });
+const oneDecimal = new Intl.NumberFormat("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+function parseDate(value: string) {
+  return new Date(`${value}T12:00:00`);
+}
+
+function startOfWeek(value: Date) {
+  const result = new Date(value);
+  const weekday = (result.getDay() + 6) % 7;
+  result.setDate(result.getDate() - weekday);
+  return result;
+}
+
+function isoDay(value: Date) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+}
+
+function groupActivities(activities: Activity[], analysisDate: string): HistoryGroup[] {
+  const today = parseDate(analysisDate);
+  const currentWeek = startOfWeek(today);
+  const previousWeek = new Date(currentWeek);
+  previousWeek.setDate(previousWeek.getDate() - 7);
+  const grouped = new Map<string, HistoryGroup>();
+
+  activities.forEach((activity) => {
+    const date = parseDate(activity.date);
+    const activityWeek = startOfWeek(date);
+    let key: string;
+    let label: string;
+    if (isoDay(activityWeek) === isoDay(currentWeek)) {
+      key = "current-week";
+      label = "Esta semana";
+    } else if (isoDay(activityWeek) === isoDay(previousWeek)) {
+      key = "previous-week";
+      label = `Semana anterior · ${dayMonth.format(previousWeek)}`;
+    } else {
+      key = `${date.getFullYear()}-${date.getMonth()}`;
+      label = monthYear.format(date);
+    }
+    const existing = grouped.get(key) ?? { key, label, activities: [], distance: 0 };
+    existing.activities.push(activity);
+    existing.distance += activity.distance_km;
+    grouped.set(key, existing);
+  });
+  return [...grouped.values()];
+}
+
+function rangeActivities(activities: Activity[], analysisDate: string, range: HistoryRange) {
+  if (range === "all") return activities;
+  const today = parseDate(analysisDate);
+  const cutoff = new Date(today);
+  cutoff.setDate(cutoff.getDate() - Number(range) + 1);
+  return activities.filter((activity) => parseDate(activity.date) >= cutoff && parseDate(activity.date) <= today);
+}
+
+function runTypeLabel(activity: Activity) {
+  if (activity.sport_type === "TrailRun") return "Trail";
+  if (activity.sport_type === "VirtualRun") return "Virtual";
+  return null;
+}
+
+export function RunHistory({ activities, progress }: { activities: Activity[]; progress: RunProgressData }) {
+  const [range, setRange] = useState<HistoryRange>("all");
+  const visibleActivities = useMemo(
+    () => rangeActivities(activities, progress.analysis_date, range),
+    [activities, progress.analysis_date, range],
+  );
+  const groups = useMemo(
+    () => groupActivities(visibleActivities, progress.analysis_date),
+    [progress.analysis_date, visibleActivities],
+  );
+
+  return (
+    <section className="run-history-section" aria-labelledby="run-history-title">
+      <header className="run-history-heading">
+        <div>
+          <span className="eyebrow">Historial completo</span>
+          <h2 id="run-history-title">Tus carreras</h2>
+          <p>{visibleActivities.length} de {activities.length} actividades</p>
+        </div>
+        <div className="history-filter-switch" aria-label="Filtrar historial por período">
+          {filters.map((filter) => (
+            <button
+              aria-pressed={range === filter.key}
+              className={range === filter.key ? "active" : ""}
+              key={filter.key}
+              onClick={() => setRange(filter.key)}
+              type="button"
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <details className="run-quality-method">
+        <summary>Cómo tratamos los datos atípicos</summary>
+        <p>
+          Las actividades cortas, incompletas, sin pulso, con ritmo atípico o posible duplicado siguen visibles.
+          Se excluyen solo de las tendencias donde podrían distorsionar la comparación; un posible duplicado no suma dos veces al volumen.
+        </p>
+      </details>
+
+      {groups.length ? (
+        <div className="run-history-groups">
+          {groups.map((group) => (
+            <section className="run-history-group" key={group.key} aria-labelledby={`history-${group.key}`}>
+              <header>
+                <h3 id={`history-${group.key}`}>{group.label}</h3>
+                <span>{oneDecimal.format(group.distance)} km · {group.activities.length} {group.activities.length === 1 ? "carrera" : "carreras"}</span>
+              </header>
+              <div className="run-history-list">
+                {group.activities.map((activity) => {
+                  const quality = progress.activity_quality[activity.id];
+                  const runType = runTypeLabel(activity);
+                  const meaningfulName = isGenericAppleRun(activity.name) ? null : activity.name.replace(/Apple Health/gi, "Apple Watch");
+                  const metrics = [
+                    activity.moving_minutes ? { icon: Clock3, label: "Tiempo", value: `${activity.moving_minutes} min` } : null,
+                    activity.pace && activity.pace !== "—" ? { icon: Gauge, label: "Ritmo", value: activity.pace } : null,
+                    activity.average_heartrate ? { icon: HeartPulse, label: "Pulso", value: `${Math.round(activity.average_heartrate)} bpm` } : null,
+                    activity.elevation_gain_m && activity.elevation_gain_m >= 10 ? { icon: Mountain, label: "Desnivel", value: `${Math.round(activity.elevation_gain_m)} m` } : null,
+                  ].filter((metric): metric is NonNullable<typeof metric> => metric !== null);
+                  return (
+                    <Link
+                      aria-label={`Ver detalles de la carrera de ${oneDecimal.format(activity.distance_km)} km del ${activityDate.format(parseDate(activity.date))}`}
+                      className="run-history-card"
+                      href={`/activities/${activity.id}`}
+                      key={activity.id}
+                    >
+                      <div className="run-history-date">
+                        <time dateTime={activity.date}>{activityDate.format(parseDate(activity.date))}</time>
+                        <div className="run-history-tags">
+                          {runType && <span className="run-type-chip">{runType}</span>}
+                          {quality?.flags.slice(0, 2).map((flag) => <span className="run-quality-chip" key={flag}>{flag}</span>)}
+                          {quality && quality.flags.length > 2 && <span className="run-quality-more" title={quality.flags.join(", ")}>+{quality.flags.length - 2}</span>}
+                        </div>
+                      </div>
+                      <div className="run-history-distance">
+                        <strong>{oneDecimal.format(activity.distance_km)}</strong><small>km</small>
+                        {meaningfulName && <p>{meaningfulName}</p>}
+                      </div>
+                      <div className="run-history-metrics">
+                        {metrics.map(({ icon: Icon, label, value }) => (
+                          <span key={label}><Icon aria-hidden="true" size={14} /><small>{label}</small><strong>{value}</strong></span>
+                        ))}
+                      </div>
+                      <span className="run-details-action">Ver detalles <ChevronRight aria-hidden="true" size={16} /></span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      ) : (
+        <div className="run-history-empty">
+          <strong>No hay carreras en este período.</strong>
+          <p>Probá con un rango más amplio para volver al historial completo.</p>
+        </div>
+      )}
+    </section>
+  );
+}

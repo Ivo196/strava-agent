@@ -4078,6 +4078,179 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .signal-gauge-card > div[role="progressbar"] i { transition: none; }
 }
+
+/* Carreras progress — real-data training interpretation and grouped history */
+.runs-progress-page { max-width: 1400px; }
+.runs-page-header { margin-bottom: 22px; }
+.runs-page-header h1 { margin-top: 8px; font-size: clamp(42px,5vw,64px); letter-spacing: -.045em; }
+.runs-page-header p { max-width: 520px; }
+.runs-progress-page .runs-summary { border-radius: 12px; }
+.runs-progress-page .runs-summary > span { min-width: 138px; padding: 15px 17px; background: rgba(13,16,14,.92); font-size: 24px; }
+
+.runs-progress-hero { padding: 24px; overflow: hidden; border: 1px solid rgba(120,198,255,.2); border-radius: 18px; background: radial-gradient(circle at 92% 0,rgba(120,198,255,.09),transparent 25rem),linear-gradient(145deg,rgba(15,20,18,.96),rgba(10,13,12,.92)); box-shadow: var(--shadow); }
+.runs-progress-hero > header { display: grid; grid-template-columns: 40px minmax(0,1fr) auto; gap: 12px; align-items: center; }
+.runs-progress-mark { width: 40px; height: 40px; display: grid; place-items: center; color: var(--orange-deep); border: 1px solid rgba(36,242,206,.2); border-radius: 10px; background: rgba(36,242,206,.075); }
+.runs-progress-hero > header h2 { margin: 4px 0 0; font-size: clamp(24px,3vw,34px); letter-spacing: -.025em; }
+.runs-state-badge { min-height: 32px; display: inline-flex; align-items: center; padding: 0 11px; color: var(--orange-deep); border: 1px solid rgba(36,242,206,.2); border-radius: 999px; background: rgba(36,242,206,.075); font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.state-volumen-creciendo-demasiado-rápido, .state-intensidad-demasiado-alta { color: #f1b65a; border-color: rgba(241,182,90,.22); background: rgba(241,182,90,.08); }
+.runs-progress-copy { max-width: 900px; margin: 22px 0 0; color: #c9d1ca; font-size: clamp(15px,1.6vw,18px); line-height: 1.65; }
+.run-progress-card-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin-top: 24px; }
+.run-progress-card { min-width: 0; min-height: 218px; display: flex; flex-direction: column; padding: 17px; border: 1px solid rgba(218,232,211,.1); border-radius: 14px; background: rgba(4,8,7,.35); }
+.run-progress-card > header span { display: inline-flex; align-items: center; gap: 8px; color: #869087; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.run-progress-card > header svg { color: var(--orange); }
+.run-progress-card > strong { display: block; margin-top: 24px; color: #f1f5f0; font: 650 clamp(28px,3vw,39px)/.9 "Fira Code",ui-monospace,monospace; letter-spacing: -.06em; }
+.run-progress-card > strong small { color: #6f796f; font-size: 10px; font-weight: 600; letter-spacing: 0; }
+.run-progress-card > strong.run-progress-card-empty { max-width: 190px; font: 650 18px/1.2 Inter,sans-serif; letter-spacing: -.02em; }
+.run-progress-card > p { margin: 9px 0 0; color: #727d73; font-size: 10px; }
+.run-progress-card > footer { display: grid; gap: 5px; margin-top: auto; padding-top: 15px; border-top: 1px solid var(--line); }
+.run-progress-card > footer span { color: #aab3aa; font-size: 10px; font-weight: 650; }
+.run-progress-card > footer em { color: #6f7a70; font-size: 9px; font-style: normal; line-height: 1.4; }
+.long-run-target { margin: 12px 0 15px; }
+.long-run-target > span { display: block; margin-bottom: 7px; color: #808a81; font-size: 9px; }
+.long-run-target > div { height: 6px; overflow: hidden; border-radius: 999px; background: rgba(148,163,184,.12); }
+.long-run-target > div i { display: block; height: 100%; min-width: 3px; border-radius: inherit; background: linear-gradient(90deg,var(--orange),var(--orange-deep)); animation: fillTrack .7s ease-out both; }
+
+.runs-analytics-grid { display: grid; grid-template-columns: minmax(0,1.14fr) minmax(0,.86fr); gap: 12px; margin-top: 12px; }
+.runs-analysis-panel, .period-comparison-panel { min-width: 0; padding: 22px; border: 1px solid rgba(218,232,211,.11); border-radius: 18px; background: rgba(13,16,14,.86); box-shadow: var(--shadow); }
+.runs-panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.runs-panel-heading h2 { margin: 6px 0 0; font-size: 20px; }
+.runs-panel-heading p { margin: 7px 0 0; color: #747e75; font-size: 10px; line-height: 1.45; }
+.runs-panel-heading > svg { color: var(--orange); }
+.runs-range-switch, .history-filter-switch { display: flex; gap: 5px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: rgba(3,7,6,.34); }
+.runs-range-switch button, .history-filter-switch button { min-height: 36px; padding: 0 11px; color: #758077; border: 1px solid transparent; border-radius: 7px; background: transparent; cursor: pointer; font-size: 9px; font-weight: 750; transition: color .18s ease,background .18s ease,border-color .18s ease; }
+.runs-range-switch button:hover, .history-filter-switch button:hover { color: #d7ddd7; background: rgba(120,198,255,.06); }
+.runs-range-switch button:focus-visible, .history-filter-switch button:focus-visible, .run-history-card:focus-visible, .runs-data-table summary:focus-visible, .run-quality-method summary:focus-visible { outline: 2px solid var(--orange-deep); outline-offset: 2px; }
+.runs-range-switch button.active, .history-filter-switch button.active { color: #edf3ed; border-color: rgba(120,198,255,.18); background: rgba(120,198,255,.1); }
+.runs-chart-frame { width: 100%; min-width: 0; margin-top: 14px; overflow: hidden; }
+.runs-chart-tooltip { display: grid; gap: 4px; max-width: 230px; padding: 10px 12px; color: #dfe6df; border: 1px solid rgba(218,232,211,.18); border-radius: 9px; background: rgba(3,7,6,.96); box-shadow: 0 16px 30px rgba(0,0,0,.3); }
+.runs-chart-tooltip span { color: #7f8a80; font-size: 8px; text-transform: capitalize; }
+.runs-chart-tooltip strong { font-size: 11px; }
+.runs-chart-tooltip small { color: #8e988f; font-size: 8px; line-height: 1.4; }
+.runs-chart-legend { display: flex; flex-wrap: wrap; gap: 10px 15px; color: #707b72; font-size: 8px; line-height: 1.4; }
+.runs-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.runs-chart-legend i { width: 13px; height: 7px; display: inline-block; border-radius: 99px; }
+.legend-week-volume { background: var(--orange); }
+.legend-current-week { border: 1px dashed var(--ink); background: var(--orange-deep); }
+.legend-rolling { height: 2px !important; background: repeating-linear-gradient(90deg,var(--viz-series-3) 0 5px,transparent 5px 8px); }
+.legend-previous { background: var(--viz-series-4); }
+.legend-recent { background: var(--orange-deep); }
+.runs-data-table { margin-top: 13px; color: #707b72; font-size: 9px; }
+.runs-data-table summary, .run-quality-method summary { width: fit-content; min-height: 32px; display: flex; align-items: center; cursor: pointer; font-weight: 700; }
+.runs-data-table table { width: 100%; margin-top: 8px; border-collapse: collapse; }
+.runs-data-table th, .runs-data-table td { padding: 7px; border-top: 1px solid var(--line); text-align: left; }
+.runs-data-table th { color: #9ba69c; }
+.runs-comparison-chip { min-height: 30px; display: inline-flex; align-items: center; padding: 0 10px; color: #a98bff; border: 1px solid rgba(169,139,255,.18); border-radius: 999px; background: rgba(169,139,255,.075); font-size: 9px; font-weight: 750; white-space: nowrap; }
+.aerobic-comparison-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin-top: 16px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--line); }
+.aerobic-comparison-strip > span { min-width: 0; padding: 11px 12px; background: rgba(4,8,7,.48); }
+.aerobic-comparison-strip small, .aerobic-comparison-strip strong, .aerobic-comparison-strip em { display: block; }
+.aerobic-comparison-strip small { color: #707b72; font-size: 8px; text-transform: uppercase; }
+.aerobic-comparison-strip strong { margin-top: 6px; font: 650 16px "Fira Code",ui-monospace,monospace; }
+.aerobic-comparison-strip strong i { color: #6f796f; font: 500 7px Inter,sans-serif; }
+.aerobic-comparison-strip em { margin-top: 4px; color: #859087; font-size: 8px; font-style: normal; }
+.aerobic-chart-frame { margin-top: 2px; }
+.runs-chart-empty { min-height: 330px; display: grid; place-items: center; align-content: center; gap: 9px; padding: 28px; text-align: center; }
+.runs-chart-empty svg { color: #68746a; }
+.runs-chart-empty strong { color: #cbd3cb; font-size: 13px; }
+.runs-chart-empty p { max-width: 330px; margin: 0; color: #6f7a70; font-size: 10px; line-height: 1.5; }
+
+.period-comparison-panel { margin-top: 12px; }
+.period-table-wrap { margin-top: 17px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; }
+.period-table-wrap table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.period-table-wrap th, .period-table-wrap td { padding: 13px 14px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.period-table-wrap th:last-child, .period-table-wrap td:last-child { border-right: 0; }
+.period-table-wrap tr:last-child th, .period-table-wrap tr:last-child td { border-bottom: 0; }
+.period-table-wrap thead th { color: #69736a; background: rgba(3,7,6,.3); font-size: 8px; letter-spacing: .08em; text-transform: uppercase; }
+.period-table-wrap tbody th { width: 18%; }
+.period-table-wrap strong, .period-table-wrap span, .period-table-wrap small { display: block; }
+.period-table-wrap tbody th strong { color: #cdd4cd; font-size: 11px; }
+.period-table-wrap tbody th small { margin-top: 4px; color: #657067; font-size: 8px; font-weight: 500; }
+.period-table-wrap td strong { color: #e5ebe5; font: 600 13px "Fira Code",ui-monospace,monospace; }
+.period-table-wrap td span { margin-top: 5px; color: #727d74; font-size: 8px; line-height: 1.45; }
+.period-table-wrap td span.positive { color: var(--orange-deep); }
+
+.run-history-section { margin-top: 36px; }
+.run-history-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 12px; }
+.run-history-heading h2 { margin: 6px 0 0; font-size: 25px; }
+.run-history-heading p { margin: 6px 0 0; color: #6e796f; font-size: 9px; }
+.history-filter-switch button { min-height: 40px; }
+.run-quality-method { margin-bottom: 20px; color: #6e796f; font-size: 9px; }
+.run-quality-method p { max-width: 800px; margin: 6px 0 0; color: #778279; font-size: 9px; line-height: 1.55; }
+.run-history-groups { display: grid; gap: 26px; }
+.run-history-group > header { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding-bottom: 9px; border-bottom: 1px solid var(--line); }
+.run-history-group > header h3 { margin: 0; color: #cfd6cf; font-size: 12px; text-transform: capitalize; }
+.run-history-group > header span { color: #69746b; font-size: 9px; }
+.run-history-list { display: grid; }
+.run-history-card { display: grid; grid-template-columns: 150px 140px minmax(0,1fr) 90px; gap: 18px; align-items: center; min-height: 112px; padding: 16px 10px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .18s ease,border-color .18s ease; }
+.run-history-card:hover { background: rgba(120,198,255,.045); border-color: rgba(120,198,255,.2); }
+.run-history-date time { display: block; color: #89948b; font-size: 10px; text-transform: capitalize; }
+.run-history-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.run-type-chip, .run-quality-chip, .run-quality-more { min-height: 20px; display: inline-flex; align-items: center; padding: 0 7px; border-radius: 999px; font-size: 7px; font-weight: 750; }
+.run-type-chip { color: var(--orange); background: rgba(120,198,255,.08); }
+.run-quality-chip, .run-quality-more { color: #d0a55f; border: 1px solid rgba(241,182,90,.14); background: rgba(241,182,90,.06); }
+.run-history-distance { min-width: 0; }
+.run-history-distance > strong { color: #f0f4f0; font: 650 36px/.9 "Fira Code",ui-monospace,monospace; letter-spacing: -.07em; }
+.run-history-distance > small { margin-left: 5px; color: #6e786f; font-size: 8px; font-weight: 700; text-transform: uppercase; }
+.run-history-distance > p { margin: 8px 0 0; overflow: hidden; color: #79837a; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.run-history-metrics { display: flex; flex-wrap: wrap; gap: 9px 18px; min-width: 0; }
+.run-history-metrics > span { display: grid; grid-template-columns: 17px auto; gap: 2px 5px; min-width: 86px; }
+.run-history-metrics svg { grid-row: 1 / span 2; color: #657067; }
+.run-history-metrics small { color: #657067; font-size: 7px; text-transform: uppercase; }
+.run-history-metrics strong { color: #b7c0b8; font: 600 9px "Fira Code",ui-monospace,monospace; white-space: nowrap; }
+.run-details-action { min-height: 44px; display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; color: #7e8980; font-size: 9px; font-weight: 700; white-space: nowrap; }
+.run-history-card:hover .run-details-action { color: var(--orange); }
+.run-history-empty { padding: 34px; text-align: center; border: 1px solid var(--line); border-radius: 14px; }
+.run-history-empty strong { color: #cbd3cc; font-size: 13px; }
+.run-history-empty p { margin: 6px 0 0; color: #6f7a70; font-size: 10px; }
+
+@media (max-width: 1120px) {
+  .run-progress-card-grid { grid-template-columns: 1fr 1fr; }
+  .runs-analytics-grid { grid-template-columns: 1fr; }
+  .run-history-card { grid-template-columns: 130px 125px minmax(0,1fr) 82px; gap: 13px; }
+}
+
+@media (max-width: 760px) {
+  .runs-progress-hero { padding: 18px; }
+  .runs-progress-hero > header { grid-template-columns: 36px minmax(0,1fr); }
+  .runs-progress-mark { width: 36px; height: 36px; }
+  .runs-state-badge { display: none; }
+  .runs-progress-copy { font-size: 14px; }
+  .run-progress-card-grid { grid-template-columns: 1fr; gap: 8px; }
+  .run-progress-card { min-height: 196px; }
+  .runs-analysis-panel, .period-comparison-panel { padding: 17px; }
+  .runs-panel-heading, .run-history-heading { align-items: flex-start; flex-direction: column; }
+  .runs-range-switch, .history-filter-switch { width: 100%; }
+  .runs-range-switch button, .history-filter-switch button { flex: 1; min-height: 44px; padding-inline: 6px; }
+  .runs-chart-frame { margin-inline: -8px; width: calc(100% + 16px); }
+  .period-table-wrap { border: 0; overflow: visible; }
+  .period-table-wrap table, .period-table-wrap thead, .period-table-wrap tbody, .period-table-wrap tr, .period-table-wrap th, .period-table-wrap td { display: block; }
+  .period-table-wrap thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+  .period-table-wrap tbody { display: grid; gap: 8px; }
+  .period-table-wrap tr { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; }
+  .period-table-wrap tbody th { grid-column: 1 / -1; width: auto; background: rgba(3,7,6,.25); }
+  .period-table-wrap th, .period-table-wrap td { border-right: 0; border-bottom: 1px solid var(--line) !important; }
+  .period-table-wrap td:nth-of-type(2) { border-left: 1px solid var(--line); }
+  .period-table-wrap td:last-child { grid-column: 1 / -1; border-bottom: 0 !important; }
+  .run-history-card { grid-template-columns: minmax(0,1fr) auto; gap: 13px; padding: 16px 4px; }
+  .run-history-date { grid-column: 1; }
+  .run-history-distance { grid-column: 1; }
+  .run-history-metrics { grid-column: 1 / -1; padding-top: 12px; border-top: 1px solid rgba(218,232,211,.07); }
+  .run-details-action { grid-column: 2; grid-row: 1; }
+  .run-history-group > header { align-items: flex-start; flex-direction: column; gap: 4px; }
+}
+
+@media (max-width: 420px) {
+  .runs-progress-page .runs-summary > span { min-width: 0; padding: 13px; font-size: 20px; }
+  .aerobic-comparison-strip { grid-template-columns: 1fr; }
+  .history-filter-switch { display: grid; grid-template-columns: 1fr 1fr; }
+  .run-history-metrics { gap: 10px; }
+  .run-history-metrics > span { min-width: calc(50% - 5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .long-run-target > div i { animation: none; }
+  .run-history-card, .runs-range-switch button, .history-filter-switch button { transition: none; }
+}
+
 /* Recovery v3 — one decision, progressive disclosure, personal baselines */
 .recovery-page-v3 {
   --recovery-blue: #78c6ff;

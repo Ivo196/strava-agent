@@ -13,7 +13,7 @@ RUN_TYPES = {"Run", "TrailRun", "VirtualRun"}
 
 def activities_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
     columns = [
-        "id", "name", "sport_type", "start_date", "distance_km", "moving_minutes",
+        "id", "name", "sport_type", "device_name", "start_date", "distance_km", "moving_minutes",
         "elevation_gain_m", "average_heartrate", "max_heartrate", "pace_min_km",
         "training_load", "calories", "streams_loaded",
     ]
@@ -32,6 +32,7 @@ def activities_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
                 "id": int(row["id"]),
                 "name": row["name"],
                 "sport_type": row["sport_type"],
+                "device_name": row.get("device_name"),
                 "start_date": pd.to_datetime(row["start_date_local"], utc=True, errors="coerce"),
                 "distance_km": distance_km,
                 "moving_minutes": moving_minutes,

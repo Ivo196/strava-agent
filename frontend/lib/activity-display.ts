@@ -2,7 +2,7 @@ import type { Activity } from "@/lib/types";
 
 const shortDate = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" });
 
-function isGenericAppleRun(name: string) {
+export function isGenericAppleRun(name: string) {
   return /^(carrera|running)(?:\s*[·-]\s*apple (?:health|watch))?$/i.test(name.trim());
 }
 

@@ -15,6 +15,8 @@ export type Profile = {
 export type Activity = {
   id: string;
   name: string;
+  sport_type?: string;
+  device_name?: string | null;
   date: string;
   distance_km: number;
   moving_minutes?: number;
@@ -23,6 +25,110 @@ export type Activity = {
   elevation_gain_m?: number;
   training_load?: number;
   calories?: number | null;
+};
+
+export type RunPeriodMetrics = {
+  distance_km: number;
+  runs: number;
+  average_duration_minutes: number | null;
+  longest_run_km: number;
+  comparable_pace_min_km: number | null;
+  comparable_average_heartrate: number | null;
+};
+
+export type RunPeriodComparison = {
+  days: number;
+  current: RunPeriodMetrics;
+  previous: RunPeriodMetrics;
+  distance_change_percent: number | null;
+  runs_change_percent: number | null;
+  comparable_group: string | null;
+  comparison_note: string;
+};
+
+export type RunQuality = {
+  flags: string[];
+  excluded_from_trend: boolean;
+  volume_eligible: boolean;
+  duplicate_excluded: boolean;
+};
+
+export type RunProgressData = {
+  analysis_date: string;
+  summary: { state: string; text: string };
+  lifetime: { runs: number; distance_km: number };
+  periods: {
+    days_7: RunPeriodComparison;
+    days_28: RunPeriodComparison;
+    average_4_weeks: RunPeriodComparison;
+  };
+  consistency: {
+    status: "insufficient" | "recovering" | "good" | "irregular" | "steady";
+    message: string;
+    runs_per_week: number;
+    active_weeks: number;
+    consecutive_active_weeks: number;
+    longest_gap_days: number | null;
+    plan_adherence_percent: number | null;
+  };
+  aerobic: {
+    status: "insufficient" | "improving" | "higher_effort" | "stable";
+    insight: string;
+    detail: string;
+    selected_group: string | null;
+    groups: {
+      key: string;
+      label: string;
+      count: number;
+      recent_count: number;
+      previous_count: number;
+      comparable: boolean;
+    }[];
+    current: { pace_min_km: number | null; average_heartrate: number | null };
+    previous: { pace_min_km: number | null; average_heartrate: number | null };
+    pace_change_seconds_km?: number;
+    heartrate_change_bpm?: number;
+    efficiency_change_percent?: number;
+    points: {
+      id: string;
+      date: string;
+      distance_km: number;
+      pace_min_km: number;
+      average_heartrate: number;
+      elevation_gain_m: number;
+      period: "recent" | "previous";
+    }[];
+  };
+  long_run: {
+    status: "missing" | "spike" | "stable" | "growing" | "lower";
+    message: string;
+    recent_km: number;
+    maximum_12_weeks_km: number;
+    latest_week_km: number;
+    previous_week_km: number | null;
+    change_km: number | null;
+    planned_target_km: number | null;
+    target_progress_percent: number | null;
+    progression_warning: boolean;
+    weekly: { week: string; distance_km: number }[];
+  };
+  weekly: {
+    points: {
+      week: string;
+      distance_km: number;
+      runs: number;
+      longest_run_km: number;
+      rolling_average_4: number | null;
+      is_current: boolean;
+    }[];
+    interpretations: Record<"4" | "8" | "12", { status: string; label: string }>;
+  };
+  activity_quality: Record<string, RunQuality>;
+  quality_summary: {
+    flagged_activities: number;
+    excluded_from_aerobic_trend: number;
+    duplicate_like_excluded_from_aggregates: number;
+  };
 };
 
 export type ActivitySeriesPoint = {

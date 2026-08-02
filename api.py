@@ -36,6 +36,7 @@ from strava_agent.metrics import (
     readiness_assessment,
     weekly_summary,
 )
+from strava_agent.run_progress import build_run_progress
 from strava_agent.google_health import (
     GoogleHealthCredentials,
     GoogleHealthService,
@@ -471,6 +472,8 @@ def activities() -> dict[str, Any]:
         {
             "id": str(row.id),
             "name": row.name,
+            "sport_type": row.sport_type,
+            "device_name": None if _is_nan(row.device_name) else str(row.device_name),
             "date": row.start_date.date().isoformat(),
             "distance_km": round(float(row.distance_km), 2),
             "moving_minutes": round(float(row.moving_minutes)),
@@ -482,6 +485,32 @@ def activities() -> dict[str, Any]:
         for row in frame.itertuples()
     ]
     return {"activities": items}
+
+
+@app.get("/api/activities/progress")
+def activities_progress(today: date | None = None) -> dict[str, Any]:
+    analysis_date = today or date.today()
+    frame = activities_frame(database.list_activities())
+    profile = database.get_profile()
+    metrics = dashboard_metrics(frame, today=analysis_date)
+    plan = build_adaptive_plan(
+        metrics,
+        running_days=int(profile.get("running_days") or 4),
+        goal_pace_seconds_km=profile.get("goal_pace_seconds_km"),
+        checkin=database.latest_weekly_checkin(),
+        today=analysis_date,
+    )
+    current_week = next(
+        (week for week in plan if week.start <= analysis_date <= week.end),
+        None,
+    )
+    return build_run_progress(
+        frame,
+        today=analysis_date,
+        planned_long_run_km=current_week.long_run_km if current_week else None,
+        planned_runs_per_week=int(profile.get("running_days") or 4),
+        plan_adherence_percent=current_week.completion_percentage if current_week else None,
+    )
 
 
 @app.get("/api/activities/{activity_id}")
