@@ -29,7 +29,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div>
           <span className="eyebrow">PaceOS · Tu plan diario</span>
           <h1>{name ? `Hola, ${name}.` : "Tu día empieza aquí."}</h1>
-          <p>Primero, lo que toca hoy.</p>
+          <p>Tu semana, de un vistazo.</p>
         </div>
         <div className="pulse-race-chip" aria-label={`${data.days_to_race} días para el Maratón de Chicago`}>
           <Flag size={18} />

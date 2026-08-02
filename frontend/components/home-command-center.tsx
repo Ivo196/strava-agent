@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { activityDisplayName } from "@/lib/activity-display";
 import type { DailyAgendaItem, DashboardData } from "@/lib/types";
+import { WeeklyProgressSummary } from "@/components/weekly-progress-summary";
 
 const weekday = new Intl.DateTimeFormat("es-ES", { weekday: "short" });
 const dayNumber = new Intl.DateTimeFormat("es-ES", { day: "numeric" });
@@ -73,8 +74,6 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
   const energy = state.energy;
   const today = data.daily_agenda.find((item) => item.date === data.current_date) ?? data.daily_agenda[0];
   const week = data.daily_agenda.slice(0, 7);
-  const targetKm = data.next_week?.target_km || today?.week_target_km || data.metrics.average_weekly_28d || 1;
-  const weeklyPercent = clamp((data.metrics.distance_current_week / targetKm) * 100);
   const sleepHours = recovery.sleep_hours ?? state.sleep_utility.average_hours;
   const recoveryPercent = recovery.score ?? clamp((state.calibration.nights / state.calibration.required) * 100);
   const todayAppleRun = today?.actual_activities.find(
@@ -87,8 +86,10 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
 
   return (
     <section className="apex-dashboard" aria-label="Resumen de entrenamiento y recuperación">
+      <WeeklyProgressSummary data={data} />
+
       <section className="apex-today" aria-labelledby="apex-today-title">
-        <div className="apex-section-index" aria-hidden="true">01</div>
+        <div className="apex-section-index" aria-hidden="true">02</div>
         <div className="apex-today-main">
           <div className="apex-section-label"><span>Hoy</span><i />{todayCompleted ? "Completado" : "Por hacer"}</div>
           <div className="apex-session-icon">{categoryIcon(today?.category ?? "rest", 29)}</div>
@@ -109,31 +110,23 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
 
       <section className="apex-week" aria-labelledby="apex-week-title">
         <div className="apex-section-head">
-          <div><span className="apex-section-index" aria-hidden="true">02</span><div><small>Esta semana</small><h2 id="apex-week-title">El plan, de un vistazo</h2></div></div>
+          <div><span className="apex-section-index" aria-hidden="true">03</span><div><small>Esta semana</small><h2 id="apex-week-title">El plan, de un vistazo</h2></div></div>
           <Link href="/plan">Calendario <ChevronRight size={16} /></Link>
         </div>
-        <div className="apex-week-layout">
-          <div className="apex-week-days">
-            {week.map((item) => (
-              <article className={`${item.date === data.current_date ? "is-today" : ""}${item.completed ? " is-done" : ""}`} key={item.date}>
-                <header><span>{weekday.format(new Date(`${item.date}T12:00:00`))}</span><strong>{dayNumber.format(new Date(`${item.date}T12:00:00`))}</strong></header>
-                <i>{item.completed ? <Check size={15} /> : categoryIcon(item.category, 15)}</i>
-                <p>{item.title}</p>
-              </article>
-            ))}
-          </div>
-          <aside className="apex-week-progress">
-            <span>Volumen semanal</span>
-            <strong>{data.metrics.distance_current_week}<small> / {targetKm} km</small></strong>
-            <div role="progressbar" aria-label="Progreso del volumen semanal" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(weeklyPercent)}><i style={{ width: `${weeklyPercent}%` }} /></div>
-            <p>{data.metrics.runs_current_week} carreras · {Math.round(weeklyPercent)}%</p>
-          </aside>
+        <div className="apex-week-days">
+          {week.map((item) => (
+            <article className={`${item.date === data.current_date ? "is-today" : ""}${item.completed ? " is-done" : ""}`} key={item.date}>
+              <header><span>{weekday.format(new Date(`${item.date}T12:00:00`))}</span><strong>{dayNumber.format(new Date(`${item.date}T12:00:00`))}</strong></header>
+              <i>{item.completed ? <Check size={15} /> : categoryIcon(item.category, 15)}</i>
+              <p>{item.title}</p>
+            </article>
+          ))}
         </div>
       </section>
 
       {todayAppleRun && (
         <section className="apex-run" aria-labelledby="apex-run-title">
-          <div className="apex-section-index" aria-hidden="true">03</div>
+          <div className="apex-section-index" aria-hidden="true">04</div>
           <div className="apex-run-mark"><Route size={25} /></div>
           <div className="apex-run-copy">
             <span>Apple Watch · Carrera de hoy</span>
@@ -151,7 +144,7 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
 
       <section className="apex-vitals" aria-labelledby="apex-vitals-title">
         <div className="apex-section-head">
-          <div><span className="apex-section-index" aria-hidden="true">{todayAppleRun ? "04" : "03"}</span><div><small>Señales del cuerpo</small><h2 id="apex-vitals-title">Listo para decidir</h2></div></div>
+          <div><span className="apex-section-index" aria-hidden="true">{todayAppleRun ? "05" : "04"}</span><div><small>Señales del cuerpo</small><h2 id="apex-vitals-title">Listo para decidir</h2></div></div>
           <span className="apex-source"><Watch size={14} /> Fitbit + Apple Health</span>
         </div>
         <div className="apex-metric-grid">
