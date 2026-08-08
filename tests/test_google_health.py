@@ -5,6 +5,9 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import pytest
+
+import api
 from strava_agent.database import Database
 from strava_agent.google_health import (
     GoogleHealthCredentials,
@@ -246,6 +249,43 @@ def test_health_points_can_be_filtered_by_source(tmp_path: Path) -> None:
 
     assert len(rows) == 1
     assert rows[0]["source"] == "FITBIT"
+
+
+def test_recovery_snapshot_uses_only_fitbit_points(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = Database(tmp_path / "coach.db")
+    database.upsert_google_health_data_point(
+        "daily-heart-rate-variability",
+        "fitbit-hrv",
+        "2026-07-18T06:00:00Z",
+        "FITBIT",
+        {
+            "dailyHeartRateVariability": {
+                "date": {"year": 2026, "month": 7, "day": 18},
+                "averageHeartRateVariabilityMilliseconds": 61.5,
+            }
+        },
+    )
+    database.upsert_google_health_data_point(
+        "daily-heart-rate-variability",
+        "apple-hrv",
+        "2026-07-19T06:00:00Z",
+        "Apple Inc.",
+        {
+            "dailyHeartRateVariability": {
+                "date": {"year": 2026, "month": 7, "day": 19},
+                "averageHeartRateVariabilityMilliseconds": 199,
+            }
+        },
+    )
+    monkeypatch.setattr(api, "database", database)
+
+    recovery = api._recovery_snapshot(google_status=database.google_health_status())
+
+    assert recovery["hrv"]["value"] == 61.5
+    assert recovery["hrv"]["date"] == "2026-07-18"
+    assert "exclusivamente" in recovery["_context"]["note"]
 
 
 def test_health_points_can_be_loaded_by_time_window(tmp_path: Path) -> None:

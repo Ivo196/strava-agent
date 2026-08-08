@@ -53,6 +53,12 @@ def is_apple_watch_activity(activity: dict[str, Any]) -> bool:
     return isinstance(raw, dict) and is_apple_watch_workout(raw)
 
 
+def is_apple_watch_source(source: Any) -> bool:
+    """Return whether a metric/source value explicitly identifies Apple Watch."""
+    labels = list(_flatten_text(source))
+    return _has_apple_watch(labels) and not _has_fitbit(labels)
+
+
 def workout_device_name(workout: dict[str, Any]) -> str:
     """Choose the most useful source label for a persisted activity."""
     direct = list(_direct_source_labels(workout))

@@ -15,7 +15,7 @@ import {
   Timer,
   Watch,
 } from "lucide-react";
-import type { DeviceInsights as DeviceInsightsData, DeviceMetric, RecoveryMetric } from "@/lib/types";
+import type { DeviceInsights as DeviceInsightsData, DeviceMetric } from "@/lib/types";
 
 function Metric({
   label,
@@ -23,7 +23,7 @@ function Metric({
   pending = "Calibrando",
 }: {
   label: string;
-  metric: RecoveryMetric | DeviceMetric;
+  metric: DeviceMetric;
   pending?: string;
 }) {
   return (
@@ -74,7 +74,7 @@ function HeartRateChart({ series }: { series: { time: string; bpm: number }[] })
   );
 }
 
-function metricValue(metric: RecoveryMetric | DeviceMetric) {
+function metricValue(metric: DeviceMetric) {
   return metric?.value ?? null;
 }
 
@@ -158,8 +158,6 @@ export function DeviceInsights({ devices }: { devices: DeviceInsightsData }) {
   const heartRate = fitbit.heart_rate;
   const sleepHours = metricValue(fitbit.recovery.sleep);
   const restingHr = metricValue(fitbit.recovery.resting_hr);
-  const appleHrv = metricValue(apple.recovery.hrv);
-  const appleVo2 = metricValue(apple.recovery.vo2_max);
   const sleepPercent = sleepHours ? (sleepHours / 8) * 100 : 0;
   const restingPercent = restingHr ? ((70 - restingHr) / 30) * 100 : 0;
   const stepsLatest = fitbit.steps.latest;
@@ -211,10 +209,10 @@ export function DeviceInsights({ devices }: { devices: DeviceInsightsData }) {
             />
             <ProgressSignal
               icon={<BatteryCharging size={15} />}
-              label="Motor"
-              value={appleVo2 ? `${appleVo2}` : "Calibrando"}
-              detail="VO₂ máx. Apple"
-              percent={appleVo2 ? (appleVo2 / 60) * 100 : 0}
+              label="Potencia"
+              value={dynamics.power_w ? `${dynamics.power_w} W` : "Sin dato"}
+              detail="medida durante la carrera"
+              percent={dynamics.power_w ? (dynamics.power_w / 400) * 100 : 0}
               tone="cyan"
             />
             <ProgressSignal
@@ -227,10 +225,10 @@ export function DeviceInsights({ devices }: { devices: DeviceInsightsData }) {
             />
             <ProgressSignal
               icon={<HeartPulse size={15} />}
-              label="Variabilidad"
-              value={appleHrv ? `${appleHrv} ms` : "Sin dato"}
-              detail="HRV reciente"
-              percent={appleHrv ? (appleHrv / 100) * 100 : 0}
+              label="Pulso carrera"
+              value={run?.average_heartrate ? `${run.average_heartrate} bpm` : "Sin dato"}
+              detail="promedio Apple Watch"
+              percent={run?.average_heartrate ? (run.average_heartrate / 200) * 100 : 0}
               tone="amber"
             />
           </div>
@@ -241,13 +239,6 @@ export function DeviceInsights({ devices }: { devices: DeviceInsightsData }) {
             <div><Timer size={14} /><span>Contacto</span><strong>{dynamics.ground_contact_ms ?? "—"}<small> ms</small></strong></div>
             <div><Footprints size={14} /><span>Zancada</span><strong>{dynamics.stride_m ?? "—"}<small> m</small></strong></div>
             <div><Activity size={14} /><span>Oscilación</span><strong>{dynamics.vertical_oscillation_cm ?? "—"}<small> cm</small></strong></div>
-          </div>
-
-          <div className="device-subheading"><span>Capacidad medida por Apple</span><small>últimos 7 días</small></div>
-          <div className="source-metrics">
-            <Metric label="HRV" metric={apple.recovery.hrv} />
-            <Metric label="FC reposo" metric={apple.recovery.resting_hr} />
-            <Metric label="VO₂ máx." metric={apple.recovery.vo2_max} />
           </div>
 
           {run && (

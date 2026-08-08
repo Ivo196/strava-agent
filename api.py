@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from strava_agent.activity_sources import is_apple_watch_activity
+from strava_agent.activity_sources import is_apple_watch_activity, is_apple_watch_source
 from strava_agent.apple_health import import_health_auto_export, result_dict
 from strava_agent.ai_coach import ask_coach, build_coach_context
 from strava_agent.config import get_settings
@@ -676,22 +676,15 @@ def _apple_recovery_snapshot() -> dict[str, Any]:
     }
 
 
-def _recovery_snapshot(
-    apple: dict[str, Any] | None = None,
-    *,
-    google_status: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    result = apple or _apple_recovery_snapshot()
-    google = _google_recovery_snapshot()
-    combined = {key: google.get(key) or value for key, value in result.items()}
+def _recovery_snapshot(*, google_status: dict[str, Any] | None = None) -> dict[str, Any]:
+    combined = _fitbit_recovery_snapshot()
     google_status = google_status or database.google_health_status()
     combined["_context"] = {
         "fitbit_sensor_points": google_status["fitbit_sensor_points"],
         "fitbit_sensor_first": google_status["fitbit_sensor_first"],
         "note": (
-            "La pulsera Fitbit es nueva. Solo sus muestras pasivas desde la primera "
-            "fecha registrada cuentan como historial propio de Fitbit; los valores "
-            "anteriores pueden provenir de Apple Health o ser derivados por Google."
+            "La recuperación usa exclusivamente muestras Fitbit. Apple Health y "
+            "Health Kit quedan fuera de sueño, HRV y frecuencia en reposo."
         ),
     }
     return combined
@@ -714,10 +707,7 @@ def _health_dashboard_snapshot(rows: list[dict[str, Any]], analysis_date: date) 
 
         google_status = database.google_health_status()
         apple_recovery = _apple_recovery_snapshot()
-        recovery = _recovery_snapshot(
-            apple_recovery,
-            google_status=google_status,
-        )
+        recovery = _recovery_snapshot(google_status=google_status)
         value = {
             "recovery": recovery,
             "devices": _device_insights(
@@ -739,7 +729,7 @@ def _health_dashboard_snapshot(rows: list[dict[str, Any]], analysis_date: date) 
         return value
 
 
-def _google_recovery_snapshot() -> dict[str, Any]:
+def _fitbit_recovery_snapshot() -> dict[str, Any]:
     data_types = [
         "daily-heart-rate-variability",
         "daily-resting-heart-rate",
@@ -749,7 +739,7 @@ def _google_recovery_snapshot() -> dict[str, Any]:
         "sleep",
         "weight",
     ]
-    rows = database.list_google_health_data_points(data_types)
+    rows = database.list_google_health_data_points(data_types, source="FITBIT")
     cutoff = datetime.now().astimezone() - timedelta(days=7)
     grouped: dict[str, list[tuple[datetime, float, str]]] = {
         "hrv": [],
@@ -878,7 +868,6 @@ def _device_insights(
                 "calories": round(sum(float(row.get("calories") or 0) for row in current_week)),
             },
             "latest_run": latest_summary,
-            "recovery": apple_recovery or _apple_recovery_snapshot(),
         },
         "fitbit": fitbit,
     }
@@ -2604,6 +2593,8 @@ def _streams_with_apple_health_heart_rate(activity: dict[str, Any], streams: dic
         start_date=(start - timedelta(seconds=90)).date().isoformat(),
         end_date=(end.date() + timedelta(days=1)).isoformat(),
     ):
+        if not is_apple_watch_source(row.get("source")):
+            continue
         recorded = _parse_health_datetime(row["recorded_at"])
         if recorded is None or recorded < start - timedelta(seconds=90) or recorded > end:
             continue
@@ -2720,6 +2711,8 @@ def _activity_dynamics_samples(activity: dict[str, Any]) -> list[dict[str, Any]]
     )
     samples: list[dict[str, Any]] = []
     for row in rows:
+        if not is_apple_watch_source(row.get("source")):
+            continue
         recorded = _parse_health_datetime(row["recorded_at"])
         if recorded is None or recorded < start or recorded > end:
             continue

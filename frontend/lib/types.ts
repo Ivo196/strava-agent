@@ -226,13 +226,6 @@ export type DeviceInsights = {
         vertical_oscillation_cm?: number;
       };
     } | null;
-    recovery: {
-      hrv: RecoveryMetric;
-      resting_hr: RecoveryMetric;
-      vo2_max: RecoveryMetric;
-      sleep: RecoveryMetric;
-      weight: RecoveryMetric;
-    };
   };
   fitbit: {
     status: string;

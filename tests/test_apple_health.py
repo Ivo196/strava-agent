@@ -139,6 +139,15 @@ def test_activity_detail_builds_heart_rate_stream_from_apple_metrics(
     database.upsert_apple_health_metric(
         "heart_rate",
         {
+            "date": "2026-07-17T07:00:00+02:00",
+            "qty": 199,
+            "source": "HUAWEI Health",
+            "units": "count/min",
+        },
+    )
+    database.upsert_apple_health_metric(
+        "heart_rate",
+        {
             "date": "2026-07-17T07:30:00+02:00",
             "qty": 156,
             "source": "Apple Watch",
