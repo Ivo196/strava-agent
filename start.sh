@@ -14,10 +14,10 @@ if ! curl --silent --fail http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
   echo "$!" > .run/api.pid
 fi
 
-if ! curl --silent --fail http://127.0.0.1:3100 >/dev/null 2>&1; then
+if ! curl --silent --fail http://127.0.0.1:3000 >/dev/null 2>&1; then
   (
     cd frontend
-    nohup npm run start -- -p 3100 \
+    nohup npm run start -- --hostname 0.0.0.0 --port 3000 \
       >../.run/web.out.log 2>../.run/web.err.log &
     echo "$!" > ../.run/web.pid
   )
@@ -25,8 +25,8 @@ fi
 
 for _ in {1..30}; do
   if curl --silent --fail http://127.0.0.1:8000/api/health >/dev/null &&
-     curl --silent --fail http://127.0.0.1:3100 >/dev/null; then
-    echo "PaceOS está activo en http://localhost:3100"
+     curl --silent --fail http://127.0.0.1:3000 >/dev/null; then
+    echo "PaceOS está activo en http://localhost:3000"
     exit 0
   fi
   sleep 0.5

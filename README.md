@@ -123,8 +123,21 @@ Los scripts:
 - instalan backend y frontend;
 - compilan Next.js en modo producción;
 - crean `.env` con una clave aleatoria para Health Auto Export;
-- arrancan API en el puerto `8000` y web en el `3100`;
+- arrancan API en el puerto `8000` y web en el `3000`;
 - guardan PID y logs locales en `.run/`, que está fuera de Git.
+
+## Despliegue automático en Raspberry Pi
+
+La Raspberry de producción puede registrarse como runner propio de GitHub con
+la etiqueta `paceos`. Cada `push` a `main` ejecuta
+`.github/workflows/deploy-raspberry.yml`, que llama a
+`scripts/deploy_raspberry.sh` en el checkout persistente.
+
+El despliegue solamente acepta avances rápidos y se detiene si detecta cambios
+locales en archivos versionados. Conserva `.env`, `data/` y `cloudflared.yml`,
+instala dependencias, comprueba TypeScript, compila el frontend, reinicia los
+servicios de usuario y valida la API y la web. Los workflows de pull requests
+no deben usar este runner porque tiene acceso directo al servidor.
 
 Para activar Coach AI, completa `OPENAI_API_KEY` dentro de `.env` antes de arrancar. La aplicación funciona sin esa clave; solamente el chat estará desactivado.
 

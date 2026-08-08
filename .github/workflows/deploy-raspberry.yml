@@ -1,0 +1,28 @@
+name: Deploy PaceOS to Raspberry Pi
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: paceos-production
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.repository == 'Ivo196/strava-agent'
+    runs-on:
+      - self-hosted
+      - Linux
+      - ARM64
+      - paceos
+    timeout-minutes: 30
+
+    steps:
+      - name: Deploy the latest main revision
+        run: bash /home/ivo196/.openclaw/workspace/strava-agent/scripts/deploy_raspberry.sh
