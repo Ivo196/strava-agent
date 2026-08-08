@@ -131,7 +131,8 @@ Los scripts:
 La Raspberry de producción puede registrarse como runner propio de GitHub con
 la etiqueta `paceos`. Cada `push` a `main` ejecuta
 `.github/workflows/deploy-raspberry.yml`, que llama a
-`scripts/deploy_raspberry.sh` en el checkout persistente.
+`/home/ivo196/bin/deploy-paceos.sh`. Este lanzador actualiza el checkout
+persistente y entrega el control a `scripts/deploy_raspberry.sh`.
 
 El despliegue solamente acepta avances rápidos y se detiene si detecta cambios
 locales en archivos versionados. Conserva `.env`, `data/` y `cloudflared.yml`,

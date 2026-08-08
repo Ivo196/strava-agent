@@ -25,4 +25,4 @@ jobs:
 
     steps:
       - name: Deploy the latest main revision
-        run: bash /home/ivo196/.openclaw/workspace/strava-agent/scripts/deploy_raspberry.sh
+        run: bash /home/ivo196/bin/deploy-paceos.sh
