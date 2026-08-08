@@ -24,11 +24,13 @@ from pydantic import BaseModel, Field
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from strava_agent.config import get_settings
+from strava_agent.activity_sources import is_apple_watch_activity
 from strava_agent.apple_health import import_health_auto_export, result_dict
 from strava_agent.ai_coach import ask_coach, build_coach_context
+from strava_agent.config import get_settings
 from strava_agent.database import Database
 from strava_agent.metrics import (
+    RUN_TYPES,
     activity_training_load,
     activities_frame,
     dashboard_metrics,
@@ -71,6 +73,14 @@ DASHBOARD_DEMO_SCENARIOS = {
     "heavy-load",
     "calibrating",
 }
+
+
+def _apple_watch_activity_rows() -> list[dict[str, Any]]:
+    return [
+        row
+        for row in database.list_activities()
+        if row.get("sport_type") in RUN_TYPES and is_apple_watch_activity(row)
+    ]
 
 # Personal-baseline comparisons used by the recovery explanation layer. These
 # thresholds describe meaningful day-to-day movement; they are not clinical
@@ -353,7 +363,7 @@ async def import_apple_health(
 
 @app.get("/api/dashboard")
 def dashboard(today: date | None = None, scenario: str | None = None) -> dict[str, Any]:
-    rows = database.list_activities()
+    rows = _apple_watch_activity_rows()
     frame = activities_frame(rows)
     analysis_date = today or date.today()
     metrics = dashboard_metrics(frame, today=analysis_date)
@@ -434,7 +444,7 @@ def dashboard(today: date | None = None, scenario: str | None = None) -> dict[st
     )
     return {
         "current_date": analysis_date.isoformat(),
-        "activity_count": database.activity_count(),
+        "activity_count": len(rows),
         "days_to_race": days_to_race,
         "race_date": RACE_DATE.isoformat(),
         "profile": profile,
@@ -467,7 +477,7 @@ def dashboard(today: date | None = None, scenario: str | None = None) -> dict[st
 
 @app.get("/api/activities")
 def activities() -> dict[str, Any]:
-    frame = activities_frame(database.list_activities()).sort_values("start_date", ascending=False)
+    frame = activities_frame(_apple_watch_activity_rows()).sort_values("start_date", ascending=False)
     items = [
         {
             "id": str(row.id),
@@ -490,7 +500,7 @@ def activities() -> dict[str, Any]:
 @app.get("/api/activities/progress")
 def activities_progress(today: date | None = None) -> dict[str, Any]:
     analysis_date = today or date.today()
-    frame = activities_frame(database.list_activities())
+    frame = activities_frame(_apple_watch_activity_rows())
     profile = database.get_profile()
     metrics = dashboard_metrics(frame, today=analysis_date)
     plan = build_adaptive_plan(
@@ -516,7 +526,11 @@ def activities_progress(today: date | None = None) -> dict[str, Any]:
 @app.get("/api/activities/{activity_id}")
 def activity_detail(activity_id: int) -> dict[str, Any]:
     activity = database.get_activity(activity_id)
-    if activity is None:
+    if (
+        activity is None
+        or activity.get("sport_type") not in RUN_TYPES
+        or not is_apple_watch_activity(activity)
+    ):
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
 
     distance_km = float(activity["distance_m"]) / 1000
@@ -803,8 +817,7 @@ def _device_insights(
     apple_runs_by_id = {
         int(row["id"]): row
         for row in rows
-        if "apple" in str(row.get("device_name") or "").lower()
-        or json.loads(row.get("raw_json") or "{}").get("source") == "health_auto_export"
+        if is_apple_watch_activity(row)
     }
     activity_times = [
         (row, _parse_health_datetime(row.get("start_date")))
@@ -2816,7 +2829,7 @@ def _format_duration(seconds: int) -> str:
 
 @app.get("/api/plan")
 def plan(today: date | None = None) -> dict[str, Any]:
-    activity_rows = database.list_activities()
+    activity_rows = _apple_watch_activity_rows()
     frame = activities_frame(activity_rows)
     analysis_date = today or date.today()
     metrics = dashboard_metrics(frame, today=analysis_date)
@@ -2954,7 +2967,7 @@ def coach_status() -> dict[str, Any]:
 
 @app.get("/api/coach/summary")
 def coach_summary() -> dict[str, Any]:
-    frame = activities_frame(database.list_activities())
+    frame = activities_frame(_apple_watch_activity_rows())
     metrics = dashboard_metrics(frame)
     return {
         "profile": database.get_profile(),
@@ -2977,7 +2990,7 @@ def coach_chat(payload: CoachChatInput) -> dict[str, str]:
             detail="Configura OPENAI_API_KEY en el archivo .env y reinicia la API.",
         )
 
-    frame = activities_frame(database.list_activities())
+    frame = activities_frame(_apple_watch_activity_rows())
     today = payload.local_date or date.today()
     metrics = dashboard_metrics(frame, today=today)
     profile = database.get_profile()

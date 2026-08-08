@@ -35,7 +35,7 @@ function WeeklyTooltip({ active, payload }: { active?: boolean; payload?: { payl
 }
 
 export function WeeklyMileageChart({ weekly }: { weekly: RunProgressData["weekly"] }) {
-  const [range, setRange] = useState<Range>(8);
+  const [range, setRange] = useState<Range>(12);
   const points = weekly.points.slice(-range);
   const interpretation = weekly.interpretations[String(range) as "4" | "8" | "12"];
   const currentWeek = points.find((point) => point.is_current)?.week;
@@ -68,7 +68,7 @@ export function WeeklyMileageChart({ weekly }: { weekly: RunProgressData["weekly
         role="img"
         aria-label={`Kilómetros por semana durante ${range} semanas. ${interpretation.label}`}
       >
-        <ResponsiveContainer height={292} width="100%">
+        <ResponsiveContainer height="100%" width="100%">
           <ComposedChart data={points} margin={{ top: 20, right: 10, bottom: 0, left: -8 }}>
             <CartesianGrid stroke="rgba(148,163,184,.14)" strokeDasharray="3 5" vertical={false} />
             <XAxis
@@ -95,7 +95,7 @@ export function WeeklyMileageChart({ weekly }: { weekly: RunProgressData["weekly
                 x={currentWeek}
               />
             )}
-            <Bar dataKey="distance_km" maxBarSize={42} name="Kilómetros" radius={[5, 5, 1, 1]}>
+            <Bar dataKey="distance_km" isAnimationActive={false} maxBarSize={48} name="Kilómetros" radius={[5, 5, 1, 1]}>
               {points.map((point) => (
                 <Cell
                   fill={point.is_current ? "var(--orange-deep)" : "var(--orange)"}
@@ -110,7 +110,7 @@ export function WeeklyMileageChart({ weekly }: { weekly: RunProgressData["weekly
               connectNulls={false}
               dataKey="rolling_average_4"
               dot={{ fill: "var(--surface-alt)", r: 3, stroke: "var(--viz-series-3)", strokeWidth: 2 }}
-              isAnimationActive
+              isAnimationActive={false}
               name="Media móvil 4 sem"
               stroke="var(--viz-series-3)"
               strokeDasharray="6 5"

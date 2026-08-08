@@ -25,11 +25,17 @@ X-API-Key: la-clave-configurada-en-env
 Content-Type: application/json
 ```
 
-Configura `APPLE_HEALTH_API_KEY` en `.env` antes de iniciar la API. El receptor acepta el formato JSON v2 de Health Auto Export, deduplica los reenvíos y conserva:
+Configura `APPLE_HEALTH_API_KEY` en `.env` antes de iniciar la API. El receptor acepta el formato JSON v2 de Health Auto Export y es idempotente para las tres automatizaciones aunque cada una reenvíe los siete días anteriores cada hora:
 
-- Carreras, distancia, duración, frecuencia cardiaca, elevación y recorrido.
+- **Chicago Workouts** deduplica por identificador y también por la combinación tipo/inicio/fin.
+- **Chicago Recovery** deduplica cada muestra por métrica/instante/origen.
+- **Chicago Running Dynamic** aplica la misma identidad estable a potencia, velocidad, contacto con el suelo, zancada y oscilación vertical.
+
+Las fechas equivalentes con otra zona o formato y las diferencias de espacios Unicode en el nombre del origen se consideran el mismo dato. Si una muestra corregida vuelve a llegar, se actualiza la fila existente. El receptor conserva:
+
+- Solamente carreras con origen Apple Watch explícito, con distancia, duración, frecuencia cardiaca, elevación y recorrido. Las carreras Fitbit, Strava, Nike Run Club o de origen desconocido se descartan.
 - Sueño, HRV, frecuencia cardiaca en reposo, peso, pasos y demás métricas enviadas.
-- Otros entrenamientos como fuerza y bicicleta para análisis posterior.
+- Otros entrenamientos, incluidos fuerza, bicicleta y caminata de Fitbit, para análisis posterior.
 
 Se recomiendan dos automatizaciones:
 
@@ -37,6 +43,8 @@ Se recomiendan dos automatizaciones:
 2. **PaceOS · Recovery**: `Health Metrics`, JSON v2, sueño agregado y agrupación diaria.
 
 Activa `Batch Requests` y utiliza `X-API-Key` como encabezado. La Raspberry debe tener una URL alcanzable desde el iPhone; para acceso fuera de la red local utiliza HTTPS.
+
+Mantén activada la opción `Include Workout Metrics`: Health Auto Export expone el origen en las muestras adjuntas al entrenamiento y PaceOS descarta de forma segura cualquier carrera cuyo origen no pueda demostrar que es Apple Watch.
 
 El ZIP oficial de Apple Health sirve para cargar el historial inicial. La importación ZIP se añadirá separadamente para no mezclarla con los envíos automáticos.
 

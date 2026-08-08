@@ -1,8 +1,7 @@
-import { Activity as ActivityIcon, CalendarCheck2, Flag, HeartPulse, Route, TrendingUp } from "lucide-react";
-import { AerobicTrendChart } from "@/components/aerobic-trend-chart";
+import { Activity as ActivityIcon, CalendarCheck2, ChevronDown, HeartPulse, Route, TrendingUp } from "lucide-react";
 import { OfflineState } from "@/components/offline-state";
+import { RunAnalytics } from "@/components/run-analytics";
 import { RunHistory } from "@/components/run-history";
-import { WeeklyMileageChart } from "@/components/weekly-mileage-chart";
 import { getActivities, getActivitiesProgress } from "@/lib/api";
 import type { RunPeriodComparison, RunPeriodMetrics } from "@/lib/types";
 
@@ -83,14 +82,14 @@ export default async function ActivitiesPage() {
             <header><span><ActivityIcon aria-hidden="true" size={16} />Volumen reciente</span></header>
             <strong>{oneDecimal.format(period28.current.distance_km)}<small> km</small></strong>
             <p>en los últimos 28 días</p>
-            <footer><span>{oneDecimal.format(progress.periods.days_7.current.distance_km)} km en 7 días</span><em>{changeLabel(period28.distance_change_percent)}</em></footer>
+            <footer><span>{changeLabel(period28.distance_change_percent)}</span></footer>
           </article>
 
           <article className="run-progress-card">
             <header><span><CalendarCheck2 aria-hidden="true" size={16} />Frecuencia</span></header>
             <strong>{oneDecimal.format(progress.consistency.runs_per_week)}<small> carreras/sem</small></strong>
             <p>{progress.consistency.active_weeks} semanas activas de las últimas 4</p>
-            <footer><span>{progress.consistency.consecutive_active_weeks} semanas consecutivas</span><em>{progress.consistency.message}</em></footer>
+            <footer><span>{progress.consistency.consecutive_active_weeks} semanas consecutivas</span></footer>
           </article>
 
           <article className="run-progress-card">
@@ -101,7 +100,7 @@ export default async function ActivitiesPage() {
               <strong>{formatPace(aerobicCurrent.pace_min_km)}<small> min/km</small></strong>
             )}
             <p>{aerobicCurrent.average_heartrate === null ? "para estimar tendencia" : `a ${aerobicCurrent.average_heartrate} bpm`}</p>
-            <footer><span>{progress.aerobic.groups.find((group) => group.key === progress.aerobic.selected_group)?.label ?? "Sin grupo comparable"}</span><em>{progress.aerobic.insight}</em></footer>
+            <footer><span>{progress.aerobic.insight}</span></footer>
           </article>
 
           <article className="run-progress-card long-run-card">
@@ -116,21 +115,18 @@ export default async function ActivitiesPage() {
                 </div>
               </div>
             )}
-            <footer><span>{longRun.change_km === null ? "Sin tirada previa comparable" : `${longRun.change_km > 0 ? "+" : ""}${oneDecimal.format(longRun.change_km)} km vs. anterior`}</span><em>{longRun.message}</em></footer>
+            <footer><span>{longRun.change_km === null ? "Sin tirada previa comparable" : `${longRun.change_km > 0 ? "+" : ""}${oneDecimal.format(longRun.change_km)} km vs. anterior`}</span></footer>
           </article>
         </div>
       </section>
 
-      <div className="runs-analytics-grid">
-        <WeeklyMileageChart weekly={progress.weekly} />
-        <AerobicTrendChart aerobic={progress.aerobic} />
-      </div>
+      <RunAnalytics progress={progress} />
 
-      <section className="period-comparison-panel" aria-labelledby="period-comparison-title">
-        <header className="runs-panel-heading">
-          <div><span className="eyebrow">Misma ventana, misma medida</span><h2 id="period-comparison-title">Períodos equivalentes</h2><p>Los porcentajes se omiten cuando la base anterior es demasiado pequeña.</p></div>
-          <Flag aria-hidden="true" size={19} />
-        </header>
+      <details className="period-comparison-panel">
+        <summary className="runs-panel-heading">
+          <div><span className="eyebrow">Comparación secundaria</span><h2>Períodos equivalentes</h2><p>7 y 28 días contra ventanas de la misma duración.</p></div>
+          <span className="period-panel-action">Ver comparación <ChevronDown aria-hidden="true" size={17} /></span>
+        </summary>
         <div className="period-table-wrap">
           <table>
             <thead><tr><th>Ventana</th><th>Actual</th><th>Anterior</th><th>Cambio</th></tr></thead>
@@ -141,7 +137,7 @@ export default async function ActivitiesPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </details>
 
       {data.activities.length ? (
         <RunHistory activities={data.activities} progress={progress} />

@@ -4168,14 +4168,14 @@ body {
 .state-volumen-creciendo-demasiado-rápido, .state-intensidad-demasiado-alta { color: #f1b65a; border-color: rgba(241,182,90,.22); background: rgba(241,182,90,.08); }
 .runs-progress-copy { max-width: 900px; margin: 22px 0 0; color: #c9d1ca; font-size: clamp(15px,1.6vw,18px); line-height: 1.65; }
 .run-progress-card-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin-top: 24px; }
-.run-progress-card { min-width: 0; min-height: 218px; display: flex; flex-direction: column; padding: 17px; border: 1px solid rgba(218,232,211,.1); border-radius: 14px; background: rgba(4,8,7,.35); }
+.run-progress-card { min-width: 0; min-height: 158px; display: flex; flex-direction: column; padding: 16px; border: 1px solid rgba(218,232,211,.1); border-radius: 14px; background: rgba(4,8,7,.35); }
 .run-progress-card > header span { display: inline-flex; align-items: center; gap: 8px; color: #869087; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .run-progress-card > header svg { color: var(--orange); }
-.run-progress-card > strong { display: block; margin-top: 24px; color: #f1f5f0; font: 650 clamp(28px,3vw,39px)/.9 "Fira Code",ui-monospace,monospace; letter-spacing: -.06em; }
+.run-progress-card > strong { display: block; margin-top: 16px; color: #f1f5f0; font: 650 clamp(28px,3vw,39px)/.9 "Fira Code",ui-monospace,monospace; letter-spacing: -.06em; }
 .run-progress-card > strong small { color: #6f796f; font-size: 10px; font-weight: 600; letter-spacing: 0; }
 .run-progress-card > strong.run-progress-card-empty { max-width: 190px; font: 650 18px/1.2 Inter,sans-serif; letter-spacing: -.02em; }
 .run-progress-card > p { margin: 9px 0 0; color: #727d73; font-size: 10px; }
-.run-progress-card > footer { display: grid; gap: 5px; margin-top: auto; padding-top: 15px; border-top: 1px solid var(--line); }
+.run-progress-card > footer { display: grid; gap: 5px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); }
 .run-progress-card > footer span { color: #aab3aa; font-size: 10px; font-weight: 650; }
 .run-progress-card > footer em { color: #6f7a70; font-size: 9px; font-style: normal; line-height: 1.4; }
 .long-run-target { margin: 12px 0 15px; }
@@ -4183,18 +4183,19 @@ body {
 .long-run-target > div { height: 6px; overflow: hidden; border-radius: 999px; background: rgba(148,163,184,.12); }
 .long-run-target > div i { display: block; height: 100%; min-width: 3px; border-radius: inherit; background: linear-gradient(90deg,var(--orange),var(--orange-deep)); animation: fillTrack .7s ease-out both; }
 
-.runs-analytics-grid { display: grid; grid-template-columns: minmax(0,1.14fr) minmax(0,.86fr); gap: 12px; margin-top: 12px; }
 .runs-analysis-panel, .period-comparison-panel { min-width: 0; padding: 22px; border: 1px solid rgba(218,232,211,.11); border-radius: 18px; background: rgba(13,16,14,.86); box-shadow: var(--shadow); }
 .runs-panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .runs-panel-heading h2 { margin: 6px 0 0; font-size: 20px; }
 .runs-panel-heading p { margin: 7px 0 0; color: #747e75; font-size: 10px; line-height: 1.45; }
 .runs-panel-heading > svg { color: var(--orange); }
 .runs-range-switch, .history-filter-switch { display: flex; gap: 5px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: rgba(3,7,6,.34); }
-.runs-range-switch button, .history-filter-switch button { min-height: 36px; padding: 0 11px; color: #758077; border: 1px solid transparent; border-radius: 7px; background: transparent; cursor: pointer; font-size: 9px; font-weight: 750; transition: color .18s ease,background .18s ease,border-color .18s ease; }
+.runs-range-switch button, .history-filter-switch button { min-height: 44px; padding: 0 12px; color: #758077; border: 1px solid transparent; border-radius: 7px; background: transparent; cursor: pointer; font-size: 9px; font-weight: 750; transition: color .18s ease,background .18s ease,border-color .18s ease; }
 .runs-range-switch button:hover, .history-filter-switch button:hover { color: #d7ddd7; background: rgba(120,198,255,.06); }
 .runs-range-switch button:focus-visible, .history-filter-switch button:focus-visible, .run-history-card:focus-visible, .runs-data-table summary:focus-visible, .run-quality-method summary:focus-visible { outline: 2px solid var(--orange-deep); outline-offset: 2px; }
 .runs-range-switch button.active, .history-filter-switch button.active { color: #edf3ed; border-color: rgba(120,198,255,.18); background: rgba(120,198,255,.1); }
 .runs-chart-frame { width: 100%; min-width: 0; margin-top: 14px; overflow: hidden; }
+.weekly-mileage-panel .runs-chart-frame { height: 360px; }
+.aerobic-panel .aerobic-chart-frame { height: 340px; }
 .runs-chart-tooltip { display: grid; gap: 4px; max-width: 230px; padding: 10px 12px; color: #dfe6df; border: 1px solid rgba(218,232,211,.18); border-radius: 9px; background: rgba(3,7,6,.96); box-shadow: 0 16px 30px rgba(0,0,0,.3); }
 .runs-chart-tooltip span { color: #7f8a80; font-size: 8px; text-transform: capitalize; }
 .runs-chart-tooltip strong { font-size: 11px; }
@@ -4226,8 +4227,27 @@ body {
 .runs-chart-empty strong { color: #cbd3cb; font-size: 13px; }
 .runs-chart-empty p { max-width: 330px; margin: 0; color: #6f7a70; font-size: 10px; line-height: 1.5; }
 
-.period-comparison-panel { margin-top: 12px; }
+.run-analytics-section { margin-top: 12px; overflow: hidden; border: 1px solid rgba(218,232,211,.11); border-radius: 18px; background: rgba(13,16,14,.86); box-shadow: var(--shadow); }
+.run-analytics-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; padding: 20px 22px; border-bottom: 1px solid var(--line); }
+.run-analytics-header h2 { margin: 6px 0 0; font-size: 21px; }
+.run-analytics-header p { max-width: 650px; margin: 7px 0 0; color: #747e75; font-size: 10px; line-height: 1.5; }
+.run-analytics-tabs { display: flex; gap: 5px; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: rgba(3,7,6,.34); }
+.run-analytics-tabs button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 14px; color: #758077; border: 1px solid transparent; border-radius: 8px; background: transparent; cursor: pointer; font-size: 9px; font-weight: 750; transition: color .18s ease,background .18s ease,border-color .18s ease; }
+.run-analytics-tabs button:hover { color: #d7ddd7; background: rgba(120,198,255,.06); }
+.run-analytics-tabs button:focus-visible { outline: 2px solid var(--orange-deep); outline-offset: 2px; }
+.run-analytics-tabs button.active { color: #edf3ed; border-color: rgba(120,198,255,.2); background: rgba(120,198,255,.1); }
+.run-analytics-tabs button.active svg { color: var(--orange-deep); }
+.run-analytics-panel .runs-analysis-panel { padding: 22px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+
+.period-comparison-panel { margin-top: 12px; padding: 0; }
+.period-comparison-panel > summary { min-height: 76px; padding: 17px 22px; cursor: pointer; list-style: none; }
+.period-comparison-panel > summary::-webkit-details-marker { display: none; }
+.period-comparison-panel > summary:focus-visible { outline: 2px solid var(--orange-deep); outline-offset: -3px; }
+.period-panel-action { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; color: #8e9990; font-size: 9px; font-weight: 750; white-space: nowrap; }
+.period-panel-action svg { color: var(--orange-deep); transition: transform .2s ease; }
+.period-comparison-panel[open] .period-panel-action svg { transform: rotate(180deg); }
 .period-table-wrap { margin-top: 17px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; }
+.period-comparison-panel > .period-table-wrap { margin: 0 22px 22px; }
 .period-table-wrap table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .period-table-wrap th, .period-table-wrap td { padding: 13px 14px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .period-table-wrap th:last-child, .period-table-wrap td:last-child { border-right: 0; }
@@ -4241,7 +4261,7 @@ body {
 .period-table-wrap td span { margin-top: 5px; color: #727d74; font-size: 8px; line-height: 1.45; }
 .period-table-wrap td span.positive { color: var(--orange-deep); }
 
-.run-history-section { margin-top: 36px; }
+.run-history-section { margin-top: 28px; }
 .run-history-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 12px; }
 .run-history-heading h2 { margin: 6px 0 0; font-size: 25px; }
 .run-history-heading p { margin: 6px 0 0; color: #6e796f; font-size: 9px; }
@@ -4253,7 +4273,7 @@ body {
 .run-history-group > header h3 { margin: 0; color: #cfd6cf; font-size: 12px; text-transform: capitalize; }
 .run-history-group > header span { color: #69746b; font-size: 9px; }
 .run-history-list { display: grid; }
-.run-history-card { display: grid; grid-template-columns: 150px 140px minmax(0,1fr) 90px; gap: 18px; align-items: center; min-height: 112px; padding: 16px 10px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .18s ease,border-color .18s ease; }
+.run-history-card { display: grid; grid-template-columns: 150px 140px minmax(0,1fr) 90px; gap: 18px; align-items: center; min-height: 96px; padding: 14px 10px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .18s ease,border-color .18s ease; }
 .run-history-card:hover { background: rgba(120,198,255,.045); border-color: rgba(120,198,255,.2); }
 .run-history-date time { display: block; color: #89948b; font-size: 10px; text-transform: capitalize; }
 .run-history-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
@@ -4277,7 +4297,6 @@ body {
 
 @media (max-width: 1120px) {
   .run-progress-card-grid { grid-template-columns: 1fr 1fr; }
-  .runs-analytics-grid { grid-template-columns: 1fr; }
   .run-history-card { grid-template-columns: 130px 125px minmax(0,1fr) 82px; gap: 13px; }
 }
 
@@ -4287,13 +4306,24 @@ body {
   .runs-progress-mark { width: 36px; height: 36px; }
   .runs-state-badge { display: none; }
   .runs-progress-copy { font-size: 14px; }
-  .run-progress-card-grid { grid-template-columns: 1fr; gap: 8px; }
-  .run-progress-card { min-height: 196px; }
+  .run-progress-card-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .run-progress-card { min-height: 154px; padding: 14px; }
+  .run-progress-card > strong { margin-top: 14px; font-size: clamp(25px,8vw,32px); }
+  .run-progress-card > p { line-height: 1.4; }
   .runs-analysis-panel, .period-comparison-panel { padding: 17px; }
   .runs-panel-heading, .run-history-heading { align-items: flex-start; flex-direction: column; }
+  .run-analytics-header { align-items: flex-start; flex-direction: column; padding: 17px; }
+  .run-analytics-tabs { width: 100%; }
+  .run-analytics-tabs button { flex: 1; }
+  .run-analytics-panel .runs-analysis-panel { padding: 17px 14px; }
   .runs-range-switch, .history-filter-switch { width: 100%; }
   .runs-range-switch button, .history-filter-switch button { flex: 1; min-height: 44px; padding-inline: 6px; }
   .runs-chart-frame { margin-inline: -8px; width: calc(100% + 16px); }
+  .weekly-mileage-panel .runs-chart-frame { height: 300px; }
+  .aerobic-panel .aerobic-chart-frame { height: 310px; }
+  .period-comparison-panel { padding: 0; }
+  .period-comparison-panel > summary { padding: 15px 17px; }
+  .period-comparison-panel > .period-table-wrap { margin: 0 17px 17px; }
   .period-table-wrap { border: 0; overflow: visible; }
   .period-table-wrap table, .period-table-wrap thead, .period-table-wrap tbody, .period-table-wrap tr, .period-table-wrap th, .period-table-wrap td { display: block; }
   .period-table-wrap thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
@@ -4317,11 +4347,14 @@ body {
   .history-filter-switch { display: grid; grid-template-columns: 1fr 1fr; }
   .run-history-metrics { gap: 10px; }
   .run-history-metrics > span { min-width: calc(50% - 5px); }
+  .run-progress-card > header span { font-size: 7px; }
+  .run-progress-card > strong small { display: block; margin-top: 6px; }
+  .run-analytics-tabs button { padding-inline: 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .long-run-target > div i { animation: none; }
-  .run-history-card, .runs-range-switch button, .history-filter-switch button { transition: none; }
+  .run-history-card, .runs-range-switch button, .history-filter-switch button, .run-analytics-tabs button, .period-panel-action svg { transition: none; }
 }
 
 /* Recovery v3 — one decision, progressive disclosure, personal baselines */

@@ -30,9 +30,10 @@ def test_native_export_batches_metrics_and_uses_apple_watch_runs(tmp_path: Path)
     second = import_apple_health_export_zip(str(archive_path), database)
 
     assert first.workouts_received == 2
-    assert first.workouts_saved == 2
+    assert first.workouts_saved == 1
     assert first.runs_imported == 1
     assert first.metrics_imported == 1
+    assert second.workouts_saved == 0
     assert second.runs_updated == 1
     assert second.metrics_updated == 1
     assert database.activity_count() == 1

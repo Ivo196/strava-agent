@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
 
+from .activity_sources import is_apple_watch_workout, workout_device_name
 from .database import Database
 
 
@@ -38,9 +39,14 @@ def import_health_auto_export(payload: dict[str, Any], database: Database) -> Ap
         if not isinstance(workout, dict) or not workout.get("id"):
             workouts_skipped += 1
             continue
-        database.upsert_apple_health_workout(workout)
-        workouts_saved += 1
-        if not _is_running_workout(str(workout.get("name") or "")):
+        is_running = _is_running_workout(str(workout.get("name") or ""))
+        if is_running and not is_apple_watch_workout(workout):
+            workouts_skipped += 1
+            continue
+        workout_existed = database.upsert_apple_health_workout(workout)
+        if not workout_existed:
+            workouts_saved += 1
+        if not is_running:
             continue
         activity = _workout_to_activity(workout, database)
         if activity is None:
@@ -137,7 +143,7 @@ def _workout_to_activity(workout: dict[str, Any], database: Database) -> dict[st
         "suffer_score": None,
         "calories": _quantity(workout.get("activeEnergyBurned")),
         "has_heartrate": average_hr is not None,
-        "device_name": _workout_source(workout),
+        "device_name": workout_device_name(workout),
         "source": "health_auto_export",
         "apple_health_workout_id": str(workout["id"]),
     }
@@ -265,17 +271,6 @@ def _speed_mps(value: Any) -> float | None:
     if units in {"mph", "mi/h"}:
         return quantity * 0.44704
     return quantity
-
-
-def _workout_source(workout: dict[str, Any]) -> str:
-    for key in ("source", "sourceName", "device"):
-        value = workout.get(key)
-        if value:
-            return str(value)
-    for sample in workout.get("heartRateData") or []:
-        if isinstance(sample, dict) and sample.get("source"):
-            return str(sample["source"])
-    return "Apple Health"
 
 
 def _number(value: Any) -> float | None:

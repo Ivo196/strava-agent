@@ -70,7 +70,7 @@ export function AerobicTrendChart({ aerobic }: { aerobic: RunProgressData["aerob
             role="img"
             aria-label={`${aerobic.insight} ${aerobic.detail}`}
           >
-            <ResponsiveContainer height={270} width="100%">
+            <ResponsiveContainer height="100%" width="100%">
               <ScatterChart margin={{ top: 18, right: 16, bottom: 10, left: 0 }}>
                 <CartesianGrid stroke="rgba(148,163,184,.14)" strokeDasharray="3 5" />
                 <XAxis
@@ -98,8 +98,8 @@ export function AerobicTrendChart({ aerobic }: { aerobic: RunProgressData["aerob
                 />
                 <ZAxis dataKey="distance_km" range={[70, 170]} type="number" />
                 <Tooltip content={<AerobicTooltip />} cursor={{ stroke: "rgba(120,198,255,.24)", strokeDasharray: "3 4" }} />
-                <Scatter data={previous} fill="var(--viz-series-4)" name="Bloque anterior" />
-                <Scatter data={recent} fill="var(--orange-deep)" name="Últimas 6 semanas" />
+                <Scatter data={previous} fill="var(--viz-series-4)" isAnimationActive={false} name="Bloque anterior" stroke="var(--surface-alt)" strokeWidth={1.5} />
+                <Scatter data={recent} fill="var(--orange-deep)" isAnimationActive={false} name="Últimas 6 semanas" stroke="var(--surface-alt)" strokeWidth={1.5} />
               </ScatterChart>
             </ResponsiveContainer>
           </div>

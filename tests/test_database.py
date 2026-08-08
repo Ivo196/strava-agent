@@ -1,4 +1,6 @@
 from pathlib import Path
+import json
+import sqlite3
 
 from strava_agent.database import Database
 
@@ -134,6 +136,56 @@ def test_data_version_changes_when_training_data_changes(tmp_path: Path) -> None
     database.upsert_activity(sample_activity())
 
     assert database.data_version() != initial
+
+
+def test_existing_metric_rows_are_backfilled_and_semantic_duplicates_are_collapsed(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "legacy.db"
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """CREATE TABLE apple_health_metrics (
+                   metric_name TEXT NOT NULL,
+                   recorded_at TEXT NOT NULL,
+                   source TEXT NOT NULL DEFAULT '',
+                   units TEXT NOT NULL DEFAULT '',
+                   value_json TEXT NOT NULL,
+                   synced_at TEXT NOT NULL,
+                   PRIMARY KEY(metric_name, recorded_at, source)
+               )"""
+        )
+        connection.executemany(
+            "INSERT INTO apple_health_metrics VALUES (?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    "running_power",
+                    "2026-07-17 06:00:00 +0200",
+                    "Ivo’s Apple\u00a0Watch",
+                    "W",
+                    json.dumps({"qty": 250}),
+                    "2026-07-17T06:05:00+00:00",
+                ),
+                (
+                    "running_power",
+                    "2026-07-17T04:00:00Z",
+                    "Ivo’s Apple Watch",
+                    "W",
+                    json.dumps({"qty": 251}),
+                    "2026-07-17T06:10:00+00:00",
+                ),
+            ],
+        )
+
+    database = Database(database_path)
+    rows = database.list_apple_health_metrics(["running_power"])
+
+    assert len(rows) == 1
+    assert json.loads(rows[0]["value_json"])["qty"] == 251
+    with database.connect() as connection:
+        identity = connection.execute(
+            "SELECT identity_key FROM apple_health_metrics"
+        ).fetchone()
+    assert identity["identity_key"]
 
 
 def test_daily_checkin_upserts_without_touching_weekly_checkin(tmp_path: Path) -> None:

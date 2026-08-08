@@ -81,7 +81,7 @@ function runTypeLabel(activity: Activity) {
 }
 
 export function RunHistory({ activities, progress }: { activities: Activity[]; progress: RunProgressData }) {
-  const [range, setRange] = useState<HistoryRange>("all");
+  const [range, setRange] = useState<HistoryRange>("90");
   const visibleActivities = useMemo(
     () => rangeActivities(activities, progress.analysis_date, range),
     [activities, progress.analysis_date, range],

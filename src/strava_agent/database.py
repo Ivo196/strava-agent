@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 import sqlite3
+import unicodedata
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -124,6 +127,7 @@ CREATE TABLE IF NOT EXISTS apple_health_metrics (
     metric_name TEXT NOT NULL,
     recorded_at TEXT NOT NULL,
     source TEXT NOT NULL DEFAULT '',
+    identity_key TEXT NOT NULL,
     units TEXT NOT NULL DEFAULT '',
     value_json TEXT NOT NULL,
     synced_at TEXT NOT NULL,
@@ -182,6 +186,31 @@ def utc_now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def apple_health_metric_identity(metric_name: str, recorded_at: str, source: str) -> str:
+    canonical_time = _canonical_datetime_identity(recorded_at)
+    canonical_source = _canonical_text_identity(source)
+    raw = f"{_canonical_text_identity(metric_name)}|{canonical_time}|{canonical_source}"
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def _canonical_datetime_identity(value: str) -> str:
+    text = unicodedata.normalize("NFKC", str(value or "")).strip()
+    if not text:
+        return ""
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return _canonical_text_identity(text)
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(UTC)
+    return parsed.isoformat(timespec="microseconds")
+
+
+def _canonical_text_identity(value: str) -> str:
+    normalized = unicodedata.normalize("NFKC", str(value or "")).casefold()
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
 class Database:
     def __init__(self, path: Path):
         self.path = path
@@ -193,6 +222,55 @@ class Database:
                 connection.execute("ALTER TABLE athlete_profile ADD COLUMN training_notes TEXT NOT NULL DEFAULT ''")
             if "goal_pace_seconds_km" not in columns:
                 connection.execute("ALTER TABLE athlete_profile ADD COLUMN goal_pace_seconds_km INTEGER")
+            self._ensure_apple_health_metric_identities(connection)
+
+    @staticmethod
+    def _ensure_apple_health_metric_identities(connection: sqlite3.Connection) -> None:
+        columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(apple_health_metrics)")
+        }
+        if "identity_key" not in columns:
+            connection.execute("ALTER TABLE apple_health_metrics ADD COLUMN identity_key TEXT")
+
+        missing = connection.execute(
+            """SELECT COUNT(*) AS count FROM apple_health_metrics
+               WHERE identity_key IS NULL OR identity_key = ''"""
+        ).fetchone()
+        if missing and int(missing["count"]):
+            rows = connection.execute(
+                """SELECT rowid, metric_name, recorded_at, source, identity_key, synced_at
+                   FROM apple_health_metrics
+                   ORDER BY synced_at DESC, rowid DESC"""
+            ).fetchall()
+            seen: set[str] = set()
+            updates: list[tuple[str, int]] = []
+            duplicate_rowids: list[tuple[int]] = []
+            for row in rows:
+                identity_key = apple_health_metric_identity(
+                    str(row["metric_name"]),
+                    str(row["recorded_at"]),
+                    str(row["source"]),
+                )
+                if identity_key in seen:
+                    duplicate_rowids.append((int(row["rowid"]),))
+                    continue
+                seen.add(identity_key)
+                if row["identity_key"] != identity_key:
+                    updates.append((identity_key, int(row["rowid"])))
+            connection.executemany(
+                "DELETE FROM apple_health_metrics WHERE rowid = ?",
+                duplicate_rowids,
+            )
+            connection.executemany(
+                "UPDATE apple_health_metrics SET identity_key = ? WHERE rowid = ?",
+                updates,
+            )
+
+        connection.execute(
+            """CREATE UNIQUE INDEX IF NOT EXISTS idx_apple_health_metrics_identity
+               ON apple_health_metrics(identity_key)"""
+        )
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
@@ -571,7 +649,8 @@ class Database:
         with self.connect() as connection:
             row = connection.execute(
                 """SELECT * FROM activities
-                   WHERE ABS((julianday(start_date) - julianday(?)) * 86400) <= ?
+                   WHERE sport_type IN ('Run', 'TrailRun', 'VirtualRun')
+                     AND ABS((julianday(start_date) - julianday(?)) * 86400) <= ?
                      AND ABS(distance_m - ?) <= ?
                    ORDER BY ABS((julianday(start_date) - julianday(?)) * 86400)
                    LIMIT 1""",
@@ -587,11 +666,20 @@ class Database:
 
     def upsert_apple_health_workout(self, workout: dict[str, Any]) -> bool:
         workout_id = str(workout["id"])
+        name = str(workout.get("name") or "Workout")
+        start_date = str(workout.get("start") or "")
+        end_date = str(workout.get("end") or "")
         with self.connect() as connection:
-            existed = connection.execute(
-                "SELECT 1 FROM apple_health_workouts WHERE workout_id = ?",
-                (workout_id,),
-            ).fetchone() is not None
+            existing = connection.execute(
+                """SELECT workout_id FROM apple_health_workouts
+                   WHERE workout_id = ?
+                      OR (name = ? AND start_date = ? AND end_date = ?)
+                   ORDER BY CASE WHEN workout_id = ? THEN 0 ELSE 1 END
+                   LIMIT 1""",
+                (workout_id, name, start_date, end_date, workout_id),
+            ).fetchone()
+            existed = existing is not None
+            stored_workout_id = str(existing["workout_id"]) if existing else workout_id
             connection.execute(
                 """INSERT INTO apple_health_workouts(
                        workout_id, name, start_date, end_date, raw_json, synced_at
@@ -603,10 +691,10 @@ class Database:
                        raw_json=excluded.raw_json,
                        synced_at=excluded.synced_at""",
                 (
-                    workout_id,
-                    str(workout.get("name") or "Workout"),
-                    str(workout.get("start") or ""),
-                    str(workout.get("end") or ""),
+                    stored_workout_id,
+                    name,
+                    start_date,
+                    end_date,
                     json.dumps(workout),
                     utc_now_iso(),
                 ),
@@ -634,18 +722,22 @@ class Database:
             or ""
         )
         source = str(measurement.get("source") or "")
+        identity_key = apple_health_metric_identity(metric_name, recorded_at, source)
         units = str(measurement.get("units") or default_units)
         with self.connect() as connection:
             existed = connection.execute(
                 """SELECT 1 FROM apple_health_metrics
-                   WHERE metric_name = ? AND recorded_at = ? AND source = ?""",
-                (metric_name, recorded_at, source),
+                   WHERE identity_key = ?""",
+                (identity_key,),
             ).fetchone() is not None
             connection.execute(
                 """INSERT INTO apple_health_metrics(
-                       metric_name, recorded_at, source, units, value_json, synced_at
-                   ) VALUES (?, ?, ?, ?, ?, ?)
-                   ON CONFLICT(metric_name, recorded_at, source) DO UPDATE SET
+                       metric_name, recorded_at, source, identity_key, units, value_json, synced_at
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(identity_key) DO UPDATE SET
+                       metric_name=excluded.metric_name,
+                       recorded_at=excluded.recorded_at,
+                       source=excluded.source,
                        units=excluded.units,
                        value_json=excluded.value_json,
                        synced_at=excluded.synced_at""",
@@ -653,6 +745,7 @@ class Database:
                     metric_name,
                     recorded_at,
                     source,
+                    identity_key,
                     units,
                     json.dumps(measurement),
                     utc_now_iso(),
@@ -680,17 +773,21 @@ class Database:
                     or ""
                 )
                 source = str(measurement.get("source") or "")
+                identity_key = apple_health_metric_identity(metric_name, recorded_at, source)
                 units = str(measurement.get("units") or default_units)
                 existed = connection.execute(
                     """SELECT 1 FROM apple_health_metrics
-                       WHERE metric_name = ? AND recorded_at = ? AND source = ?""",
-                    (metric_name, recorded_at, source),
+                       WHERE identity_key = ?""",
+                    (identity_key,),
                 ).fetchone() is not None
                 connection.execute(
                     """INSERT INTO apple_health_metrics(
-                           metric_name, recorded_at, source, units, value_json, synced_at
-                       ) VALUES (?, ?, ?, ?, ?, ?)
-                       ON CONFLICT(metric_name, recorded_at, source) DO UPDATE SET
+                           metric_name, recorded_at, source, identity_key, units, value_json, synced_at
+                       ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                       ON CONFLICT(identity_key) DO UPDATE SET
+                           metric_name=excluded.metric_name,
+                           recorded_at=excluded.recorded_at,
+                           source=excluded.source,
                            units=excluded.units,
                            value_json=excluded.value_json,
                            synced_at=excluded.synced_at""",
@@ -698,6 +795,7 @@ class Database:
                         metric_name,
                         recorded_at,
                         source,
+                        identity_key,
                         units,
                         json.dumps(measurement),
                         utc_now_iso(),

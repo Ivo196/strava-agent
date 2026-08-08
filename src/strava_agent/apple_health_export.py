@@ -10,6 +10,7 @@ from typing import Any
 from xml.etree.ElementTree import iterparse
 from zipfile import ZipFile
 
+from .activity_sources import is_apple_watch_workout
 from .database import Database
 
 
@@ -77,10 +78,15 @@ def import_apple_health_export_zip(zip_path: str, database: Database) -> AppleHe
                 if elem.tag == "Workout":
                     workouts_received += 1
                     workout = _workout_payload(elem)
-                    database.upsert_apple_health_workout(workout)
-                    workouts_saved += 1
+                    is_running = _is_running_workout(workout["workoutActivityType"])
+                    if is_running and not is_apple_watch_workout(workout):
+                        elem.clear()
+                        continue
+                    workout_existed = database.upsert_apple_health_workout(workout)
+                    if not workout_existed:
+                        workouts_saved += 1
 
-                    if _is_running_workout(workout["workoutActivityType"]) and _is_apple_watch_workout(workout):
+                    if is_running:
                         streams = _route_streams_for_workout(archive, workout)
                         if streams:
                             routes_imported += 1
@@ -367,12 +373,6 @@ def _stable_id(prefix: str, value: str) -> int:
 
 def _is_running_workout(workout_type: str) -> bool:
     return workout_type == "HKWorkoutActivityTypeRunning"
-
-
-def _is_apple_watch_workout(workout: dict[str, Any]) -> bool:
-    source = str(workout.get("sourceName") or workout.get("source") or "").lower()
-    device = str(workout.get("device") or "").lower()
-    return "apple watch" in source or "apple watch" in device
 
 
 def _duration_seconds(value: Any, unit: Any) -> int:
