@@ -650,3 +650,27 @@ export type GoogleHealthStatus = {
     latest: string | null;
   }[];
 };
+
+export type AppleHealthStatus = {
+  configured: boolean;
+  endpoint: string;
+  workout_count: number;
+  metric_count: number;
+  latest_run: {
+    id: string;
+    start_date: string;
+    distance_km: number;
+  } | null;
+  last_sync: {
+    received_at: string;
+    workouts_received: number;
+    metrics_received: number;
+    workouts_saved: number;
+    runs_imported: number;
+    runs_updated: number;
+    workouts_skipped: number;
+    metrics_imported: number;
+    metrics_updated: number;
+    result_recorded: number;
+  } | null;
+};

@@ -4,7 +4,7 @@ import { RefreshCw } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
-const VERSION_CHECK_INTERVAL_MS = 60 * 1000;
+const VERSION_CHECK_INTERVAL_MS = 20 * 1000;
 
 export function LiveDataRefresh() {
   const router = useRouter();
@@ -12,6 +12,7 @@ export function LiveDataRefresh() {
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
   const [refreshing, startRefresh] = useTransition();
   const versionRef = useRef<string | null>(null);
+  const initialRefreshDone = useRef(false);
   const checkLocked = useRef(false);
 
   useEffect(() => {
@@ -28,7 +29,8 @@ export function LiveDataRefresh() {
         const previous = versionRef.current;
         versionRef.current = payload.version;
         setLastCheck(new Date());
-        if (previous !== null && previous !== payload.version) {
+        if (!initialRefreshDone.current || (previous !== null && previous !== payload.version)) {
+          initialRefreshDone.current = true;
           await fetch("/api/revalidate-training", { method: "POST" });
           if (!mounted) return;
           startRefresh(() => router.refresh());
@@ -45,6 +47,7 @@ export function LiveDataRefresh() {
     void checkForChanges();
     const timer = window.setInterval(checkForChanges, VERSION_CHECK_INTERVAL_MS);
     window.addEventListener("focus", checkForChanges);
+    window.addEventListener("online", checkForChanges);
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
@@ -52,6 +55,7 @@ export function LiveDataRefresh() {
       checkLocked.current = false;
       window.clearInterval(timer);
       window.removeEventListener("focus", checkForChanges);
+      window.removeEventListener("online", checkForChanges);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [router]);

@@ -1,4 +1,4 @@
-import type { Activity, ActivityDetail, BodyCompositionData, CoachStatus, CoachSummary, DashboardData, GoogleHealthStatus, PlanData, Profile, RunProgressData } from "./types";
+import type { Activity, ActivityDetail, AppleHealthStatus, BodyCompositionData, CoachStatus, CoachSummary, DashboardData, GoogleHealthStatus, PlanData, Profile, RunProgressData } from "./types";
 
 export const API_URL = process.env.API_URL ?? "http://127.0.0.1:8000";
 
@@ -57,4 +57,8 @@ export function getCoachSummary() {
 
 export function getGoogleHealthStatus() {
   return apiGet<GoogleHealthStatus>("/api/google-health/status", 0);
+}
+
+export function getAppleHealthStatus() {
+  return apiGet<AppleHealthStatus>("/api/apple-health/status", 0);
 }

@@ -57,6 +57,7 @@ SLEEP_VALUES = {
 
 def import_apple_health_export_zip(zip_path: str, database: Database) -> AppleHealthExportImportResult:
     workouts_received = workouts_saved = runs_imported = runs_updated = routes_imported = 0
+    workouts_skipped = 0
     metrics_imported = metrics_updated = 0
     sleep_days_imported = sleep_days_updated = 0
     sleep_by_day: dict[str, dict[str, Any]] = {}
@@ -80,6 +81,7 @@ def import_apple_health_export_zip(zip_path: str, database: Database) -> AppleHe
                     workout = _workout_payload(elem)
                     is_running = _is_running_workout(workout["workoutActivityType"])
                     if is_running and not is_apple_watch_workout(workout):
+                        workouts_skipped += 1
                         elem.clear()
                         continue
                     workout_existed = database.upsert_apple_health_workout(workout)
@@ -130,7 +132,18 @@ def import_apple_health_export_zip(zip_path: str, database: Database) -> AppleHe
             else:
                 sleep_days_imported += 1
 
-    database.record_apple_health_sync(workouts_received, metrics_imported + metrics_updated)
+    database.record_apple_health_sync(
+        {
+            "workouts_received": workouts_received,
+            "workouts_saved": workouts_saved,
+            "runs_imported": runs_imported,
+            "runs_updated": runs_updated,
+            "workouts_skipped": workouts_skipped,
+            "metrics_received": metrics_imported + metrics_updated,
+            "metrics_imported": metrics_imported,
+            "metrics_updated": metrics_updated,
+        }
+    )
     return AppleHealthExportImportResult(
         workouts_received=workouts_received,
         workouts_saved=workouts_saved,

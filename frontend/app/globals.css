@@ -1040,6 +1040,14 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .connected-source > p { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
 .connected-source .settings-heading > svg { color: var(--orange); }
 .source-meta { display: block; margin-top: 12px; color: var(--muted); font-size: 9px; }
+.source-receipt { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; align-items: start; margin-top: 14px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.018); }
+.source-receipt svg { margin-top: 1px; }
+.source-receipt strong, .source-receipt span { display: block; }
+.source-receipt strong { font-size: 11px; }
+.source-receipt span { margin-top: 4px; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.source-receipt.is-ok svg { color: #53d6a8; }
+.source-receipt.is-warning { border-color: rgba(241,182,90,.24); background: rgba(241,182,90,.045); }
+.source-receipt.is-warning svg { color: #f1b65a; }
 .auto-sync-meta { margin-top: 5px; color: var(--orange-deep); }
 .settings-panel { padding: 24px; border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(145deg, rgba(15,21,31,.9), rgba(9,13,20,.8)); box-shadow: var(--shadow); }
 .settings-panel h2 { margin-top: 7px; font: 500 20px Inter, sans-serif; letter-spacing: -.025em; }
@@ -3736,6 +3744,7 @@ body {
   background: rgba(13, 16, 14, .86);
   box-shadow: var(--shadow);
 }
+.apex-dashboard > * { width: 100%; min-width: 0; max-width: 100%; }
 .apex-section-index { color: #4f574f; font: 600 11px "Fira Code", ui-monospace, monospace; letter-spacing: .06em; }
 .apex-today { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr) minmax(260px, .42fr); gap: 22px; overflow: hidden; padding: 28px; }
 .apex-today::before { position: absolute; inset: 0 auto 0 0; width: 3px; content: ""; background: var(--orange); }
@@ -3756,6 +3765,18 @@ body {
 .apex-coach-note span { color: #6e776d; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .apex-coach-note strong { margin-top: 6px; color: #dce3d9; font-size: 13px; line-height: 1.35; }
 .apex-coach-note p { margin: 7px 0 0; color: #838c81; font-size: 10px; line-height: 1.45; }
+.apex-coach-content { min-width: 0; }
+.apex-today-signals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 14px; }
+.apex-today-signals > span { min-width: 0; padding: 9px; border: 1px solid rgba(218,232,211,.07); border-radius: 9px; background: rgba(255,255,255,.018); }
+.apex-today-signals small, .apex-today-signals b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.apex-today-signals small { color: #687168; font-size: 7px; font-weight: 750; text-transform: uppercase; }
+.apex-today-signals b { margin-top: 5px; color: #dce3d9; font: 600 9px "Fira Code", ui-monospace, monospace; }
+.apex-today-recovery-link { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; margin-top: 7px; color: var(--orange); font-size: 9px; font-weight: 750; }
+.apex-today-result { grid-column: 2 / -1; display: grid; grid-template-columns: 42px minmax(160px, .7fr) minmax(340px, 1fr) 42px; gap: 14px; align-items: center; min-width: 0; padding: 14px; border: 1px solid rgba(248,147,73,.16); border-radius: 14px; background: linear-gradient(105deg, rgba(248,147,73,.05), rgba(255,255,255,.012) 42%); }
+.apex-today-result .apex-run-mark { width: 42px; height: 42px; }
+.apex-today-result .apex-run-stats { width: 100%; min-width: 0; overflow: hidden; }
+.apex-today-result .apex-run-copy h3 { margin: 5px 0 0; overflow: hidden; color: #eceee9; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.apex-today-result > a { width: 42px; height: 42px; display: grid; place-items: center; color: #be916f; border: 1px solid rgba(248,147,73,.15); border-radius: 11px; }
 
 .apex-week, .apex-vitals { padding: 24px; }
 .apex-section-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 20px; }
@@ -3918,6 +3939,7 @@ body {
   .weekly-progress-layout { grid-template-columns: minmax(0, 1fr) 300px; }
   .apex-today { grid-template-columns: 34px minmax(0, 1fr); }
   .apex-coach-note { grid-column: 2; }
+  .apex-today-result { grid-column: 2; }
   .apex-week-layout { grid-template-columns: 1fr; }
   .apex-week-progress { grid-template-columns: 1fr auto; align-items: center; }
   .apex-week-progress > div, .apex-week-progress p { grid-column: 1 / -1; }
@@ -3933,6 +3955,9 @@ body {
   .apex-today-main { grid-template-columns: 54px minmax(0, 1fr); }
   .apex-session-icon { width: 54px; height: 54px; }
   .apex-primary-action { grid-column: 2; width: fit-content; }
+  .apex-today-result { grid-template-columns: 42px minmax(0, 1fr) 42px; }
+  .apex-today-result .apex-run-stats { grid-column: 2; }
+  .apex-today-result > a { grid-column: 3; grid-row: 1; }
   .apex-week-days { overflow-x: auto; padding-bottom: 4px; }
   .apex-metric-grid { grid-template-columns: 1fr 1fr; }
   .apex-run { grid-template-columns: 24px 44px minmax(0, 1fr) 44px; }
@@ -3973,6 +3998,7 @@ body {
   .weekly-history { padding: 16px; }
   .weekly-history-chart > span > i { padding-inline: 5px; }
   .apex-today { grid-template-columns: 1fr; gap: 15px; padding: 20px; }
+  .apex-today, .apex-today > * { width: 100%; min-width: 0; }
   .apex-today > .apex-section-index { position: absolute; top: 20px; right: 20px; }
   .apex-today-main { grid-template-columns: 46px minmax(0, 1fr); gap: 14px; }
   .apex-section-label { padding-right: 28px; }
@@ -3980,6 +4006,14 @@ body {
   .apex-session-copy h2 { font-size: 27px; }
   .apex-primary-action { grid-column: 1 / -1; width: 100%; }
   .apex-coach-note { grid-column: 1; }
+  .apex-today-result { grid-column: 1; grid-template-columns: 36px minmax(0, 1fr) 40px; gap: 11px; padding: 13px; }
+  .apex-today-result .apex-run-mark { width: 36px; height: 36px; }
+  .apex-today-result .apex-run-copy h3 { font-size: 13px; }
+  .apex-today-result .apex-run-stats { grid-column: 1 / -1; grid-row: 2; }
+  .apex-today-result .apex-run-stats > span { display: grid; gap: 3px; padding: 8px; }
+  .apex-today-result .apex-run-stats strong { font-size: 12px; }
+  .apex-today-result > a { grid-column: 3; grid-row: 1; width: 40px; height: 40px; }
+  .apex-today-signals { grid-template-columns: 1fr; }
   .apex-week, .apex-vitals { padding: 18px; }
   .apex-section-head { align-items: flex-start; }
   .apex-week-days { grid-template-columns: repeat(7, 92px); margin-inline: -18px; padding: 0 18px 6px; }

@@ -24,7 +24,11 @@ from pydantic import BaseModel, Field
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from strava_agent.activity_sources import is_apple_watch_activity, is_apple_watch_source
+from strava_agent.activity_sources import (
+    deduplicate_apple_watch_activities,
+    is_apple_watch_activity,
+    is_apple_watch_source,
+)
 from strava_agent.apple_health import import_health_auto_export, result_dict
 from strava_agent.ai_coach import ask_coach, build_coach_context
 from strava_agent.config import get_settings
@@ -76,11 +80,11 @@ DASHBOARD_DEMO_SCENARIOS = {
 
 
 def _apple_watch_activity_rows() -> list[dict[str, Any]]:
-    return [
+    return deduplicate_apple_watch_activities([
         row
-        for row in database.list_activities()
+        for row in database.list_activity_summaries()
         if row.get("sport_type") in RUN_TYPES and is_apple_watch_activity(row)
-    ]
+    ])
 
 # Personal-baseline comparisons used by the recovery explanation layer. These
 # thresholds describe meaningful day-to-day movement; they are not clinical
@@ -249,9 +253,20 @@ def health() -> dict[str, str]:
 
 @app.get("/api/apple-health/status")
 def apple_health_status() -> dict[str, Any]:
+    runs = _apple_watch_activity_rows()
+    latest_run = runs[0] if runs else None
     return {
         "configured": bool(settings.apple_health_api_key),
         "endpoint": "/api/import/apple-health",
+        "latest_run": (
+            {
+                "id": str(latest_run["id"]),
+                "start_date": latest_run["start_date"],
+                "distance_km": round(float(latest_run.get("distance_m") or 0) / 1000, 2),
+            }
+            if latest_run
+            else None
+        ),
         **database.apple_health_status(),
     }
 

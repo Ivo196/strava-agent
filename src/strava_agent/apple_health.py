@@ -84,8 +84,7 @@ def import_health_auto_export(payload: dict[str, Any], database: Database) -> Ap
             else:
                 metrics_imported += 1
 
-    database.record_apple_health_sync(len(workouts), metrics_received)
-    return AppleHealthImportResult(
+    result = AppleHealthImportResult(
         workouts_received=len(workouts),
         workouts_saved=workouts_saved,
         runs_imported=runs_imported,
@@ -95,6 +94,8 @@ def import_health_auto_export(payload: dict[str, Any], database: Database) -> Ap
         metrics_imported=metrics_imported,
         metrics_updated=metrics_updated,
     )
+    database.record_apple_health_sync(result_dict(result))
+    return result
 
 
 def result_dict(result: AppleHealthImportResult) -> dict[str, int]:

@@ -141,7 +141,14 @@ CREATE TABLE IF NOT EXISTS apple_health_syncs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     received_at TEXT NOT NULL,
     workouts_received INTEGER NOT NULL DEFAULT 0,
-    metrics_received INTEGER NOT NULL DEFAULT 0
+    metrics_received INTEGER NOT NULL DEFAULT 0,
+    workouts_saved INTEGER NOT NULL DEFAULT 0,
+    runs_imported INTEGER NOT NULL DEFAULT 0,
+    runs_updated INTEGER NOT NULL DEFAULT 0,
+    workouts_skipped INTEGER NOT NULL DEFAULT 0,
+    metrics_imported INTEGER NOT NULL DEFAULT 0,
+    metrics_updated INTEGER NOT NULL DEFAULT 0,
+    result_recorded INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS google_health_oauth (
@@ -222,7 +229,28 @@ class Database:
                 connection.execute("ALTER TABLE athlete_profile ADD COLUMN training_notes TEXT NOT NULL DEFAULT ''")
             if "goal_pace_seconds_km" not in columns:
                 connection.execute("ALTER TABLE athlete_profile ADD COLUMN goal_pace_seconds_km INTEGER")
+            self._ensure_apple_health_sync_details(connection)
             self._ensure_apple_health_metric_identities(connection)
+
+    @staticmethod
+    def _ensure_apple_health_sync_details(connection: sqlite3.Connection) -> None:
+        columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(apple_health_syncs)")
+        }
+        for name in (
+            "workouts_saved",
+            "runs_imported",
+            "runs_updated",
+            "workouts_skipped",
+            "metrics_imported",
+            "metrics_updated",
+            "result_recorded",
+        ):
+            if name not in columns:
+                connection.execute(
+                    f"ALTER TABLE apple_health_syncs ADD COLUMN {name} INTEGER NOT NULL DEFAULT 0"
+                )
 
     @staticmethod
     def _ensure_apple_health_metric_identities(connection: sqlite3.Connection) -> None:
@@ -606,6 +634,19 @@ class Database:
             rows = connection.execute("SELECT * FROM activities ORDER BY start_date DESC").fetchall()
         return [dict(row) for row in rows]
 
+    def list_activity_summaries(self) -> list[dict[str, Any]]:
+        """Load activity metadata without the potentially large GPS stream payload."""
+        with self.connect() as connection:
+            rows = connection.execute(
+                """SELECT id, name, sport_type, start_date, start_date_local, timezone,
+                          distance_m, moving_time_s, elapsed_time_s, elevation_gain_m,
+                          average_speed_mps, max_speed_mps, average_heartrate,
+                          max_heartrate, suffer_score, calories, has_heartrate,
+                          device_name, detail_loaded, streams_loaded, raw_json, synced_at
+                   FROM activities ORDER BY start_date DESC"""
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def list_runs_missing_streams(self, limit: int = 75) -> list[dict[str, Any]]:
         with self.connect() as connection:
             rows = connection.execute(
@@ -643,9 +684,10 @@ class Database:
         start_date: str,
         distance_m: float,
         *,
-        time_tolerance_seconds: int = 180,
-        distance_tolerance_m: float = 300,
+        time_tolerance_seconds: int = 600,
+        distance_tolerance_m: float | None = None,
     ) -> dict[str, Any] | None:
+        distance_tolerance_m = distance_tolerance_m or max(300, distance_m * 0.4)
         with self.connect() as connection:
             row = connection.execute(
                 """SELECT * FROM activities
@@ -807,12 +849,25 @@ class Database:
                     imported += 1
         return imported, updated
 
-    def record_apple_health_sync(self, workouts_received: int, metrics_received: int) -> None:
+    def record_apple_health_sync(self, result: dict[str, int]) -> None:
         with self.connect() as connection:
             connection.execute(
-                """INSERT INTO apple_health_syncs(received_at, workouts_received, metrics_received)
-                   VALUES (?, ?, ?)""",
-                (utc_now_iso(), workouts_received, metrics_received),
+                """INSERT INTO apple_health_syncs(
+                       received_at, workouts_received, metrics_received, workouts_saved,
+                       runs_imported, runs_updated, workouts_skipped, metrics_imported,
+                       metrics_updated, result_recorded
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
+                (
+                    utc_now_iso(),
+                    result["workouts_received"],
+                    result["metrics_received"],
+                    result["workouts_saved"],
+                    result["runs_imported"],
+                    result["runs_updated"],
+                    result["workouts_skipped"],
+                    result["metrics_imported"],
+                    result["metrics_updated"],
+                ),
             )
 
     def apple_health_status(self) -> dict[str, Any]:

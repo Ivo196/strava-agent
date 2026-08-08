@@ -26,7 +26,7 @@ export function WeeklyProgressSummary({ data }: { data: DashboardData }) {
     <section className={`weekly-progress weekly-progress-${progress.status}`} aria-labelledby="weekly-progress-title">
       <header className="weekly-progress-head">
         <div>
-          <span className="apex-section-index" aria-hidden="true">01</span>
+          <span className="apex-section-index" aria-hidden="true">02</span>
           <div>
             <small>Tu semana · {progress.rangeLabel}</small>
             <h2 id="weekly-progress-title">Cómo va tu progreso</h2>

@@ -1,12 +1,15 @@
 import { OfflineState } from "@/components/offline-state";
 import { SettingsForm } from "@/components/settings-form";
-import { getGoogleHealthStatus } from "@/lib/api";
+import { getAppleHealthStatus, getGoogleHealthStatus } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const googleHealth = await getGoogleHealthStatus().catch(() => null);
-  if (!googleHealth) return <OfflineState />;
+  const [appleHealth, googleHealth] = await Promise.all([
+    getAppleHealthStatus().catch(() => null),
+    getGoogleHealthStatus().catch(() => null),
+  ]);
+  if (!appleHealth || !googleHealth) return <OfflineState />;
   return (
     <div className="page-wrap">
       <header className="simple-header">
@@ -14,7 +17,7 @@ export default async function SettingsPage() {
         <h1>Fuentes y preferencias.</h1>
         <p>Estado de las fuentes que alimentan entrenamientos y recuperación.</p>
       </header>
-      <SettingsForm googleHealth={googleHealth} />
+      <SettingsForm appleHealth={appleHealth} googleHealth={googleHealth} />
       <section className="you-links" aria-label="Tus herramientas">
         <Link href="/activities"><Activity size={19} /><span><strong>Carreras</strong><small>Historial y análisis</small></span></Link>
         <Link href="/body"><Scale size={19} /><span><strong>Composición</strong><small>Peso sincronizado</small></span></Link>

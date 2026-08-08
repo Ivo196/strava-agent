@@ -97,6 +97,8 @@ def test_imports_health_auto_export_and_is_idempotent(tmp_path: Path) -> None:
     assert status["workout_count"] == 1
     assert status["metric_count"] == 1
     assert status["last_sync"]["workouts_received"] == 1
+    assert status["last_sync"]["runs_updated"] == 1
+    assert status["last_sync"]["result_recorded"] == 1
 
 
 def test_activity_detail_includes_route_map_points(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -207,6 +209,37 @@ def test_overlapping_exports_deduplicate_a_workout_even_if_its_id_changes(tmp_pa
     assert repeated.runs_updated == 1
     assert database.activity_count() == 1
     assert len(database.list_apple_health_workouts()) == 1
+
+
+def test_overlapping_exports_match_when_distance_and_start_are_revised(tmp_path: Path) -> None:
+    database = Database(tmp_path / "coach.db")
+    first_payload = health_payload()
+    revised_payload = deepcopy(first_payload)
+    revised = revised_payload["data"]["workouts"][0]
+    revised["id"] = "same-run-revised"
+    revised["start"] = "2026-07-17 07:02:00 +0200"
+    revised["end"] = "2026-07-17 07:40:00 +0200"
+    revised["duration"] = 2280
+    revised["distance"] = {"qty": 6.6, "units": "km"}
+
+    first = import_health_auto_export(first_payload, database)
+    second = import_health_auto_export(revised_payload, database)
+
+    assert first.runs_imported == 1
+    assert second.runs_updated == 1
+    assert database.activity_count() == 1
+    assert database.list_activities()[0]["distance_m"] == pytest.approx(6600)
+
+
+def test_iphone_workout_label_can_use_nested_apple_watch_evidence(tmp_path: Path) -> None:
+    database = Database(tmp_path / "coach.db")
+    payload = health_payload()
+    payload["data"]["workouts"][0]["sourceName"] = "Ivo's iPhone"
+
+    result = import_health_auto_export(payload, database)
+
+    assert result.runs_imported == 1
+    assert result.workouts_skipped == 0
 
 
 def test_three_previous_seven_day_automations_are_idempotent(tmp_path: Path) -> None:
@@ -370,6 +403,19 @@ def test_run_endpoints_only_use_explicit_apple_watch_activities(
     )
     database.upsert_activity(
         {
+            "id": 2003,
+            "name": "Carrera Strava con reloj Apple",
+            "sport_type": "Run",
+            "start_date": "2026-07-20T07:00:00+02:00",
+            "start_date_local": "2026-07-20T07:00:00+02:00",
+            "distance": 8000,
+            "moving_time": 2700,
+            "elapsed_time": 2750,
+            "device_name": "Apple Watch",
+        }
+    )
+    database.upsert_activity(
+        {
             "id": 2002,
             "name": "Carrera Strava",
             "sport_type": "Run",
@@ -394,3 +440,36 @@ def test_run_endpoints_only_use_explicit_apple_watch_activities(
     assert dashboard.json()["activity_count"] == 1
     assert progress.json()["lifetime"]["runs"] == 1
     assert hidden_detail.status_code == 404
+
+
+def test_run_endpoints_keep_rich_copy_of_overlapping_apple_imports(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = Database(tmp_path / "coach.db")
+    import_health_auto_export(health_payload(), database)
+    rich = database.list_activities()[0]
+    database.upsert_activity(
+        {
+            "id": 9999,
+            "name": "Carrera incompleta",
+            "sport_type": "Run",
+            "start_date": "2026-07-17T07:02:00+02:00",
+            "start_date_local": "2026-07-17T07:02:00+02:00",
+            "distance": 6600,
+            "moving_time": 2280,
+            "elapsed_time": 2280,
+            "average_heartrate": 147,
+            "device_name": "Apple Watch",
+            "source": "health_auto_export",
+        },
+        detail_loaded=True,
+    )
+    monkeypatch.setattr(api, "database", database)
+    client = TestClient(api.app)
+
+    response = client.get("/api/activities")
+
+    assert response.status_code == 200
+    activities = response.json()["activities"]
+    assert [item["id"] for item in activities] == [str(rich["id"])]
+    assert activities[0]["distance_km"] == 5.0

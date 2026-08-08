@@ -1,15 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, RefreshCw } from "lucide-react";
+import { Activity, CheckCircle2, RefreshCw, TriangleAlert, Watch } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { GoogleHealthStatus } from "@/lib/types";
+import type { AppleHealthStatus, GoogleHealthStatus } from "@/lib/types";
 
-export function SettingsForm({ googleHealth }: { googleHealth: GoogleHealthStatus }) {
+export function SettingsForm({
+  appleHealth,
+  googleHealth,
+}: {
+  appleHealth: AppleHealthStatus;
+  googleHealth: GoogleHealthStatus;
+}) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
+  const lastApple = appleHealth.last_sync;
+  const appleReceptionNeedsAttention = Boolean(
+    lastApple?.result_recorded
+    && lastApple.workouts_received > 0
+    && lastApple.runs_imported + lastApple.runs_updated === 0
+    && lastApple.workouts_skipped > 0,
+  );
 
   async function syncGoogleHealth() {
     setBusy(true);
@@ -41,6 +54,41 @@ export function SettingsForm({ googleHealth }: { googleHealth: GoogleHealthStatu
         </div>
         <p>Apple Health conserva los entrenamientos y Google Health incorpora la recuperación medida por Fitbit. Tus datos deportivos ya están guardados internamente y no necesitan un formulario de perfil.</p>
         <div className="source-status"><span className="source-dot" /><div><strong>Sincronización automática activa</strong><small>JSON v2 · unidades normalizadas al sistema métrico</small></div></div>
+        <div className="connected-source">
+          <div className="settings-heading">
+            <div>
+              <span className="eyebrow">Apple Watch · Auto Export</span>
+              <h2>{appleHealth.configured ? "Carreras conectadas" : "Configurar carreras"}</h2>
+            </div>
+            <Watch size={20} aria-hidden="true" />
+          </div>
+          <p>
+            Solo se muestran carreras recibidas por Auto Export o por el historial nativo de Apple Health.
+            Las copias sin ruta o con origen distinto se descartan del panel.
+          </p>
+          {lastApple && (
+            <div className={appleReceptionNeedsAttention ? "source-receipt is-warning" : "source-receipt is-ok"}>
+              {appleReceptionNeedsAttention ? <TriangleAlert size={17} /> : <CheckCircle2 size={17} />}
+              <div>
+                <strong>{appleReceptionNeedsAttention ? "El último envío necesita revisión" : "Último envío procesado"}</strong>
+                <span>
+                  {lastApple.workouts_received} entrenamientos recibidos
+                  {lastApple.result_recorded
+                    ? ` · ${lastApple.runs_imported} nuevas · ${lastApple.runs_updated} actualizadas · ${lastApple.workouts_skipped} omitidas`
+                    : " · detalle disponible desde la próxima recepción"}
+                </span>
+              </div>
+            </div>
+          )}
+          {appleHealth.latest_run && (
+            <small className="source-meta">
+              Última carrera aceptada: {new Date(appleHealth.latest_run.start_date).toLocaleString("es-ES")} · {appleHealth.latest_run.distance_km.toLocaleString("es-ES")} km
+            </small>
+          )}
+          {lastApple && (
+            <small className="source-meta">Última recepción: {new Date(lastApple.received_at).toLocaleString("es-ES")}</small>
+          )}
+        </div>
         <div className="connected-source">
           <div className="settings-heading">
             <div>

@@ -4,6 +4,7 @@ import json
 import re
 import unicodedata
 from collections.abc import Iterable
+from datetime import datetime, timedelta
 from typing import Any
 
 
@@ -15,6 +16,7 @@ _DIRECT_WORKOUT_SOURCE_KEYS = (
     "sourceRevision",
 )
 _NESTED_SOURCE_KEYS = {"source", "sourcename", "device", "devicename"}
+_PACEOS_APPLE_IMPORT_SOURCES = {"health_auto_export", "apple_health_export"}
 
 
 def is_apple_watch_workout(workout: dict[str, Any]) -> bool:
@@ -26,8 +28,10 @@ def is_apple_watch_workout(workout: dict[str, Any]) -> bool:
     measurements are the only available evidence.
     """
     direct_labels = list(_direct_source_labels(workout))
-    if direct_labels:
-        return _has_apple_watch(direct_labels) and not _has_fitbit(direct_labels)
+    if _has_fitbit(direct_labels):
+        return False
+    if _has_apple_watch(direct_labels):
+        return True
 
     nested_labels = list(_nested_source_labels(workout))
     return (
@@ -38,19 +42,46 @@ def is_apple_watch_workout(workout: dict[str, Any]) -> bool:
 
 
 def is_apple_watch_activity(activity: dict[str, Any]) -> bool:
-    """Return whether a stored running activity has an explicit Watch origin."""
-    device_name = activity.get("device_name")
-    if device_name:
-        labels = list(_flatten_text(device_name))
-        return _has_apple_watch(labels) and not _has_fitbit(labels)
-
+    """Return whether a stored run came from a PaceOS Apple import."""
     raw = activity.get("raw_json")
     if isinstance(raw, str):
         try:
             raw = json.loads(raw)
         except json.JSONDecodeError:
             return False
-    return isinstance(raw, dict) and is_apple_watch_workout(raw)
+    if not isinstance(raw, dict):
+        return False
+
+    import_source = str(raw.get("source") or "").strip().casefold()
+    if import_source not in _PACEOS_APPLE_IMPORT_SOURCES:
+        return False
+
+    device_name = activity.get("device_name")
+    if device_name:
+        labels = list(_flatten_text(device_name))
+        return _has_apple_watch(labels) and not _has_fitbit(labels)
+    return is_apple_watch_workout(raw)
+
+
+def deduplicate_apple_watch_activities(
+    activities: Iterable[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Keep the richest representation when overlapping imports describe one run."""
+    rows = list(activities)
+    groups: list[list[dict[str, Any]]] = []
+    for row in rows:
+        for group in groups:
+            if any(_activities_overlap(row, candidate) for candidate in group):
+                group.append(row)
+                break
+        else:
+            groups.append([row])
+
+    selected_ids = {
+        id(max(group, key=_activity_quality))
+        for group in groups
+    }
+    return [row for row in rows if id(row) in selected_ids]
 
 
 def is_apple_watch_source(source: Any) -> bool:
@@ -124,3 +155,44 @@ def _is_apple_watch_label(label: str) -> bool:
 def _normalize_label(label: str) -> str:
     normalized = unicodedata.normalize("NFKC", label).casefold()
     return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _activities_overlap(first: dict[str, Any], second: dict[str, Any]) -> bool:
+    first_start = _activity_datetime(first.get("start_date"))
+    second_start = _activity_datetime(second.get("start_date"))
+    if first_start is None or second_start is None:
+        return False
+    if abs((first_start - second_start).total_seconds()) > 12 * 60:
+        return False
+
+    first_seconds = max(
+        int(first.get("elapsed_time_s") or first.get("moving_time_s") or 0),
+        1,
+    )
+    second_seconds = max(
+        int(second.get("elapsed_time_s") or second.get("moving_time_s") or 0),
+        1,
+    )
+    first_end = first_start + timedelta(seconds=first_seconds)
+    second_end = second_start + timedelta(seconds=second_seconds)
+    overlap = max(
+        0.0,
+        (min(first_end, second_end) - max(first_start, second_start)).total_seconds(),
+    )
+    return overlap / min(first_seconds, second_seconds) >= 0.65
+
+
+def _activity_datetime(value: Any) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(value or "").replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _activity_quality(activity: dict[str, Any]) -> tuple[int, int, int, str]:
+    return (
+        int(bool(activity.get("streams_loaded"))),
+        int(bool(activity.get("detail_loaded"))),
+        int(float(activity.get("elevation_gain_m") or 0) > 0),
+        str(activity.get("synced_at") or ""),
+    )
