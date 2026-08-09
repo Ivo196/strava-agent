@@ -4,7 +4,6 @@ import {
   ArrowRight,
   BatteryCharging,
   Bike,
-  CalendarDays,
   Check,
   ChevronRight,
   CircleDashed,
@@ -14,12 +13,9 @@ import {
   Gauge,
   HeartPulse,
   MoonStar,
-  Route,
-  Sparkles,
   Watch,
   Zap,
 } from "lucide-react";
-import { activityDisplayName } from "@/lib/activity-display";
 import type { DailyAgendaItem, DashboardData } from "@/lib/types";
 import { WeeklyProgressSummary } from "@/components/weekly-progress-summary";
 
@@ -72,71 +68,19 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
   const recovery = state.morning_recovery;
   const stress = state.physiological_stress;
   const energy = state.energy;
-  const today = data.daily_agenda.find((item) => item.date === data.current_date) ?? data.daily_agenda[0];
   const week = data.daily_agenda.slice(0, 7);
   const sleepHours = recovery.sleep_hours ?? state.sleep_utility.average_hours;
   const recoveryPercent = recovery.score ?? clamp((state.calibration.nights / state.calibration.required) * 100);
-  const todayAppleRun = today?.actual_activities.find(
-    (activity) => activity.source === "Apple Watch" && activity.type === "RUNNING",
-  );
-  const todayRunDetail = data.recent_activities.find((activity) => activity.date.startsWith(data.current_date));
-  const todayCompleted = today?.completed || Boolean(todayAppleRun);
   const hrv = recovery.factors.find((factor) => factor.key === "hrv");
   const restingHr = recovery.factors.find((factor) => factor.key === "resting_hr");
 
   return (
     <section className="apex-dashboard" aria-label="Resumen de entrenamiento y recuperación">
-      <section className="apex-today" aria-labelledby="apex-today-title">
-        <div className="apex-section-index" aria-hidden="true">01</div>
-        <div className="apex-today-main">
-          <div className="apex-section-label"><span>Hoy</span><i />{todayCompleted ? "Completado" : "Por hacer"}</div>
-          <div className="apex-session-icon">{categoryIcon(today?.category ?? "rest", 29)}</div>
-          <div className="apex-session-copy">
-            <p>{today?.relative_label ?? "Sesión del día"}</p>
-            <h2 id="apex-today-title">{today?.title ?? "Recuperación"}</h2>
-            <span>{today?.detail ?? "Mantén el día flexible y escucha al cuerpo."}</span>
-          </div>
-          <Link className="apex-primary-action" href="/plan">
-            Abrir sesión <ArrowRight size={17} />
-          </Link>
-        </div>
-        <aside className="apex-coach-note">
-          <Sparkles size={17} />
-          <div className="apex-coach-content">
-            <span>Decisión de hoy</span>
-            <strong>{state.recommendation.title}</strong>
-            <p>{state.recommendation.body}</p>
-            <div className="apex-today-signals" aria-label="Señales principales de hoy">
-              <span><small>Recuperación</small><b>{recovery.score ?? "—"}{recovery.score != null ? "/100" : ""}</b></span>
-              <span><small>Sueño</small><b>{sleepHours ?? "—"}{sleepHours != null ? " h" : ""}</b></span>
-              <span><small>Carga</small><b>{state.load_7d.current_today} pts</b></span>
-            </div>
-            <Link className="apex-today-recovery-link" href="/sleep">Datos de Fitbit <ArrowRight size={14} /></Link>
-          </div>
-        </aside>
-        {todayAppleRun && (
-          <div className="apex-today-result" aria-label="Carrera de hoy recibida del Apple Watch">
-            <div className="apex-run-mark"><Route size={22} /></div>
-            <div className="apex-run-copy">
-              <span>Recibida del Apple Watch</span>
-              <h3>{todayRunDetail ? activityDisplayName(todayRunDetail) : todayAppleRun.label}</h3>
-            </div>
-            <div className="apex-run-stats">
-              <span><strong>{todayAppleRun.distance_km ?? data.today_activity.distance_km}</strong><small>km</small></span>
-              <span><strong>{todayRunDetail?.pace.replace(" min/km", "") ?? "—"}</strong><small>/km</small></span>
-              <span><strong>{todayAppleRun.average_heartrate ?? data.today_activity.average_heartrate ?? "—"}</strong><small>bpm</small></span>
-              <span><strong>{todayAppleRun.duration_minutes ?? data.today_activity.moving_minutes}</strong><small>min</small></span>
-            </div>
-            <Link href={todayRunDetail ? `/activities/${todayRunDetail.id}` : "/activities"} aria-label="Abrir detalles de la carrera de hoy"><ChevronRight size={19} /></Link>
-          </div>
-        )}
-      </section>
-
       <WeeklyProgressSummary data={data} />
 
       <section className="apex-week" aria-labelledby="apex-week-title">
         <div className="apex-section-head">
-          <div><span className="apex-section-index" aria-hidden="true">03</span><div><small>Esta semana</small><h2 id="apex-week-title">El plan, de un vistazo</h2></div></div>
+          <div><span className="apex-section-index" aria-hidden="true">02</span><div><small>Esta semana</small><h2 id="apex-week-title">El plan, de un vistazo</h2></div></div>
           <Link href="/plan">Calendario <ChevronRight size={16} /></Link>
         </div>
         <div className="apex-week-days">
@@ -152,7 +96,7 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
 
       <section className="apex-vitals" aria-labelledby="apex-vitals-title">
         <div className="apex-section-head">
-          <div><span className="apex-section-index" aria-hidden="true">04</span><div><small>Señales del cuerpo</small><h2 id="apex-vitals-title">Detalle de recuperación</h2></div></div>
+          <div><span className="apex-section-index" aria-hidden="true">03</span><div><small>Señales del cuerpo</small><h2 id="apex-vitals-title">Detalle de recuperación</h2></div></div>
           <span className="apex-source"><Watch size={14} /> Recuperación · Fitbit</span>
         </div>
         <div className="apex-metric-grid">

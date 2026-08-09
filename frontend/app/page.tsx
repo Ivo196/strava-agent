@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Flag, FlaskConical, X } from "lucide-react";
+import { ArrowRight, FlaskConical, X } from "lucide-react";
 import { HomeCommandCenter } from "@/components/home-command-center";
 import { OfflineState } from "@/components/offline-state";
 import { getDashboard } from "@/lib/api";
@@ -20,22 +20,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const data = await getDashboard(simulatedToday, simulatedScenario).catch(() => null);
   if (!data) return <OfflineState />;
 
-  const name = data.profile.display_name?.trim();
   const hasTrainingData = data.activity_count > 0;
 
   return (
     <div className="page-wrap dashboard-page">
-      <header className="pulse-page-header">
-        <div>
-          <span className="eyebrow">PaceOS · Tu plan diario</span>
-          <h1>{name ? `Hola, ${name}.` : "Tu día empieza aquí."}</h1>
-          <p>Tu semana, de un vistazo.</p>
-        </div>
-        <div className="pulse-race-chip" aria-label={`${data.days_to_race} días para el Maratón de Chicago`}>
-          <Flag size={18} />
-          <span><strong>{data.days_to_race}</strong> días para Chicago</span>
-        </div>
-      </header>
+      <h1 className="sr-only">Hoy</h1>
 
       {!hasTrainingData && (
         <div className="onboarding-banner">
