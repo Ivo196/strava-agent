@@ -29,6 +29,20 @@ def test_coach_context_uses_training_data_without_routes() -> None:
             "hrv": {"value": 84.5, "unit": "ms", "date": "2026-07-17"},
             "resting_hr": {"value": 55.8, "unit": "bpm", "date": "2026-07-17"},
         },
+        body_composition={
+            "latest": {
+                "measurement_date": "2026-08-09",
+                "weight_kg": 80.7,
+                "muscle_mass_kg": 41.4,
+                "body_fat_percent": 10.7,
+            },
+            "previous_date": "2026-08-01",
+            "change_since_previous": {
+                "weight_kg": -1.2,
+                "muscle_mass_kg": -0.4,
+                "body_fat_percent": -0.6,
+            },
+        },
     )
 
     assert "Peso: 78 kg" in context
@@ -37,6 +51,8 @@ def test_coach_context_uses_training_data_without_routes() -> None:
     assert "GPS" in context
     assert "latitud" not in context.lower()
     assert "HRV media 7 días: 84.5 ms" in context
+    assert "peso 80.7 kg, masa muscular 41.4 kg, grasa corporal 10.7%" in context
+    assert "No cambiar una sesión por una sola lectura" in context
 
 
 def test_extracts_text_from_responses_api_payload() -> None:

@@ -1,4 +1,5 @@
-import { ChevronDown, LockKeyhole } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, ChevronDown, Dumbbell, LockKeyhole, Percent, Scale } from "lucide-react";
 import { OfflineState } from "@/components/offline-state";
 import { getPlan } from "@/lib/api";
 import { PlanCalendar } from "@/components/plan-calendar";
@@ -12,6 +13,13 @@ function formatGoalPace(seconds: number | null) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
+const oneDecimal = new Intl.NumberFormat("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+function formatChange(value: number, unit: string) {
+  const prefix = value > 0 ? "+" : value < 0 ? "−" : "";
+  return `${prefix}${oneDecimal.format(Math.abs(value))} ${unit}`;
+}
+
 export default async function PlanPage({ searchParams }: { searchParams: Promise<{ today?: string }> }) {
   const { today } = await searchParams;
   const simulatedToday = today && /^\d{4}-\d{2}-\d{2}$/.test(today) ? today : undefined;
@@ -19,6 +27,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
   if (!data) return <OfflineState />;
   const currentWeek = data.weeks.find((week) => week.number === data.current_week_number) ?? data.weeks[0];
   const goalPace = formatGoalPace(data.profile.goal_pace_seconds_km);
+  const composition = data.body_composition;
 
   return (
     <div className="page-wrap">
@@ -41,6 +50,39 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
             <div><span>Realizado</span><strong>{currentWeek.actual_km ?? 0}<small> km</small></strong></div>
             <div><span>Estado</span><strong>{currentWeek.completion_percentage ?? 0}<small>%</small></strong></div>
           </div>
+        </section>
+      )}
+
+      {composition && (
+        <section className="plan-body-context" aria-labelledby="plan-body-title">
+          <header>
+            <div>
+              <span className="eyebrow">Referencia InBody · {dayMonth.format(new Date(`${composition.latest.measurement_date}T12:00:00`))}</span>
+              <h2 id="plan-body-title">Composición corporal en contexto</h2>
+            </div>
+            <Link href="/body">Ver evolución <ArrowRight size={15} aria-hidden="true" /></Link>
+          </header>
+          <div className="plan-body-metrics">
+            <article>
+              <Scale size={18} aria-hidden="true" />
+              <span>Peso</span>
+              <strong>{oneDecimal.format(composition.latest.weight_kg)} <small>kg</small></strong>
+              {composition.change_since_previous && <small>{formatChange(composition.change_since_previous.weight_kg, "kg")} desde la anterior</small>}
+            </article>
+            <article>
+              <Dumbbell size={18} aria-hidden="true" />
+              <span>Masa muscular</span>
+              <strong>{oneDecimal.format(composition.latest.muscle_mass_kg ?? 0)} <small>kg</small></strong>
+              {composition.change_since_previous && <small>{formatChange(composition.change_since_previous.muscle_mass_kg, "kg")} desde la anterior</small>}
+            </article>
+            <article>
+              <Percent size={18} aria-hidden="true" />
+              <span>Grasa corporal</span>
+              <strong>{oneDecimal.format(composition.latest.body_fat_percent ?? 0)}<small>%</small></strong>
+              {composition.change_since_previous && <small>{formatChange(composition.change_since_previous.body_fat_percent, "pt")} desde la anterior</small>}
+            </article>
+          </div>
+          <p><strong>Cómo entra en el plan.</strong> {composition.guidance}</p>
         </section>
       )}
 

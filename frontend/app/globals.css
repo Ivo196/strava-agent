@@ -3917,6 +3917,19 @@ body {
 .locked-plan-note { border-color: rgba(120, 198, 255, .2); background: rgba(120, 198, 255, .04); }
 .plan-current-panel { border-color: rgba(120, 198, 255, .18); border-left-color: var(--orange); border-radius: 18px; background: #0d100e; }
 .plan-current-stats { border-radius: 12px; background: rgba(255, 255, 255, .018); }
+.plan-body-context { margin-bottom: 16px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 18px; background: rgba(13, 16, 14, .84); }
+.plan-body-context > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.plan-body-context h2 { margin: 5px 0 0; color: #e4e9e1; font-size: 18px; letter-spacing: -.03em; }
+.plan-body-context > header a { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; color: var(--orange); font-size: 10px; font-weight: 700; }
+.plan-body-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.plan-body-metrics article { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 3px 9px; min-width: 0; padding: 13px; border: 1px solid rgba(218, 232, 211, .08); border-radius: 12px; background: rgba(255, 255, 255, .014); }
+.plan-body-metrics article > svg { grid-row: 1 / span 3; color: var(--orange); }
+.plan-body-metrics article > span { color: #7f897e; font-size: 8px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.plan-body-metrics article > strong { color: #e0e5dc; font: 650 18px "Fira Code", ui-monospace, monospace; }
+.plan-body-metrics article > strong small { color: #8d978b; font-size: 9px; }
+.plan-body-metrics article > small { color: #717a70; font-size: 8px; line-height: 1.45; }
+.plan-body-context > p { margin: 13px 0 0; color: #7b857a; font-size: 10px; line-height: 1.6; }
+.plan-body-context > p strong { color: #bcc5b9; }
 .plan-calendar-panel { border-color: var(--line); border-radius: 19px; background: rgba(13, 16, 14, .84); }
 .calendar-week-v2 { border-color: rgba(218, 232, 211, .1); border-radius: 14px; background: rgba(7, 9, 8, .48); }
 .calendar-week-v2-current { border-color: rgba(120, 198, 255, .3); background: rgba(120, 198, 255, .03); box-shadow: inset 0 0 0 1px rgba(120, 198, 255, .04); }
@@ -3967,6 +3980,9 @@ body {
 }
 
 @media (max-width: 720px) {
+  .plan-body-context { padding: 15px; }
+  .plan-body-context > header { align-items: flex-start; }
+  .plan-body-metrics { grid-template-columns: 1fr; }
   .sidebar { display: none; }
   .main-content { margin-left: 0; padding-bottom: 76px; }
   .mobile-nav { grid-template-columns: repeat(4, 1fr); padding: 8px 10px max(8px, env(safe-area-inset-bottom)); border-color: var(--line); background: rgba(7, 9, 8, .94); }

@@ -34,6 +34,7 @@ def build_coach_context(
     days_to_race: int,
     current_date: str | None = None,
     recovery: dict[str, Any] | None = None,
+    body_composition: dict[str, Any] | None = None,
 ) -> str:
     weight = profile.get("weight_kg")
     goal_pace = _format_goal_pace(profile.get("goal_pace_seconds_km"))
@@ -76,6 +77,32 @@ def build_coach_context(
             lines.append(f"- {label}: {item['value']} {item['unit']} ({item['date']})")
         else:
             lines.append(f"- {label}: sin dato")
+
+    lines.extend(["", "COMPOSICIÓN CORPORAL INBODY (contexto de tendencia, no señal aguda)"])
+    body_composition = body_composition or {}
+    latest_composition = body_composition.get("latest")
+    if latest_composition:
+        lines.append(
+            f"- {latest_composition['measurement_date']}: "
+            f"peso {float(latest_composition['weight_kg']):.1f} kg, "
+            f"masa muscular {float(latest_composition['muscle_mass_kg']):.1f} kg, "
+            f"grasa corporal {float(latest_composition['body_fat_percent']):.1f}%"
+        )
+        change = body_composition.get("change_since_previous")
+        previous_date = body_composition.get("previous_date")
+        if change and previous_date:
+            lines.append(
+                f"- Cambio desde {previous_date}: "
+                f"peso {float(change['weight_kg']):+.1f} kg, "
+                f"masa muscular {float(change['muscle_mass_kg']):+.1f} kg, "
+                f"grasa corporal {float(change['body_fat_percent']):+.1f} puntos"
+            )
+        lines.append(
+            "- Usar esta medición como tendencia secundaria. No cambiar una sesión por una sola lectura; "
+            "priorizar recuperación, carga, sensaciones y molestias."
+        )
+    else:
+        lines.append("- Sin mediciones InBody registradas")
 
     lines.extend(["", "ÚLTIMAS CARRERAS (sin rutas GPS)"])
     for activity in recent_activities[:8]:

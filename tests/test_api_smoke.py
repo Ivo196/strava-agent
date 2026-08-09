@@ -184,6 +184,72 @@ def test_body_composition_reads_fitbit_weight_without_manual_entry(
     assert history.json()["latest"]["muscle_mass_kg"] is None
 
 
+def test_plan_exposes_body_composition_as_secondary_context(tmp_path: Path, monkeypatch) -> None:
+    test_database = Database(tmp_path / "plan-body.db")
+    test_database.save_profile({"running_days": 3, "weight_kg": 81.9})
+    for measurement in (
+        {
+            "measurement_date": "2026-08-01",
+            "source": "InBody",
+            "weight_kg": 81.9,
+            "muscle_mass_kg": 41.8,
+            "body_fat_percent": 11.3,
+        },
+        {
+            "measurement_date": "2026-08-09",
+            "source": "InBody",
+            "weight_kg": 80.7,
+            "muscle_mass_kg": 41.4,
+            "body_fat_percent": 10.7,
+        },
+    ):
+        test_database.upsert_body_composition(measurement)
+    monkeypatch.setattr(api, "database", test_database)
+    client = TestClient(api.app)
+
+    response = client.get("/api/plan?today=2026-08-09")
+
+    assert response.status_code == 200
+    context = response.json()["body_composition"]
+    assert context["latest"]["weight_kg"] == 80.7
+    assert context["previous_date"] == "2026-08-01"
+    assert context["change_since_previous"] == {
+        "weight_kg": -1.2,
+        "muscle_mass_kg": -0.4,
+        "body_fat_percent": -0.6,
+    }
+    assert "no cambia el calendario" in context["guidance"]
+
+
+def test_plan_ignores_incompatible_body_composition_history(tmp_path: Path, monkeypatch) -> None:
+    test_database = Database(tmp_path / "plan-body-outlier.db")
+    test_database.save_profile({"running_days": 3, "weight_kg": 80.7})
+    for measurement in (
+        {
+            "measurement_date": "2026-07-22",
+            "source": "InBody",
+            "weight_kg": 81.7,
+            "muscle_mass_kg": 23.0,
+            "body_fat_percent": 47.8,
+        },
+        {
+            "measurement_date": "2026-08-09",
+            "source": "InBody",
+            "weight_kg": 80.7,
+            "muscle_mass_kg": 41.4,
+            "body_fat_percent": 10.7,
+        },
+    ):
+        test_database.upsert_body_composition(measurement)
+    monkeypatch.setattr(api, "database", test_database)
+    client = TestClient(api.app)
+
+    context = client.get("/api/plan?today=2026-08-09").json()["body_composition"]
+
+    assert context["previous_date"] is None
+    assert context["change_since_previous"] is None
+
+
 def test_daily_checkin_endpoint_starts_and_updates_journal(
     tmp_path: Path,
     monkeypatch,

@@ -414,6 +414,16 @@ export type PlanData = {
   current_week_start: string;
   current_week_end: string;
   profile: Profile;
+  body_composition: {
+    latest: BodyCompositionMeasurement;
+    previous_date: string | null;
+    change_since_previous: {
+      weight_kg: number;
+      muscle_mass_kg: number;
+      body_fat_percent: number;
+    } | null;
+    guidance: string;
+  } | null;
   weeks: TrainingWeek[];
   daily_agenda: DailyAgendaItem[];
   calendar: PlanCalendarDay[];

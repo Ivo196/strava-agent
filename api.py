@@ -2870,6 +2870,7 @@ def plan(today: date | None = None) -> dict[str, Any]:
         "current_week_start": (analysis_date - timedelta(days=analysis_date.weekday())).isoformat(),
         "current_week_end": (analysis_date - timedelta(days=analysis_date.weekday()) + timedelta(days=6)).isoformat(),
         "profile": profile,
+        "body_composition": _body_composition_plan_context(analysis_date),
         "weeks": [_serialize_week(week) for week in weeks],
         "daily_agenda": daily_agenda,
         "calendar": calendar,
@@ -2961,6 +2962,7 @@ def get_body_composition() -> dict[str, Any]:
 @app.post("/api/body-composition")
 def save_body_composition(payload: BodyCompositionInput) -> dict[str, Any]:
     measurement = database.upsert_body_composition(payload.model_dump(mode="json"))
+    _invalidate_health_insights_cache()
     return {"measurement": measurement}
 
 
@@ -3035,6 +3037,7 @@ def coach_chat(payload: CoachChatInput) -> dict[str, str]:
         days_to_race=max((RACE_DATE - today).days, 0),
         current_date=today.isoformat(),
         recovery=_recovery_snapshot(),
+        body_composition=_body_composition_plan_context(today),
     )
     try:
         answer = ask_coach(
@@ -3075,6 +3078,54 @@ def _serialize_week(week: Any) -> dict[str, Any]:
         "goal_status": week.goal_status,
         "actual_km": week.actual_km,
         "completion_percentage": week.completion_percentage,
+    }
+
+
+def _body_composition_plan_context(analysis_date: date) -> dict[str, Any] | None:
+    measurements = [
+        measurement
+        for measurement in database.list_body_composition()
+        if str(measurement.get("measurement_date") or "") <= analysis_date.isoformat()
+    ]
+    if not measurements:
+        return None
+
+    latest = measurements[0]
+    previous = next(
+        (
+            measurement
+            for measurement in measurements[1:]
+            if abs(float(latest["weight_kg"]) - float(measurement["weight_kg"])) <= 8
+            and abs(float(latest["muscle_mass_kg"]) - float(measurement["muscle_mass_kg"])) <= 5
+            and abs(
+                float(latest["body_fat_percent"])
+                - float(measurement["body_fat_percent"])
+            )
+            <= 10
+        ),
+        None,
+    )
+    change = None
+    if previous:
+        change = {
+            "weight_kg": round(float(latest["weight_kg"]) - float(previous["weight_kg"]), 1),
+            "muscle_mass_kg": round(
+                float(latest["muscle_mass_kg"]) - float(previous["muscle_mass_kg"]),
+                1,
+            ),
+            "body_fat_percent": round(
+                float(latest["body_fat_percent"]) - float(previous["body_fat_percent"]),
+                1,
+            ),
+        }
+    return {
+        "latest": latest,
+        "previous_date": previous["measurement_date"] if previous else None,
+        "change_since_previous": change,
+        "guidance": (
+            "La composición corporal se usa como tendencia secundaria. Una lectura aislada no cambia "
+            "el calendario; recuperación, carga, sensaciones y molestias siguen teniendo prioridad."
+        ),
     }
 
 
