@@ -100,6 +100,42 @@ def test_adjusted_plan_exposes_first_block_paces_and_saturday_long_run() -> None
     assert friday["title"] == "Movilidad y core · sin piernas"
 
 
+def test_new_calendar_pattern_starts_in_week_four() -> None:
+    client = TestClient(api.app)
+
+    response = client.get("/api/plan?today=2026-08-10")
+
+    assert response.status_code == 200
+    payload = response.json()
+    week = next(item for item in payload["weeks"] if item["number"] == 4)
+    assert week["sessions"][0].startswith("Lunes: 7 km regenerativos")
+    assert week["sessions"][1].startswith("Miércoles: 7 km totales de pasadas")
+    assert week["sessions"][2].startswith("Sábado: tirada larga de 14 km")
+
+    days = {
+        day["date"]: day
+        for day in payload["calendar"]
+        if "2026-08-10" <= day["date"] <= "2026-08-16"
+    }
+    assert days["2026-08-10"]["category"] == "run"
+    assert "regenerativos" in days["2026-08-10"]["title"]
+    assert days["2026-08-11"]["title"] == "Gimnasio · tren superior y core"
+    assert days["2026-08-12"]["category"] == "run"
+    assert "pasadas" in days["2026-08-12"]["title"]
+    assert days["2026-08-13"]["title"] == "Gimnasio · tren superior y core"
+    assert days["2026-08-14"]["title"] == "Gimnasio · piernas"
+    assert days["2026-08-15"]["category"] == "run"
+    assert "14 km" in days["2026-08-15"]["title"]
+    assert days["2026-08-16"]["title"] == "Gimnasio · piernas"
+    week_starts = {
+        day["week_number"]: day["date"]
+        for day in payload["calendar"]
+        if day["day"] == "Lunes"
+    }
+    assert set(week_starts) == set(range(1, 13))
+    assert payload["calendar"][-1]["date"] == "2026-10-11"
+
+
 def test_dashboard_demo_scenario_is_read_only_and_recalculates() -> None:
     client = TestClient(api.app)
     points_before = api.database.google_health_status()["point_count"]

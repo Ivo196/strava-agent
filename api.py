@@ -189,7 +189,7 @@ class ProfileInput(BaseModel):
     weight_kg: float | None = Field(default=None, ge=40, le=180)
     resting_hr: int | None = Field(default=None, ge=30, le=100)
     max_hr: int | None = Field(default=None, ge=100, le=230)
-    running_days: int = Field(default=4, ge=3, le=6)
+    running_days: int = Field(default=3, ge=3, le=6)
     goal_time_minutes: float | None = Field(default=None, ge=120, le=420)
     goal_pace_seconds_km: int | None = Field(default=None, ge=180, le=600)
     injury_notes: str = ""
@@ -389,7 +389,7 @@ def dashboard(today: date | None = None, scenario: str | None = None) -> dict[st
     status, notes = readiness_assessment(metrics, days_to_race)
     plan = build_adaptive_plan(
         metrics,
-        running_days=int(profile.get("running_days") or 4),
+        running_days=int(profile.get("running_days") or 3),
         goal_pace_seconds_km=profile.get("goal_pace_seconds_km"),
         checkin=checkin,
         today=analysis_date,
@@ -520,7 +520,7 @@ def activities_progress(today: date | None = None) -> dict[str, Any]:
     metrics = dashboard_metrics(frame, today=analysis_date)
     plan = build_adaptive_plan(
         metrics,
-        running_days=int(profile.get("running_days") or 4),
+        running_days=int(profile.get("running_days") or 3),
         goal_pace_seconds_km=profile.get("goal_pace_seconds_km"),
         checkin=database.latest_weekly_checkin(),
         today=analysis_date,
@@ -533,7 +533,7 @@ def activities_progress(today: date | None = None) -> dict[str, Any]:
         frame,
         today=analysis_date,
         planned_long_run_km=current_week.long_run_km if current_week else None,
-        planned_runs_per_week=int(profile.get("running_days") or 4),
+        planned_runs_per_week=int(profile.get("running_days") or 3),
         plan_adherence_percent=current_week.completion_percentage if current_week else None,
     )
 
@@ -2845,7 +2845,7 @@ def plan(today: date | None = None) -> dict[str, Any]:
     checkin = database.latest_weekly_checkin()
     weeks = build_adaptive_plan(
         metrics,
-        running_days=int(profile.get("running_days") or 4),
+        running_days=int(profile.get("running_days") or 3),
         goal_pace_seconds_km=profile.get("goal_pace_seconds_km"),
         checkin=checkin,
         today=analysis_date,
@@ -2864,7 +2864,7 @@ def plan(today: date | None = None) -> dict[str, Any]:
     )
     return {
         "fixed": True,
-        "policy": "El calendario usa el plan ajustado de 12 semanas. El bloque 2 se revisará al cerrar el bloque 1 según sensaciones, recuperación y rodilla; ninguna sesión se reescribe sin confirmación.",
+        "policy": "Desde la semana 4: lunes regenerativo, miércoles de pasadas y sábado de fondo; gimnasio martes y jueves sin piernas, viernes y domingo con piernas. Ninguna sesión se reescribe sin confirmación.",
         "current_date": analysis_date.isoformat(),
         "current_week_number": current_week.number if current_week else None,
         "current_week_start": (analysis_date - timedelta(days=analysis_date.weekday())).isoformat(),
@@ -3007,7 +3007,7 @@ def coach_chat(payload: CoachChatInput) -> dict[str, str]:
     checkin = database.latest_weekly_checkin()
     plan = build_adaptive_plan(
         metrics,
-        running_days=int(profile.get("running_days") or 4),
+        running_days=int(profile.get("running_days") or 3),
         goal_pace_seconds_km=profile.get("goal_pace_seconds_km"),
         checkin=checkin,
         today=today,
@@ -3149,7 +3149,7 @@ def _plan_calendar(
     today: date,
     frame: Any,
     past_weeks: int = 4,
-    future_weeks: int = 3,
+    future_weeks: int = 12,
 ) -> list[dict[str, Any]]:
     if not plan:
         return []
@@ -3321,23 +3321,38 @@ def _planned_day(plan: list[Any], target: date) -> dict[str, Any] | None:
             else f"Sesión de la semana {week.number} del plan fijo."
         )
         title = _sentence_case(instruction)
-    elif target.weekday() == 2:
+    elif week.number >= 4 and target.weekday() in {1, 3}:
+        category = "strength"
+        title = "Gimnasio · tren superior y core"
+        detail = _recommendation_for_day(week.strength_recommendation, day_name)
+    elif week.number >= 4 and target.weekday() in {4, 6}:
+        category = "strength"
+        title = (
+            "Gimnasio · activación ligera de piernas"
+            if week.phase == "Carrera"
+            else "Gimnasio · piernas"
+        )
+        detail = _recommendation_for_day(week.strength_recommendation, day_name)
+    elif week.number < 4 and target.weekday() == 2:
         category = "strength"
         title = "Gimnasio · fuerza de piernas"
         detail = _recommendation_for_day(week.strength_recommendation, day_name)
-    elif target.weekday() == 4:
+    elif week.number < 4 and target.weekday() == 4:
         category = "rest"
         title = "Movilidad y core · sin piernas"
         detail = _recommendation_for_day(week.strength_recommendation, day_name)
-    elif target.weekday() == 0:
+    elif week.number < 4 and target.weekday() == 0:
         category = "bike"
         title = "Bicicleta suave opcional"
         detail = _recommendation_for_day(week.bike_recommendation, day_name)
     else:
         category = "rest"
-        if target.weekday() == 5:
+        if week.phase == "Carrera" and target.weekday() == 5:
+            title = "Descanso previo a la maratón"
+            detail = "Movilidad suave, hidratación y descanso. Nada de fuerza para llegar fresco a la salida."
+        elif target.weekday() == 5:
             title = "Descanso previo a la tirada larga"
-            detail = "Movilidad suave y buena hidratación. Nada de fuerza pesada para llegar fresco al domingo."
+            detail = "Movilidad suave y buena hidratación. Nada de fuerza pesada para llegar fresco al fondo."
         else:
             title = "Descanso y movilidad"
             detail = "Recuperación completa; una sesión perdida no se acumula en este día."

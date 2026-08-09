@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ChevronDown, Dumbbell, LockKeyhole, Percent, Scale } from "lucide-react";
+import { ArrowRight, Dumbbell, LockKeyhole, Percent, Scale } from "lucide-react";
 import { OfflineState } from "@/components/offline-state";
 import { getPlan } from "@/lib/api";
 import { PlanCalendar } from "@/components/plan-calendar";
@@ -7,11 +7,6 @@ import { PlanCalendar } from "@/components/plan-calendar";
 export const dynamic = "force-dynamic";
 
 const dayMonth = new Intl.DateTimeFormat("es", { day: "numeric", month: "short" });
-
-function formatGoalPace(seconds: number | null) {
-  if (!seconds) return "—";
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-}
 
 const oneDecimal = new Intl.NumberFormat("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
@@ -26,7 +21,6 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
   const data = await getPlan(simulatedToday).catch(() => null);
   if (!data) return <OfflineState />;
   const currentWeek = data.weeks.find((week) => week.number === data.current_week_number) ?? data.weeks[0];
-  const goalPace = formatGoalPace(data.profile.goal_pace_seconds_km);
   const composition = data.body_composition;
 
   return (
@@ -88,38 +82,12 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
 
       <section className="plan-calendar-panel" aria-label="Calendario del plan">
         <div className="section-heading">
-          <div><span className="eyebrow">Calendario vivo</span><h2>Esta semana primero, sin perder el historial</h2></div>
+          <div><span className="eyebrow">Calendario semanal</span><h2>Tu plan, semana por semana</h2><p>De lunes a domingo. Abre una semana para ver cada sesión.</p></div>
           <span className="unit-label">{dayMonth.format(new Date(`${data.current_week_start}T12:00:00`))} – {dayMonth.format(new Date(`${data.current_week_end}T12:00:00`))}</span>
         </div>
         <PlanCalendar days={data.calendar} />
       </section>
 
-      <div className="week-list">
-        {data.weeks.map((week) => {
-          const isCurrent = week.number === data.current_week_number;
-          return (
-            <details className={`week-card${isCurrent ? " week-card-current" : ""}`} key={week.number} open={isCurrent}>
-              <summary>
-                <span className="week-number">{isCurrent ? "Actual" : `Semana ${week.number}`}</span>
-                <span className="week-phase"><strong>{week.phase}</strong><span>{dayMonth.format(new Date(`${week.start}T12:00:00`))} – {dayMonth.format(new Date(`${week.end}T12:00:00`))}</span></span>
-                <span className="week-stat"><strong>{week.target_km} km</strong><span>volumen</span></span>
-                <span className="week-stat"><strong>{week.long_run_km} km</strong><span>tirada larga</span></span>
-                <ChevronDown size={17} />
-              </summary>
-              <div className="week-detail">
-                <div className="week-badges">
-                  {isCurrent && <span className={`risk-${week.risk_level.toLowerCase()}`}>Estado actual: riesgo {week.risk_level}</span>}
-                  {isCurrent && <span>Objetivo {goalPace}: {week.goal_status}</span>}
-                  {week.completion_percentage !== null && <span>Realizado: {week.actual_km} km · {week.completion_percentage}%</span>}
-                </div>
-                <ul className="session-list">{week.sessions.map((session, sessionIndex) => <li key={session}><strong>{session}</strong><small>{week.session_objectives[sessionIndex]}</small></li>)}</ul>
-                <div className="cross-training"><p><strong>Fuerza</strong>{week.strength_recommendation}</p><p><strong>Bicicleta</strong>{week.bike_recommendation}</p></div>
-                <p className="change-reason">{week.change_reason}</p>
-              </div>
-            </details>
-          );
-        })}
-      </div>
     </div>
   );
 }

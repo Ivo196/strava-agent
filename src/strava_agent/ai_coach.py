@@ -15,7 +15,7 @@ Salvo que el usuario pida profundidad, limita la respuesta a unas 250 palabras. 
 Usa solamente los datos del contexto; no inventes ritmos, lesiones ni sesiones.
 Distingue observaciones de recomendaciones. Prioriza progresión gradual, recuperación y adherencia.
 El objetivo de ritmo está definido en el contexto del atleta y debe clasificarse como Respaldado, Dudoso o No respaldado según los datos.
-La estructura es martes calidad, jueves Z2 y domingo tirada larga; nunca juntes dos sesiones intensas.
+Desde la semana 4, la estructura es lunes regenerativo, miércoles de pasadas y sábado de fondo. El gimnasio es martes y jueves sin piernas, y viernes y domingo con piernas; el viernes debe ser moderado para no comprometer el fondo del sábado. Nunca juntes dos sesiones intensas.
 El calendario de entrenamiento está bloqueado: nunca afirmes que lo cambiaste ni reescribas sus sesiones, distancias o fechas.
 Compara lo realizado con ese plan fijo y explica qué va bien, qué debe mejorar y qué señales requieren prudencia.
 Antes de llamar incompleta o perdida a una sesión, comprueba la fecha local: una sesión futura de la semana todavía está pendiente, no incumplida.
@@ -43,7 +43,7 @@ def build_coach_context(
         f"Fecha local de análisis: {current_date}" if current_date else "Fecha local de análisis: no informada",
         f"Días hasta la carrera: {days_to_race}",
         f"Peso: {weight} kg" if weight else "Peso: no informado",
-        f"Días disponibles para correr: {profile.get('running_days') or 4} por semana",
+        f"Días disponibles para correr: {profile.get('running_days') or 3} por semana",
         f"Ritmo objetivo de maratón: {goal_pace}",
         f"Notas de molestias: {profile.get('injury_notes') or 'ninguna informada'}",
         f"Preferencias de entrenamiento: {profile.get('training_notes') or 'ninguna informada'}",

@@ -20,8 +20,10 @@ def test_fixed_plan_keeps_three_running_days() -> None:
     plan = build_adaptive_plan(metrics, running_days=5, today=date(2026, 8, 10))
     build_week = next(week for week in plan if week.phase in {"Construcción", "Específica"})
     assert len(build_week.sessions) == 3
-    assert build_week.sessions[0].startswith("Martes:")
-    assert build_week.sessions[1].startswith("Jueves:")
+    assert build_week.sessions[0].startswith("Lunes:")
+    assert "regenerativos" in build_week.sessions[0]
+    assert build_week.sessions[1].startswith("Miércoles:")
+    assert "pasadas" in build_week.sessions[1]
     assert build_week.sessions[2].startswith("Sábado:")
 
 
@@ -89,8 +91,19 @@ def test_red_flags_raise_warning_without_silently_rewriting_plan() -> None:
     assert plan[1].sessions[-1].startswith("Sábado: tirada larga de 12 km")
 
 
-def test_second_block_is_explicitly_marked_for_review() -> None:
+def test_second_block_records_the_accepted_calendar_adjustment() -> None:
     plan = build_adaptive_plan({}, today=date(2026, 7, 21), include_past=True)
 
-    for week in plan[3:6]:
-        assert "pendiente de revisión" in week.change_reason
+    for week in plan[3:]:
+        assert "lunes regenerativo" in week.change_reason
+        assert "miércoles de pasadas" in week.change_reason
+        assert "gimnasio martes, jueves, viernes y domingo" in week.change_reason
+
+
+def test_first_block_history_keeps_the_previous_schedule() -> None:
+    plan = build_adaptive_plan({}, today=date(2026, 8, 10), include_past=True)
+
+    assert plan[0].sessions[0].startswith("Martes:")
+    assert plan[0].sessions[1].startswith("Jueves:")
+    assert plan[3].sessions[0].startswith("Lunes:")
+    assert plan[3].sessions[1].startswith("Miércoles:")

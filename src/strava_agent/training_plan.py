@@ -72,8 +72,8 @@ PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
         28.0,
         14.0,
         (
-            "Martes: 7 km totales con 3 x 5 min a 5:05-5:15 min/km; resto a 5:35-5:50 min/km",
-            "Jueves: 7 km a 5:30-5:45 min/km",
+            "Lunes: 7 km regenerativos a 5:30-5:45 min/km",
+            "Miércoles: 7 km totales de pasadas con 3 x 5 min a 5:05-5:15 min/km; resto a 5:35-5:50 min/km",
             "Sábado: tirada larga de 14 km a 5:35-5:50 min/km",
         ),
     ),
@@ -82,8 +82,8 @@ PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
         32.0,
         16.0,
         (
-            "Martes: 8 km a 5:30-5:45 min/km, más 4-6 pasadas de 80-100 m a 4:25-4:45 min/km",
-            "Jueves: 8 km a 5:30-5:45 min/km",
+            "Lunes: 8 km regenerativos a 5:30-5:45 min/km",
+            "Miércoles: 8 km totales, más 4-6 pasadas de 80-100 m a 4:25-4:45 min/km",
             "Sábado: tirada larga de 16 km a 5:35-5:50 min/km",
         ),
     ),
@@ -92,8 +92,8 @@ PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
         27.0,
         13.0,
         (
-            "Martes: 7 km a 5:35-5:50 min/km",
-            "Jueves: 7 km a 5:35-5:50 min/km",
+            "Lunes: 7 km regenerativos a 5:35-5:50 min/km",
+            "Miércoles: 7 km totales a 5:35-5:50 min/km con 4 pasadas controladas de 80 m",
             "Sábado: tirada larga de 13 km a 5:40-5:55 min/km",
         ),
     ),
@@ -102,8 +102,8 @@ PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
         35.0,
         18.0,
         (
-            "Martes: 9 km totales con 4 km a 4:55-5:00 min/km; resto a 5:35-5:50 min/km",
-            "Jueves: 8 km a 5:30-5:45 min/km",
+            "Lunes: 8 km regenerativos a 5:30-5:45 min/km",
+            "Miércoles: 9 km totales con 4 x 1 km a 4:55-5:00 min/km y 2 min suaves entre pasadas; resto a 5:35-5:50 min/km",
             "Sábado: tirada larga de 18 km a 5:35-5:55 min/km",
         ),
     ),
@@ -112,8 +112,8 @@ PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
         40.0,
         22.0,
         (
-            "Martes: 10 km totales con 5 km a 4:55-5:00 min/km; resto a 5:35-5:50 min/km",
-            "Jueves: 8 km a 5:30-5:45 min/km",
+            "Lunes: 8 km regenerativos a 5:30-5:45 min/km",
+            "Miércoles: 10 km totales con 5 x 1 km a 4:55-5:00 min/km y 2 min suaves entre pasadas; resto a 5:35-5:50 min/km",
             "Sábado: tirada larga de 22 km a 5:35-5:55 min/km; reducir a 18-20 km si la recuperación no es buena",
         ),
     ),
@@ -122,8 +122,8 @@ PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
         32.0,
         17.0,
         (
-            "Martes: 8 km totales con 3 km a 4:55-5:00 min/km; resto a 5:35-5:50 min/km",
-            "Jueves: 7 km a 5:30-5:45 min/km",
+            "Lunes: 7 km regenerativos a 5:30-5:45 min/km",
+            "Miércoles: 8 km totales con 3 x 1 km a 4:55-5:00 min/km y 2 min suaves entre pasadas; resto a 5:35-5:50 min/km",
             "Sábado: tirada larga de 17 km a 5:40-5:55 min/km",
         ),
     ),
@@ -132,8 +132,8 @@ PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
         25.0,
         13.0,
         (
-            "Martes: 6 km totales con 3 km a 4:55-5:00 min/km; resto a 5:40-5:55 min/km",
-            "Jueves: 6 km a 5:35-5:50 min/km",
+            "Lunes: 6 km regenerativos a 5:35-5:50 min/km",
+            "Miércoles: 6 km totales con 3 x 1 km a 4:55-5:00 min/km y 2 min suaves entre pasadas; resto a 5:40-5:55 min/km",
             "Sábado: tirada larga de 13 km a 5:40-5:55 min/km",
         ),
     ),
@@ -142,8 +142,8 @@ PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
         17.0,
         8.0,
         (
-            "Martes: 5 km a 5:35-5:50 min/km, más 4 pasadas de 80 m a 4:25-4:45 min/km",
-            "Jueves: 4 km a 5:50-6:10 min/km",
+            "Lunes: 4 km regenerativos a 5:50-6:10 min/km",
+            "Miércoles: 5 km totales a 5:35-5:50 min/km, más 4 pasadas de 80 m a 4:25-4:45 min/km",
             "Sábado: 8 km a 5:40-5:55 min/km",
         ),
     ),
@@ -152,9 +152,8 @@ PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
         9.0,
         0.0,
         (
-            "Lunes: descanso y movilidad suave",
-            "Martes: 5 km a 5:35-5:50 min/km",
-            "Jueves: 4 km a 5:50-6:10 min/km con 4 progresivos cortos",
+            "Lunes: 5 km regenerativos a 5:35-5:50 min/km",
+            "Miércoles: 4 km a 5:50-6:10 min/km con 4 pasadas progresivas cortas",
             "Domingo: Maratón de Chicago; primeros 5 km a 5:00-5:05 min/km y luego 4:55 min/km solo si está controlado",
         ),
     ),
@@ -163,7 +162,7 @@ PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
 
 def build_adaptive_plan(
     metrics: dict[str, Any],
-    running_days: int = 4,
+    running_days: int = 3,
     goal_pace_seconds_km: int | None = None,
     checkin: dict[str, Any] | None = None,
     today: date | None = None,
@@ -201,13 +200,38 @@ def build_adaptive_plan(
         target = template.target_km
         long_run = template.long_run_km
         sessions = template.sessions
-        objectives = _session_objectives(phase, len(sessions))
+        objectives = _session_objectives(phase, len(sessions), legacy=index < 3)
         if index < 3:
             plan_note = "Bloque 1: pace ajustado alrededor de 5:30 min/km, con la tirada larga algo más controlada."
-        elif index < 6:
-            plan_note = "Bloque 2 pendiente de revisión al cerrar la semana 3, según sensaciones, recuperación y rodilla."
         else:
-            plan_note = "Plan fijo: importar entrenamientos no modifica estas sesiones."
+            plan_note = (
+                "Calendario ajustado desde la semana 4: lunes regenerativo, miércoles de pasadas, "
+                "sábado de fondo y gimnasio martes, jueves, viernes y domingo."
+            )
+        if index < 3:
+            strength_recommendation = (
+                "Miércoles: fuerza de piernas moderada. Viernes: movilidad y core; "
+                "sin fuerza de piernas antes de la tirada larga."
+            )
+            bike_recommendation = (
+                "Lunes: 30-45 min de bicicleta suave opcional; omitir si hay fatiga "
+                "o si la mano no permite frenar con seguridad."
+            )
+        elif phase == "Carrera":
+            strength_recommendation = (
+                "Martes y jueves: tren superior y core, sin piernas. Viernes: solo activación "
+                "muy ligera de piernas, sin fatiga. Domingo: la maratón reemplaza el gimnasio."
+            )
+            bike_recommendation = "Sin bicicleta planificada durante la semana de carrera."
+        else:
+            strength_recommendation = (
+                "Martes y jueves: tren superior, core y trabajo que no involucre piernas. "
+                "Viernes y domingo: piernas en el gimnasio; el viernes sin llegar al fallo "
+                "para proteger el fondo del sábado y el domingo según recuperación."
+            )
+            bike_recommendation = (
+                "Sin bicicleta planificada; usarla solo como sustitución regenerativa, no como carga adicional."
+            )
         weeks.append(
             TrainingWeek(
                 number=index + 1,
@@ -218,8 +242,8 @@ def build_adaptive_plan(
                 long_run_km=round(long_run, 1),
                 sessions=sessions,
                 session_objectives=objectives,
-                strength_recommendation="Miércoles: fuerza de piernas moderada. Viernes: movilidad y core; sin fuerza de piernas antes de la tirada larga.",
-                bike_recommendation="Lunes: 30-45 min de bicicleta suave opcional; omitir si hay fatiga o si la mano no permite frenar con seguridad.",
+                strength_recommendation=strength_recommendation,
+                bike_recommendation=bike_recommendation,
                 risk_level=risk_level,
                 change_reason=(
                     f"Lectura actual: {adaptation_reason} {plan_note}"
@@ -275,30 +299,43 @@ def _adaptation_reason(checkin: dict[str, Any] | None, completion: float, risk: 
     return "Semana completa, pero sin margen claro para progresar; se mantiene la carga."
 
 
-def _session_objectives(phase: str, count: int) -> tuple[str, ...]:
+def _session_objectives(phase: str, count: int, *, legacy: bool = False) -> tuple[str, ...]:
+    if legacy:
+        if phase == "Recuperación":
+            objectives = (
+                "Favorecer la recuperación aeróbica con el ritmo indicado.",
+                "Acumular kilómetros controlados con bajo estrés.",
+                "Conservar resistencia reduciendo la carga.",
+            )
+        else:
+            objectives = (
+                "Mejorar economía y control del ritmo indicado.",
+                "Desarrollar la base aeróbica con continuidad.",
+                "Aumentar resistencia y tolerancia al tiempo de carrera.",
+            )
+        return objectives[:count]
     if phase == "Carrera":
         objectives = (
-            "Recuperar y llegar fresco.",
-            "Mantener movilidad y sensaciones.",
-            "Activar sin acumular fatiga.",
+            "Soltar las piernas y recuperar sin acumular fatiga.",
+            "Activar con pasadas cortas y controladas.",
             "Sostener el ritmo objetivo con salida conservadora.",
         )
     elif phase == "Recuperación":
         objectives = (
-            "Favorecer la recuperación aeróbica con el pace indicado.",
-            "Acumular kilómetros controlados con bajo estrés.",
+            "Favorecer la recuperación aeróbica con el ritmo indicado.",
+            "Mantener técnica y velocidad con pasadas controladas y poco estrés.",
             "Conservar resistencia reduciendo la carga.",
         )
     elif phase == "Taper":
         objectives = (
-            "Conservar economía y pace con poco volumen.",
-            "Mantener frecuencia sin generar fatiga.",
+            "Recuperar con poco volumen y ritmo cómodo.",
+            "Conservar economía y velocidad con pasadas sin generar fatiga.",
             "Reducir fatiga acumulada conservando resistencia.",
         )
     else:
         objectives = (
-            "Mejorar economía y control del pace indicado.",
-            "Desarrollar la base aeróbica con continuidad.",
+            "Recuperar y desarrollar la base aeróbica con continuidad.",
+            "Mejorar economía, velocidad y control del ritmo en las pasadas.",
             "Aumentar resistencia y tolerancia al tiempo de carrera.",
         )
     return objectives[:count]
