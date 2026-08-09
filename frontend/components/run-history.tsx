@@ -4,74 +4,64 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronRight, Clock3, Gauge, HeartPulse, Mountain } from "lucide-react";
 import { isGenericAppleRun } from "@/lib/activity-display";
+import { isoWeekDetails, parseLocalDate, startOfIsoWeek } from "@/lib/iso-week";
 import type { Activity, RunProgressData } from "@/lib/types";
 
-type HistoryRange = "7" | "28" | "90" | "all";
-type HistoryGroup = { key: string; label: string; activities: Activity[]; distance: number };
+type HistoryRange = "4" | "8" | "12" | "all";
+type HistoryGroup = { key: string; label: string; activities: Activity[]; distance: number; isCurrent: boolean };
 
 const filters: { key: HistoryRange; label: string }[] = [
-  { key: "7", label: "7 días" },
-  { key: "28", label: "28 días" },
-  { key: "90", label: "3 meses" },
+  { key: "4", label: "4 semanas" },
+  { key: "8", label: "8 semanas" },
+  { key: "12", label: "12 semanas" },
   { key: "all", label: "Todo" },
 ];
 
 const activityDate = new Intl.DateTimeFormat("es-ES", { weekday: "short", day: "numeric", month: "short" });
-const monthYear = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" });
-const dayMonth = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" });
 const oneDecimal = new Intl.NumberFormat("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-function parseDate(value: string) {
-  return new Date(`${value}T12:00:00`);
-}
-
-function startOfWeek(value: Date) {
-  const result = new Date(value);
-  const weekday = (result.getDay() + 6) % 7;
-  result.setDate(result.getDate() - weekday);
-  return result;
-}
-
-function isoDay(value: Date) {
-  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
-}
-
-function groupActivities(activities: Activity[], analysisDate: string): HistoryGroup[] {
-  const today = parseDate(analysisDate);
-  const currentWeek = startOfWeek(today);
-  const previousWeek = new Date(currentWeek);
-  previousWeek.setDate(previousWeek.getDate() - 7);
+function groupActivities(
+  activities: Activity[],
+  analysisDate: string,
+  weeklyPoints: RunProgressData["weekly"]["points"],
+): HistoryGroup[] {
+  const currentWeek = isoWeekDetails(analysisDate);
+  const canonicalDistance = new Map(
+    weeklyPoints.map((point) => [isoWeekDetails(point.week).key, point.distance_km]),
+  );
   const grouped = new Map<string, HistoryGroup>();
 
   activities.forEach((activity) => {
-    const date = parseDate(activity.date);
-    const activityWeek = startOfWeek(date);
-    let key: string;
-    let label: string;
-    if (isoDay(activityWeek) === isoDay(currentWeek)) {
-      key = "current-week";
-      label = "Esta semana";
-    } else if (isoDay(activityWeek) === isoDay(previousWeek)) {
-      key = "previous-week";
-      label = `Semana anterior · ${dayMonth.format(previousWeek)}`;
-    } else {
-      key = `${date.getFullYear()}-${date.getMonth()}`;
-      label = monthYear.format(date);
-    }
-    const existing = grouped.get(key) ?? { key, label, activities: [], distance: 0 };
+    const week = isoWeekDetails(activity.date);
+    const isCurrent = week.key === currentWeek.key;
+    const yearSuffix = week.weekYear === currentWeek.weekYear ? "" : ` · ${week.weekYear}`;
+    const label = `Semana ${week.weekNumber}${isCurrent ? " · actual" : ""} · ${week.rangeLabel}${yearSuffix}`;
+    const existing = grouped.get(week.key) ?? {
+      key: week.key,
+      label,
+      activities: [],
+      distance: 0,
+      isCurrent,
+    };
     existing.activities.push(activity);
     existing.distance += activity.distance_km;
-    grouped.set(key, existing);
+    grouped.set(week.key, existing);
   });
-  return [...grouped.values()];
+  return [...grouped.values()].map((group) => ({
+    ...group,
+    distance: canonicalDistance.get(group.key) ?? group.distance,
+  }));
 }
 
 function rangeActivities(activities: Activity[], analysisDate: string, range: HistoryRange) {
   if (range === "all") return activities;
-  const today = parseDate(analysisDate);
-  const cutoff = new Date(today);
-  cutoff.setDate(cutoff.getDate() - Number(range) + 1);
-  return activities.filter((activity) => parseDate(activity.date) >= cutoff && parseDate(activity.date) <= today);
+  const today = parseLocalDate(analysisDate);
+  const cutoff = startOfIsoWeek(today);
+  cutoff.setDate(cutoff.getDate() - (Number(range) - 1) * 7);
+  return activities.filter((activity) => {
+    const activityDay = parseLocalDate(activity.date);
+    return activityDay >= cutoff && activityDay <= today;
+  });
 }
 
 function runTypeLabel(activity: Activity) {
@@ -81,23 +71,23 @@ function runTypeLabel(activity: Activity) {
 }
 
 export function RunHistory({ activities, progress }: { activities: Activity[]; progress: RunProgressData }) {
-  const [range, setRange] = useState<HistoryRange>("90");
+  const [range, setRange] = useState<HistoryRange>("12");
   const visibleActivities = useMemo(
     () => rangeActivities(activities, progress.analysis_date, range),
     [activities, progress.analysis_date, range],
   );
   const groups = useMemo(
-    () => groupActivities(visibleActivities, progress.analysis_date),
-    [progress.analysis_date, visibleActivities],
+    () => groupActivities(visibleActivities, progress.analysis_date, progress.weekly.points),
+    [progress.analysis_date, progress.weekly.points, visibleActivities],
   );
 
   return (
     <section className="run-history-section" aria-labelledby="run-history-title">
       <header className="run-history-heading">
         <div>
-          <span className="eyebrow">Historial completo</span>
-          <h2 id="run-history-title">Tus carreras</h2>
-          <p>{visibleActivities.length} de {activities.length} actividades</p>
+          <span className="eyebrow">Semanas ISO</span>
+          <h2 id="run-history-title">Historial por semanas</h2>
+          <p>{groups.length} {groups.length === 1 ? "semana" : "semanas"} · {visibleActivities.length} de {activities.length} actividades</p>
         </div>
         <div className="history-filter-switch" aria-label="Filtrar historial por período">
           {filters.map((filter) => (
@@ -125,7 +115,7 @@ export function RunHistory({ activities, progress }: { activities: Activity[]; p
       {groups.length ? (
         <div className="run-history-groups">
           {groups.map((group) => (
-            <section className="run-history-group" key={group.key} aria-labelledby={`history-${group.key}`}>
+            <section className={`run-history-group${group.isCurrent ? " is-current" : ""}`} key={group.key} aria-labelledby={`history-${group.key}`}>
               <header>
                 <h3 id={`history-${group.key}`}>{group.label}</h3>
                 <span>{oneDecimal.format(group.distance)} km · {group.activities.length} {group.activities.length === 1 ? "carrera" : "carreras"}</span>
@@ -143,13 +133,13 @@ export function RunHistory({ activities, progress }: { activities: Activity[]; p
                   ].filter((metric): metric is NonNullable<typeof metric> => metric !== null);
                   return (
                     <Link
-                      aria-label={`Ver detalles de la carrera de ${oneDecimal.format(activity.distance_km)} km del ${activityDate.format(parseDate(activity.date))}`}
+                      aria-label={`Ver detalles de la carrera de ${oneDecimal.format(activity.distance_km)} km del ${activityDate.format(parseLocalDate(activity.date))}`}
                       className="run-history-card"
                       href={`/activities/${activity.id}`}
                       key={activity.id}
                     >
                       <div className="run-history-date">
-                        <time dateTime={activity.date}>{activityDate.format(parseDate(activity.date))}</time>
+                        <time dateTime={activity.date}>{activityDate.format(parseLocalDate(activity.date))}</time>
                         <div className="run-history-tags">
                           {runType && <span className="run-type-chip">{runType}</span>}
                           {quality?.flags.slice(0, 2).map((flag) => <span className="run-quality-chip" key={flag}>{flag}</span>)}

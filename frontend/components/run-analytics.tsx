@@ -13,12 +13,9 @@ export function RunAnalytics({ progress }: { progress: RunProgressData }) {
 
   return (
     <section className="run-analytics-section" aria-labelledby="run-analytics-title">
-      <header className="run-analytics-header">
-        <div>
-          <span className="eyebrow">Evolución</span>
-          <h2 id="run-analytics-title">Leé una señal a la vez</h2>
-          <p>Alterná entre carga semanal y eficiencia aeróbica para ver cada tendencia con espacio suficiente.</p>
-        </div>
+      <h2 className="sr-only" id="run-analytics-title">Análisis de carreras</h2>
+      <div className="run-analytics-toolbar">
+        <span>Vista</span>
         <div className="run-analytics-tabs" aria-label="Elegir gráfico de carreras" role="tablist">
           <button
             aria-controls="run-analytics-volume"
@@ -30,7 +27,7 @@ export function RunAnalytics({ progress }: { progress: RunProgressData }) {
             type="button"
           >
             <ChartNoAxesColumnIncreasing aria-hidden="true" size={17} />
-            Volumen
+            Semanas
           </button>
           <button
             aria-controls="run-analytics-aerobic"
@@ -45,7 +42,7 @@ export function RunAnalytics({ progress }: { progress: RunProgressData }) {
             Ritmo y pulso
           </button>
         </div>
-      </header>
+      </div>
 
       <div
         aria-labelledby={`run-analytics-${view}-tab`}
