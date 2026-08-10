@@ -4277,7 +4277,6 @@ body {
 .weekly-progress-footer a { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; color: var(--orange); font-size: 9px; font-weight: 750; text-decoration: none; }
 .weekly-progress-footer a:hover { color: #dff1ff; }
 .weekly-progress-footer a:focus-visible { outline: 2px solid var(--orange-deep); outline-offset: 2px; }
-.aerobic-panel .aerobic-chart-frame { height: 340px; }
 .runs-chart-tooltip { display: grid; gap: 4px; max-width: 230px; padding: 10px 12px; color: #dfe6df; border: 1px solid rgba(218,232,211,.18); border-radius: 9px; background: rgba(3,7,6,.96); box-shadow: 0 16px 30px rgba(0,0,0,.3); }
 .runs-chart-tooltip span { color: #7f8a80; font-size: 8px; text-transform: capitalize; }
 .runs-chart-tooltip strong { font-size: 11px; }
@@ -4294,14 +4293,49 @@ body {
 .runs-data-table th, .runs-data-table td { padding: 7px; border-top: 1px solid var(--line); text-align: left; }
 .runs-data-table th { color: #9ba69c; }
 .runs-comparison-chip { min-height: 30px; display: inline-flex; align-items: center; padding: 0 10px; color: #a98bff; border: 1px solid rgba(169,139,255,.18); border-radius: 999px; background: rgba(169,139,255,.075); font-size: 9px; font-weight: 750; white-space: nowrap; }
-.aerobic-comparison-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin-top: 16px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--line); }
-.aerobic-comparison-strip > span { min-width: 0; padding: 11px 12px; background: rgba(4,8,7,.48); }
-.aerobic-comparison-strip small, .aerobic-comparison-strip strong, .aerobic-comparison-strip em { display: block; }
-.aerobic-comparison-strip small { color: #707b72; font-size: 8px; text-transform: uppercase; }
-.aerobic-comparison-strip strong { margin-top: 6px; font: 650 16px "Fira Code",ui-monospace,monospace; }
-.aerobic-comparison-strip strong i { color: #6f796f; font: 500 7px Inter,sans-serif; }
-.aerobic-comparison-strip em { margin-top: 4px; color: #859087; font-size: 8px; font-style: normal; }
-.aerobic-chart-frame { margin-top: 2px; }
+.aerobic-panel { padding: 28px; }
+.aerobic-panel-heading p { max-width: 620px; color: #8f998e; font-size: 12px; }
+.aerobic-summary-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 24px; }
+.aerobic-summary-grid article { min-width: 0; padding: 18px 20px 16px; border: 1px solid rgba(218,232,211,.1); border-radius: 14px; background: linear-gradient(145deg,rgba(16,24,39,.64),rgba(4,8,7,.48)); }
+.aerobic-summary-grid article > span { display: flex; align-items: center; gap: 8px; color: #9aa59b; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.aerobic-summary-grid article > span svg { color: var(--orange); }
+.aerobic-summary-grid article > strong { display: block; margin-top: 16px; color: #f3f6ef; font: 650 clamp(27px,3vw,38px)/1 "Fira Code",ui-monospace,monospace; letter-spacing: -.055em; }
+.aerobic-summary-grid article > strong small { color: #7f8a80; font: 600 10px "Fira Sans",sans-serif; letter-spacing: 0; }
+.aerobic-summary-grid article > p { min-height: 18px; margin: 12px 0 0; color: #9eb8ae; font-size: 11px; font-weight: 650; }
+.aerobic-summary-grid article > p.is-caution { color: #d3a45f; }
+.aerobic-summary-grid article > footer { margin-top: 14px; padding-top: 12px; color: #778279; border-top: 1px solid rgba(218,232,211,.08); font-size: 10px; }
+.aerobic-chart-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-top: 30px; }
+.aerobic-chart-heading > div:first-child span, .aerobic-chart-heading > div:first-child strong { display: block; }
+.aerobic-chart-heading > div:first-child span { color: var(--orange-deep); font-size: 9px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.aerobic-chart-heading > div:first-child strong { margin-top: 6px; color: #e8eee8; font-size: 15px; }
+.aerobic-metric-switch { display: flex; gap: 5px; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: rgba(3,7,6,.42); }
+.aerobic-metric-switch button { min-width: 98px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 12px; color: #7b867d; border: 1px solid transparent; border-radius: 8px; background: transparent; cursor: pointer; font-size: 10px; font-weight: 750; transition: color .18s ease,background .18s ease,border-color .18s ease; }
+.aerobic-metric-switch button:hover { color: #d7ddd7; background: rgba(91,140,255,.07); }
+.aerobic-metric-switch button:focus-visible { outline: 2px solid var(--orange-deep); outline-offset: 2px; }
+.aerobic-metric-switch button.active { color: #eff4ef; border-color: rgba(91,140,255,.26); background: rgba(91,140,255,.14); }
+.aerobic-metric-switch button.active svg { color: var(--orange); }
+.aerobic-visual-layout { display: grid; grid-template-columns: minmax(0,1fr) 238px; gap: 16px; align-items: stretch; margin-top: 12px; }
+.aerobic-trend-chart { min-width: 0; height: 350px; cursor: crosshair; touch-action: pan-y; }
+.aerobic-trend-hit { fill: transparent; cursor: pointer; outline: none; }
+.aerobic-trend-dot { fill: var(--viz-series-4); stroke: rgba(13,16,14,.98); stroke-width: 3px; pointer-events: none; transition: fill .18s ease,stroke-width .18s ease; }
+.aerobic-trend-dot.is-recent { fill: var(--orange-deep); }
+.aerobic-trend-hit:hover + .aerobic-trend-dot, .aerobic-trend-hit:focus-visible + .aerobic-trend-dot, .aerobic-trend-dot.is-selected { fill: #f3f6ef; stroke: var(--orange); stroke-width: 3px; }
+.aerobic-trend-dot-halo { fill: rgba(91,140,255,.22); pointer-events: none; }
+.aerobic-trend-tooltip strong { font: 650 13px "Fira Code",ui-monospace,monospace; }
+.aerobic-selected-run { min-width: 0; display: flex; flex-direction: column; padding: 18px; border: 1px solid rgba(91,140,255,.2); border-radius: 14px; background: linear-gradient(155deg,rgba(91,140,255,.09),rgba(4,8,7,.5)); }
+.aerobic-selected-run header span, .aerobic-selected-run header strong, .aerobic-selected-run header small { display: block; }
+.aerobic-selected-run header span { color: var(--orange); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.aerobic-selected-run header strong { margin-top: 9px; color: #e6ece7; font-size: 13px; line-height: 1.35; text-transform: capitalize; }
+.aerobic-selected-run header small { margin-top: 5px; color: #78847b; font-size: 9px; }
+.aerobic-selected-run dl { display: grid; gap: 0; margin: 18px 0; }
+.aerobic-selected-run dl div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid rgba(218,232,211,.08); }
+.aerobic-selected-run dt { color: #7b867d; font-size: 9px; }
+.aerobic-selected-run dd { margin: 0; color: #d8dfd9; font: 600 10px "Fira Code",ui-monospace,monospace; text-align: right; }
+.aerobic-selected-run a { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; margin-top: auto; color: #071018; border-radius: 9px; background: var(--orange); font-size: 10px; font-weight: 800; text-decoration: none; transition: background .18s ease,color .18s ease; }
+.aerobic-selected-run a:hover { color: #020607; background: #82a8ff; }
+.aerobic-selected-run a:focus-visible { outline: 2px solid var(--orange-deep); outline-offset: 3px; }
+.aerobic-chart-footer { min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 10px; border-top: 1px solid rgba(218,232,211,.08); }
+.aerobic-chart-footer small { color: #78837a; font-size: 9px; text-align: right; }
 .runs-chart-empty { min-height: 330px; display: grid; place-items: center; align-content: center; gap: 9px; padding: 28px; text-align: center; }
 .runs-chart-empty svg { color: #68746a; }
 .runs-chart-empty strong { color: #cbd3cb; font-size: 13px; }
@@ -4356,6 +4390,13 @@ body {
 
 @media (max-width: 1120px) {
   .run-history-card { grid-template-columns: 130px 125px minmax(0,1fr) 82px; gap: 13px; }
+  .aerobic-visual-layout { grid-template-columns: minmax(0,1fr) 220px; }
+}
+
+@media (max-width: 900px) {
+  .aerobic-visual-layout { grid-template-columns: 1fr; }
+  .aerobic-selected-run dl { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0 16px; }
+  .aerobic-selected-run a { align-self: flex-start; min-width: 180px; }
 }
 
 @media (max-width: 760px) {
@@ -4381,7 +4422,19 @@ body {
   .runs-chart-frame { margin-inline: -8px; width: calc(100% + 16px); }
   .weekly-progress-chart { height: 290px; margin-inline: -6px; }
   .weekly-progress-footer { align-items: flex-start; flex-direction: column; gap: 2px; }
-  .aerobic-panel .aerobic-chart-frame { height: 310px; }
+  .aerobic-panel { padding: 18px 14px !important; }
+  .aerobic-summary-grid { grid-template-columns: 1fr; gap: 9px; margin-top: 19px; }
+  .aerobic-summary-grid article { padding: 16px; }
+  .aerobic-chart-heading { align-items: flex-start; flex-direction: column; gap: 12px; margin-top: 24px; }
+  .aerobic-metric-switch { width: 100%; }
+  .aerobic-metric-switch button { flex: 1; min-width: 0; }
+  .aerobic-visual-layout { grid-template-columns: 1fr; gap: 10px; }
+  .aerobic-trend-chart { height: 300px; margin-inline: -8px; width: calc(100% + 16px); }
+  .aerobic-selected-run { padding: 16px; }
+  .aerobic-selected-run dl { grid-template-columns: 1fr 1fr; gap: 0 16px; margin: 14px 0; }
+  .aerobic-selected-run a { align-self: stretch; min-width: 0; }
+  .aerobic-chart-footer { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .aerobic-chart-footer small { text-align: left; }
   .run-history-card { grid-template-columns: minmax(0,1fr) auto; gap: 13px; padding: 16px 4px; }
   .run-history-date { grid-column: 1; }
   .run-history-distance { grid-column: 1; }
@@ -4392,7 +4445,10 @@ body {
 
 @media (max-width: 420px) {
   .runs-progress-page .runs-summary > span { min-width: 0; padding: 13px; font-size: 20px; }
-  .aerobic-comparison-strip { grid-template-columns: 1fr; }
+  .aerobic-panel-heading .runs-comparison-chip { white-space: normal; }
+  .aerobic-summary-grid article > strong { font-size: 27px; }
+  .aerobic-trend-chart { height: 280px; }
+  .aerobic-selected-run dl { grid-template-columns: 1fr; }
   .history-filter-switch { display: grid; grid-template-columns: 1fr 1fr; }
   .run-history-metrics { gap: 10px; }
   .run-history-metrics > span { min-width: calc(50% - 5px); }
@@ -4400,7 +4456,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .run-history-card, .runs-range-switch button, .history-filter-switch button, .run-analytics-tabs button, .weekly-progress-dot, .weekly-progress-metrics button { transition: none; }
+  .run-history-card, .runs-range-switch button, .history-filter-switch button, .run-analytics-tabs button, .weekly-progress-dot, .weekly-progress-metrics button, .aerobic-metric-switch button, .aerobic-trend-dot, .aerobic-selected-run a { transition: none; }
 }
 
 /* Recovery v3 — one decision, progressive disclosure, personal baselines */
