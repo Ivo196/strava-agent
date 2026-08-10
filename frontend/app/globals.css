@@ -4013,7 +4013,7 @@ body {
 @media (max-width: 720px) {
   .sidebar { display: none; }
   .main-content { margin-left: 0; padding-bottom: 76px; }
-  .mobile-nav { grid-template-columns: repeat(4, 1fr); padding: 8px 10px max(8px, env(safe-area-inset-bottom)); border-color: var(--line); background: rgba(7, 9, 8, .94); }
+  .mobile-nav { grid-template-columns: repeat(5, 1fr); padding: 8px 10px max(8px, env(safe-area-inset-bottom)); border-color: var(--line); background: rgba(7, 9, 8, .94); }
   .mobile-link { min-height: 50px; color: #707970; }
   .mobile-link.active { color: #edf2e9; }
   .mobile-link.active svg { color: var(--orange); }

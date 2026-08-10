@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CalendarDays, Footprints, HeartPulse, House, Settings } from "lucide-react";
+import { CalendarDays, CircleDashed, Footprints, HeartPulse, House, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { LiveDataRefresh } from "@/components/live-data-refresh";
 import { ChicagoMark } from "@/components/chicago-mark";
@@ -22,6 +22,7 @@ const navigation: NavigationItem[] = [
   { href: "/plan", label: "Calendario", icon: CalendarDays },
   { href: "/activities", label: "Carreras", icon: Footprints },
   { href: "/sleep", label: "Recuperación", mobileLabel: "Recuperar", icon: HeartPulse },
+  { href: "/coach", label: "Coach", icon: CircleDashed },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

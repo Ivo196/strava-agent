@@ -6,7 +6,6 @@ import {
   Bike,
   Check,
   ChevronRight,
-  CircleDashed,
   Clock3,
   Dumbbell,
   Footprints,
@@ -145,11 +144,6 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
         </div>
       </section>
 
-      <Link className="apex-coach-link" href="/coach">
-        <CircleDashed size={18} />
-        <span><strong>Coach</strong> · pregunta por tu sesión, carga o recuperación</span>
-        <ArrowRight size={16} />
-      </Link>
     </section>
   );
 }
