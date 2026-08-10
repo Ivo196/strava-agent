@@ -233,13 +233,6 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
     [recovery.factors],
   );
   const vitalFactors = recovery.factors.filter((factor) => factor.key !== "sleep");
-  const stages = [
-    { label: "Profundo", value: latestSleep?.deep_minutes ?? 0, className: "stage-deep" },
-    { label: "REM", value: latestSleep?.rem_minutes ?? 0, className: "stage-rem" },
-    { label: "Ligero", value: latestSleep?.light_minutes ?? 0, className: "stage-light" },
-    { label: "Despierto", value: latestSleep?.awake_minutes ?? 0, className: "stage-awake" },
-  ];
-  const stageTotal = stages.reduce((total, stage) => total + stage.value, 0);
   const sleepTrend = state.trends.sleep.map((item) => ({ date: item.date, value: item.hours }));
   const hrvTrend = state.trends.recovery.filter((item) => item.hrv != null).map((item) => ({ date: item.date, value: item.hrv! }));
   const restingTrend = state.trends.recovery.filter((item) => item.resting_hr != null).map((item) => ({ date: item.date, value: item.resting_hr! }));
@@ -324,29 +317,6 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
                   ))}
                 </tbody>
               </table>
-            </div>
-          </section>
-
-          <section className="sleep-architecture-v3" aria-labelledby="sleep-architecture-title">
-            <header>
-              <div><span className="eyebrow">Última noche</span><h2 id="sleep-architecture-title">Arquitectura del sueño</h2></div>
-              <time>{dateLabel(latestSleep?.date ?? null)}</time>
-            </header>
-            {stageTotal > 0 ? (
-              <>
-                <div className="sleep-architecture-track" aria-label={`Etapas del sueño: ${stages.map((stage) => `${stage.label} ${stage.value} minutos`).join(", ")}`}>
-                  {stages.map((stage) => <i key={stage.label} className={stage.className} style={{ width: `${stage.value / stageTotal * 100}%` }} />)}
-                </div>
-                <div className="sleep-architecture-legend">
-                  {stages.map((stage) => <span key={stage.label}><i className={stage.className} /><small>{stage.label}</small></span>)}
-                </div>
-              </>
-            ) : <p className="recovery-inline-empty">Fitbit todavía no envió las etapas de esta noche.</p>}
-            <div className="sleep-architecture-stats">
-              <span><small>Profundo</small><strong>{latestSleep?.deep_minutes ?? "—"}<b>{latestSleep?.deep_minutes != null ? " min" : ""}</b></strong></span>
-              <span><small>REM</small><strong>{latestSleep?.rem_minutes ?? "—"}<b>{latestSleep?.rem_minutes != null ? " min" : ""}</b></strong></span>
-              <span><small>Despierto</small><strong>{latestSleep?.awake_minutes ?? "—"}<b>{latestSleep?.awake_minutes != null ? " min" : ""}</b></strong></span>
-              <span><small>Eficiencia</small><strong>{latestSleep?.efficiency ?? "—"}<b>{latestSleep?.efficiency != null ? "%" : ""}</b></strong></span>
             </div>
           </section>
 

@@ -4424,7 +4424,7 @@ body {
 .recovery-v3-head h1 { margin: 6px 0 7px; }
 .recovery-v3-head p { max-width: 560px; color: #8fa1b7; font-size: 13px; }
 
-.recovery-gauge-panel, .recovery-summary-card, .recovery-vitals, .sleep-architecture-v3, .recovery-trend-card {
+.recovery-gauge-panel, .recovery-summary-card, .recovery-vitals, .recovery-trend-card {
   border: 1px solid rgba(120, 198, 255, .13);
   background: var(--recovery-card);
   box-shadow: 0 18px 50px rgba(0, 0, 0, .22), inset 0 1px rgba(255, 255, 255, .025);
@@ -4477,27 +4477,10 @@ body {
 .status-brake { color: var(--recovery-red); background: rgba(255, 113, 133, .08); }
 .status-neutral { color: #8ea0b6; background: rgba(148, 163, 184, .08); }
 
-.sleep-architecture-v3 { margin-top: 12px; padding: 24px; border-radius: 18px; }
-.sleep-architecture-v3 > header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
-.sleep-architecture-v3 h2 { margin: 5px 0 0; font-size: clamp(19px, 2.4vw, 27px); letter-spacing: -.025em; }
-.sleep-architecture-v3 time { color: #718399; font-size: 9px; }
-.sleep-architecture-track { display: flex; height: 15px; margin-top: 25px; overflow: hidden; border-radius: 999px; background: rgba(148, 163, 184, .1); }
-.sleep-architecture-track i { height: 100%; min-width: 2px; }
 .stage-deep { background: #5b8cff; }
 .stage-rem { background: #a98bff; }
 .stage-light { background: #78c6ff; }
 .stage-awake { background: #44546a; }
-.sleep-architecture-legend { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px; }
-.sleep-architecture-legend span { display: inline-flex; align-items: center; gap: 5px; color: #718399; }
-.sleep-architecture-legend span i { width: 7px; height: 7px; border-radius: 2px; }
-.sleep-architecture-legend small { font-size: 8px; }
-.sleep-architecture-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-top: 22px; overflow: hidden; border: 1px solid rgba(148, 163, 184, .1); border-radius: 10px; background: rgba(148, 163, 184, .1); }
-.sleep-architecture-stats > span { min-width: 0; padding: 14px; background: rgba(4, 10, 21, .72); }
-.sleep-architecture-stats small, .sleep-architecture-stats strong { display: block; }
-.sleep-architecture-stats small { color: #718399; font-size: 8px; text-transform: uppercase; }
-.sleep-architecture-stats strong { margin-top: 7px; color: #e7eef7; font: 650 17px "Fira Code", ui-monospace, monospace; }
-.sleep-architecture-stats strong b { color: #718399; font-size: 8px; font-weight: 500; }
-.recovery-inline-empty { margin: 22px 0 0; padding: 18px; color: #718399; border: 1px dashed rgba(148, 163, 184, .16); border-radius: 10px; font-size: 10px; text-align: center; }
 
 .recovery-trends-v3 { margin-top: 28px; }
 .recovery-range-toggle { display: inline-grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border: 1px solid rgba(148, 163, 184, .15); border-radius: 9px; background: rgba(3, 7, 18, .34); }
@@ -4531,7 +4514,6 @@ body {
   .recovery-main-value > strong { font-size: 50px; }
   .recovery-summary-card { padding: 17px; }
   .recovery-summary-card > strong { margin-top: 18px; font-size: 26px; }
-  .sleep-architecture-v3 { padding: 18px; }
   .recovery-section-heading { align-items: flex-start; flex-direction: column; gap: 9px; }
   .recovery-trend-grid-v3 { grid-template-columns: 1fr; }
   .recovery-vitals-table-wrap { overflow: visible; }
@@ -4544,7 +4526,6 @@ body {
   .recovery-vitals tbody th { margin-bottom: 3px; }
   .recovery-vitals tbody th span { grid-column: 1 / -1; }
   .recovery-vitals tbody td::before { content: attr(data-label); color: #66798f; font-size: 8px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
-  .sleep-architecture-stats { grid-template-columns: 1fr 1fr; }
   .recovery-trends-v3 { margin-top: 24px; }
   .recovery-trends-v3 .recovery-section-heading { flex-direction: row; align-items: flex-end; }
   .recovery-trends-v3 .recovery-section-heading h2 { max-width: 210px; font-size: 20px; }
@@ -4662,7 +4643,6 @@ body {
 .recovery-deep-dive-body { padding: 18px; }
 .recovery-vitals-static { margin-top: 0; padding: 20px; }
 .recovery-vitals-static .recovery-section-heading { margin-bottom: 12px; }
-.recovery-deep-dive .sleep-architecture-v3 { margin-top: 12px; }
 .recovery-deep-dive .recovery-trends-v3 { margin-top: 24px; }
 
 @media (hover: hover) and (pointer: fine) {
