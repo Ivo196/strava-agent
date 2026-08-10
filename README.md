@@ -1,199 +1,290 @@
 # PaceOS
 
-Plataforma local de running intelligence con Apple Health como fuente principal, análisis por actividad, recuperación, dinámica de carrera, plan fijo y Coach AI.
+**A private, self-hosted running dashboard powered by Apple Health, Apple Watch, Fitbit, and an optional AI coach.**
 
-Google Health complementa Apple Health con los datos de recuperación de Fitbit: sueño, HRV, frecuencia cardiaca en reposo, SpO₂, respiración, temperatura, zonas cardiacas y VO₂ máx.
+[Download the latest ZIP](https://github.com/Ivo196/strava-agent/archive/refs/heads/main.zip) · [Clone the repository](https://github.com/Ivo196/strava-agent.git)
 
-El repositorio contiene solamente el código. Las claves, la base de datos y los datos personales de salud quedan fuera de Git.
+PaceOS turns workout, recovery, and sleep data into a daily training view. It combines a Next.js dashboard with a FastAPI backend and stores everything in a local SQLite database. You can use the dashboard without cloud hosting and add each data source only when you need it.
 
-## Qué muestra
+> [!IMPORTANT]
+> PaceOS is currently a personal, single-user project. The interface and AI coach are in Spanish, and the bundled training plan is fixed around the 2026 Chicago Marathon. Despite the repository name, the current version does **not** connect to Strava.
 
-- Qué hacer hoy, mañana y pasado: carrera, fuerza, bicicleta o descanso.
-- La agenda integrada de los próximos siete días.
-- Volumen actual, promedio semanal y tirada más larga.
-- Evolución por semanas e historial de carreras.
-- Plan fijo hasta el 11 de octubre de 2026, separado del seguimiento real.
-- Coach AI con el contexto real del atleta.
+![PaceOS recovery dashboard](output/playwright/recovery-desktop-final.png)
 
-## Sincronización automática con Apple Health
+## What PaceOS does
 
-Health Auto Export puede enviar automáticamente los entrenamientos y las métricas de recuperación a:
+- Shows today's session and the next seven days of the training plan.
+- Tracks weekly distance, recent load, long runs, and running history.
+- Displays route, heart-rate, elevation, pace, and running-dynamics data for Apple Watch runs.
+- Combines sleep, HRV, resting heart rate, SpO2, respiration, temperature, heart-rate zones, and VO2 max into a recovery view.
+- Compares completed training with a fixed plan without silently rewriting that plan.
+- Provides an optional AI coach grounded in the athlete's local data.
+- Keeps secrets, health exports, and the SQLite database outside Git.
 
-```text
-POST https://tu-servidor/api/import/apple-health
-X-API-Key: la-clave-configurada-en-env
-Content-Type: application/json
+## How it works
+
+```mermaid
+flowchart LR
+    AW["Apple Watch + Apple Health"] --> HAE["Health Auto Export"]
+    HAE --> API["FastAPI · port 8000"]
+    FB["Fitbit"] --> GH["Google Health API"]
+    GH --> API
+    ZIP["Apple Health export.zip"] --> IMP["Local import script"]
+    IMP --> DB
+    API <--> DB["Local SQLite database"]
+    DB --> WEB["Next.js dashboard"]
+    DB --> CTX["Aggregated coach context"]
+    CTX -. optional .-> OAI["OpenAI API"]
+    OAI -. response .-> WEB
 ```
 
-Configura `APPLE_HEALTH_API_KEY` en `.env` antes de iniciar la API. El receptor acepta el formato JSON v2 de Health Auto Export y es idempotente para las tres automatizaciones aunque cada una reenvíe los siete días anteriores cada hora:
+Apple Health is the primary workout source. Google Health complements it with Fitbit recovery data. The API normalizes and deduplicates incoming records before the dashboard reads them from SQLite.
 
-- **Chicago Workouts** deduplica por identificador y también por la combinación tipo/inicio/fin.
-- **Chicago Recovery** deduplica cada muestra por métrica/instante/origen.
-- **Chicago Running Dynamic** aplica la misma identidad estable a potencia, velocidad, contacto con el suelo, zancada y oscilación vertical.
+## Quick start
 
-Las fechas equivalentes con otra zona o formato y las diferencias de espacios Unicode en el nombre del origen se consideran el mismo dato. Si una muestra corregida vuelve a llegar, se actualiza la fila existente. El receptor conserva:
+### 1. Requirements
 
-- Solamente carreras con origen Apple Watch explícito, con distancia, duración, frecuencia cardiaca, elevación y recorrido. Las carreras Fitbit, Strava, Nike Run Club o de origen desconocido se descartan.
-- Sueño, HRV, frecuencia cardiaca en reposo, peso, pasos y demás métricas enviadas.
-- Otros entrenamientos, incluidos fuerza, bicicleta y caminata de Fitbit, para análisis posterior.
+- Git, unless you use the ZIP download.
+- Python 3.11 or newer.
+- Node.js 20 or newer with npm.
+- macOS, Linux, or Raspberry Pi: Bash and `curl`.
+- Windows: PowerShell 5 or newer.
 
-Se recomiendan dos automatizaciones:
+The setup scripts install project dependencies, but they do not install Python, Node.js, Git, or other system packages.
 
-1. **PaceOS · Workouts**: `Workouts`, JSON v2, rutas y métricas incluidas, agrupación por minutos.
-2. **PaceOS · Recovery**: `Health Metrics`, JSON v2, sueño agregado y agrupación diaria.
+### 2. Download the project
 
-Activa `Batch Requests` y utiliza `X-API-Key` como encabezado. La Raspberry debe tener una URL alcanzable desde el iPhone; para acceso fuera de la red local utiliza HTTPS.
-
-Mantén activada la opción `Include Workout Metrics`: Health Auto Export expone el origen en las muestras adjuntas al entrenamiento y PaceOS descarta de forma segura cualquier carrera cuyo origen no pueda demostrar que es Apple Watch.
-
-El ZIP oficial de Apple Health sirve para cargar el historial inicial. La importación ZIP se añadirá separadamente para no mezclarla con los envíos automáticos.
-
-## Google Health y Fitbit
-
-Registra un cliente web en Google Cloud con Google Health API y agrega este callback:
-
-```text
-http://localhost:8000/api/google-health/callback
-```
-
-Descarga el JSON del cliente en `data/google-health-client.json`. Esa carpeta está excluida de Git. En **Datos**, pulsa **Conectar con Google** y autoriza los permisos de solo lectura. La primera conexión carga el historial reciente y las siguientes sincronizaciones actualizan solamente la base local.
-
-## Coach AI
-
-El Coach AI recibe métricas agregadas, perfil, molestias, carreras recientes y próximas semanas. No envía rutas GPS ni el ZIP. Se activa en `.env`:
-
-```text
-OPENAI_API_KEY=tu_clave_privada
-OPENAI_MODEL=gpt-5.6-luna
-APPLE_HEALTH_API_KEY=una_clave_larga_y_aleatoria
-```
-
-La API de OpenAI se factura por separado y la clave permanece en el backend local.
-
-## Instalación reproducible
-
-El repositorio es público y no requiere una credencial de GitHub para clonarlo:
-
-```text
-https://github.com/Ivo196/strava-agent
-```
-
-### Requisitos
-
-- Git.
-- Python 3.11 o superior.
-- Node.js 20 o superior con npm.
-- Windows PowerShell 5+ o Linux/macOS/Raspberry Pi con Bash y `curl`.
-
-### Windows
-
-En PowerShell:
-
-```powershell
-git clone https://github.com/Ivo196/strava-agent.git
-Set-Location strava-agent
-powershell -ExecutionPolicy Bypass -File ./setup.ps1
-powershell -ExecutionPolicy Bypass -File ./start.ps1
-```
-
-Abre <http://localhost:3100>. Para detenerlo:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File ./stop.ps1
-```
-
-### Linux, macOS o Raspberry Pi
+Choose one option:
 
 ```bash
+# Option A: clone with Git
 git clone https://github.com/Ivo196/strava-agent.git
 cd strava-agent
+```
+
+Or [download the repository as a ZIP](https://github.com/Ivo196/strava-agent/archive/refs/heads/main.zip), extract it, and open a terminal in the extracted folder.
+
+### 3. Install and start
+
+#### macOS, Linux, or Raspberry Pi
+
+```bash
 ./setup.sh
 ./start.sh
 ```
 
-Abre `http://IP-DEL-EQUIPO:3100`. Para detenerlo:
+Open <http://localhost:3000>. From another device on the same network, use `http://DEVICE-IP:3000`.
+
+Stop PaceOS with:
 
 ```bash
 ./stop.sh
 ```
 
-Los scripts:
+#### Windows
 
-- crean el entorno virtual;
-- instalan backend y frontend;
-- compilan Next.js en modo producción;
-- crean `.env` con una clave aleatoria para Health Auto Export;
-- arrancan API en el puerto `8000` y web en el `3000`;
-- guardan PID y logs locales en `.run/`, que está fuera de Git.
-
-## Despliegue automático en Raspberry Pi
-
-La Raspberry de producción puede registrarse como runner propio de GitHub con
-la etiqueta `paceos`. Cada `push` a `main` ejecuta
-`.github/workflows/deploy-raspberry.yml`, que llama a
-`/home/ivo196/bin/deploy-paceos.sh`. Este lanzador actualiza el checkout
-persistente y entrega el control a `scripts/deploy_raspberry.sh`.
-
-El despliegue solamente acepta avances rápidos y se detiene si detecta cambios
-locales en archivos versionados. Conserva `.env`, `data/` y `cloudflared.yml`,
-instala dependencias, comprueba TypeScript, compila el frontend, reinicia los
-servicios de usuario y valida la API y la web. Los workflows de pull requests
-no deben usar este runner porque tiene acceso directo al servidor.
-
-Para activar Coach AI, completa `OPENAI_API_KEY` dentro de `.env` antes de arrancar. La aplicación funciona sin esa clave; solamente el chat estará desactivado.
-
-## Qué configurar después de instalar
-
-### Instalación limpia
-
-1. Abre `.env` y, si quieres Coach AI, agrega `OPENAI_API_KEY`.
-2. Copia el valor local de `APPLE_HEALTH_API_KEY` en el encabezado `X-API-Key` de las automatizaciones de Health Auto Export.
-3. Cambia la URL de esas automatizaciones a `http://IP-DEL-EQUIPO:8000/api/import/apple-health`.
-4. Copia el JSON OAuth de Google en `data/google-health-client.json`.
-5. En Google Cloud agrega como redirect URI `http://localhost:8000/api/google-health/callback` para uso en la misma computadora.
-6. Abre **Datos** y conecta Fitbit/Google Health.
-
-La base nueva se crea en `data/strava_agent.db`. Apple Health y Fitbit volverán a poblarla al sincronizar.
-
-### Migrar exactamente esta instalación
-
-GitHub no contiene datos médicos ni secretos. Para conservar el historial y las conexiones actuales, copia por un canal privado desde la máquina anterior:
-
-- `.env`
-- la carpeta `data/`
-
-Colócalos en la raíz del repositorio nuevo **después de clonarlo y antes de arrancar**. Nunca los agregues a Git, a un issue o a un mensaje público.
-
-## Uso con OpenClaw
-
-OpenClaw necesita acceso a la herramienta de shell/`exec`, Git y salida de red hacia GitHub. El repositorio es público, por lo que no necesita token.
-
-Mensaje recomendado para OpenClaw en Windows:
-
-```text
-Clona https://github.com/Ivo196/strava-agent.git en una carpeta local llamada paceos.
-Lee el README completo. Comprueba Git, Python 3.11+ y Node.js 20+.
-En Windows ejecuta setup.ps1 y start.ps1 con ExecutionPolicy Bypass.
-En Linux/Raspberry ejecuta setup.sh y start.sh. No publiques ni confirmes en Git .env,
-data/, credenciales, tokens ni archivos de salud. Verifica que respondan
-http://127.0.0.1:8000/api/health y http://127.0.0.1:3100.
-Al terminar, dime la ruta de instalación, la URL local y qué configuración
-manual falta para Apple Health, Google Health y Coach AI.
-```
-
-En Linux/Raspberry reemplaza `setup.ps1` y `start.ps1` por `setup.sh` y `start.sh`.
-
-OpenClaw no debe inventar claves ni pedirte que las pegues en el chat. Puede generar la instalación limpia; las credenciales privadas se agregan localmente.
-
-## Verificación
+Run these commands from PowerShell:
 
 ```powershell
-./.venv/Scripts/python.exe -m pytest -q --basetemp "$env:USERPROFILE/codex-pytest-paceos" -p no:cacheprovider
-Set-Location frontend
-npm run lint
-npm run build
+powershell -ExecutionPolicy Bypass -File ./setup.ps1
+powershell -ExecutionPolicy Bypass -File ./start.ps1
 ```
 
-## Alcance deportivo
+Open <http://localhost:3100>.
 
-La carga es una referencia para comparar semanas, no una predicción de lesión. La app no modifica el calendario automáticamente; ante dolor o enfermedad, detén la sesión y busca orientación profesional. No sustituye una evaluación médica.
+Stop PaceOS with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ./stop.ps1
+```
+
+The first setup can take several minutes because it creates a Python virtual environment, installs the backend and frontend dependencies, and builds the production frontend.
+
+### 4. Verify the installation
+
+The dashboard starts with an empty local database, so seeing no activities on the first run is expected.
+
+- Dashboard: <http://localhost:3000> on macOS/Linux/Raspberry Pi or <http://localhost:3100> on Windows.
+- API health check: <http://localhost:8000/api/health>.
+- Interactive API documentation: <http://localhost:8000/docs>.
+
+The health endpoint should return:
+
+```json
+{"status":"ok"}
+```
+
+## Add your data
+
+All integrations are optional. You can start PaceOS first and configure them later.
+
+### Import an existing Apple Health export
+
+Apple Health can create an `export.zip` containing your historical data. After running the setup script, import it while PaceOS is stopped.
+
+On macOS, Linux, or Raspberry Pi:
+
+```bash
+./.venv/bin/python scripts/import_apple_health_export.py /path/to/export.zip
+```
+
+On Windows:
+
+```powershell
+./.venv/Scripts/python.exe scripts/import_apple_health_export.py "C:\path\to\export.zip"
+```
+
+The importer reads the archive directly; you do not need to extract it. Large Apple Health exports may take a while to process.
+
+### Sync Apple Health automatically
+
+[Health Auto Export](https://www.healthexportapp.com/) can send new workouts and recovery metrics from an iPhone to PaceOS.
+
+The setup script creates `.env` and generates a random `APPLE_HEALTH_API_KEY`. Use that value as the `X-API-Key` header in Health Auto Export, then send JSON v2 requests to:
+
+```text
+POST http://DEVICE-IP:8000/api/import/apple-health
+X-API-Key: YOUR_APPLE_HEALTH_API_KEY
+Content-Type: application/json
+```
+
+Recommended automations:
+
+1. **Workouts** — include workout metrics and routes; group by minutes.
+2. **Health Metrics** — use aggregated sleep and daily grouping.
+
+Enable batch requests and resend a short rolling window, such as the previous seven days. The receiver is idempotent: repeated samples are updated or ignored instead of being duplicated.
+
+For running activities, PaceOS only accepts records whose source can be identified as Apple Watch. Other workout types can still be stored for later analysis. If the iPhone connects from outside your home network, expose the endpoint through HTTPS and protect the API key.
+
+### Connect Fitbit through Google Health
+
+1. Create a Google OAuth web client with access to the Google Health API.
+2. Add this exact redirect URI for a local installation:
+
+   ```text
+   http://localhost:8000/api/google-health/callback
+   ```
+
+3. Download the OAuth client JSON and save it as `data/google-health-client.json`.
+4. On macOS, Linux, or Raspberry Pi, set `PACEOS_FRONTEND_URL=http://localhost:3000` in `.env`. Windows already uses the default port `3100`.
+5. Restart PaceOS.
+6. Open **Settings** (`Ajustes` in the current Spanish interface) and select **Connect with Google** (`Conectar con Google`).
+
+The first connection imports recent history. Later syncs update the local database incrementally, and the backend checks for new Google Health data automatically.
+
+This local OAuth example assumes the browser and PaceOS run on the same computer. A headless or remotely accessed Raspberry Pi needs a routable HTTPS callback configured both in Google Cloud and in the downloaded OAuth client JSON.
+
+### Enable Coach AI
+
+Coach AI is disabled unless you provide an OpenAI API key. Edit `.env` and restart PaceOS:
+
+```dotenv
+OPENAI_API_KEY=your_private_api_key
+OPENAI_MODEL=gpt-5.6-luna
+```
+
+OpenAI API usage is billed separately. PaceOS sends an aggregated coaching context—profile, recovery metrics, recent activity summaries, discomfort notes, and upcoming plan weeks. It does not send the Apple Health ZIP or GPS routes.
+
+## Configuration
+
+The setup script copies `.env.example` to `.env` and generates the Apple Health receiver key. Existing `.env` files are never overwritten.
+
+| Variable | Required | Purpose | Default |
+| --- | --- | --- | --- |
+| `APPLE_HEALTH_API_KEY` | For automatic Apple Health sync | Authenticates Health Auto Export requests | Randomly generated during setup |
+| `OPENAI_API_KEY` | For Coach AI | Authenticates backend requests to OpenAI | Empty; Coach AI disabled |
+| `OPENAI_MODEL` | No | Selects the model used by Coach AI | `gpt-5.6-luna` |
+| `GOOGLE_HEALTH_CREDENTIALS_FILE` | For Google Health | Path to the Google OAuth client JSON | `data/google-health-client.json` |
+| `PACEOS_FRONTEND_URL` | No | Redirect target after Google authorization | `http://localhost:3100` |
+
+If you run the macOS/Linux frontend on port `3000` and connect Google Health, set `PACEOS_FRONTEND_URL=http://localhost:3000` in `.env` before authorizing.
+
+## Ports and local files
+
+| Item | Location |
+| --- | --- |
+| FastAPI backend | `http://localhost:8000` |
+| Next.js frontend on macOS/Linux/Raspberry Pi | `http://localhost:3000` |
+| Next.js frontend on Windows | `http://localhost:3100` |
+| SQLite database | `data/strava_agent.db` |
+| Runtime logs and process IDs | `.run/` |
+| Google OAuth client | `data/google-health-client.json` |
+| Local secrets | `.env` |
+
+The `data/`, `.run/`, and `.env` paths are ignored by Git.
+
+## Privacy and security
+
+- Health records, OAuth tokens, and API keys are stored locally and excluded from the repository.
+- Google Health data is requested with read-only scopes.
+- OpenAI receives data only when Coach AI is enabled and used.
+- Do not commit or share `.env`, `data/`, health export ZIPs, FIT/GPX files, or `cloudflared.yml`.
+- Back up `.env` and `data/` privately if you move PaceOS to another computer.
+
+To migrate an existing installation, clone PaceOS on the new machine, copy `.env` and the complete `data/` folder through a private channel, run the appropriate setup script, and then start the app.
+
+## Development
+
+Install everything with the normal setup script, then run the services in separate terminals.
+
+Backend:
+
+```bash
+./.venv/bin/python -m uvicorn api:app --reload --port 8000
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm run dev -- --port 3000
+```
+
+Run the checks:
+
+```bash
+./.venv/bin/python -m pytest -q
+npm --prefix frontend run lint
+npm --prefix frontend run build
+```
+
+After pulling new code for a production-style local installation, run `./setup.sh` or `./setup.ps1` again so dependencies and the frontend build stay current.
+
+## Project structure
+
+```text
+.
+├── api.py                         # FastAPI routes
+├── src/strava_agent/              # Imports, storage, metrics, plan, and AI coach
+├── frontend/                      # Next.js application
+├── scripts/import_apple_health_export.py
+├── tests/                         # Backend tests
+├── setup.sh / setup.ps1           # Installation
+├── start.sh / start.ps1           # Start local services
+└── stop.sh / stop.ps1             # Stop local services
+```
+
+## Raspberry Pi deployment
+
+The repository includes a deployment workflow for the maintainer's self-hosted Raspberry Pi runner. It triggers on pushes to `main` and expects the runner label `paceos`, the checkout path `/home/ivo196/.openclaw/workspace/strava-agent`, and user-level systemd services named `strava-agent-api.service` and `strava-agent-web.service`.
+
+This workflow is installation-specific. Forks should adapt or disable `.github/workflows/deploy-raspberry.yml` and `scripts/deploy_raspberry.sh` before using them.
+
+## Current limitations
+
+- The product interface and coach responses are in Spanish.
+- The included training calendar is a fixed personal plan for the Chicago Marathon on October 11, 2026; it is not a general plan generator.
+- The app is designed for one trusted user, not for public multi-user hosting.
+- Apple Watch is the accepted source for runs shown in the dashboard.
+- There is no Strava API integration in the current version.
+
+Training load and recovery scores are reference signals, not medical advice or injury predictions. Stop training and seek qualified medical care for severe or persistent pain, chest pain, fainting, or unusual shortness of breath.
+
+## Troubleshooting
+
+- **The app does not start:** check `.run/api.err.log` and `.run/web.err.log`.
+- **A port is already in use:** stop the process using port `8000`, `3000`, or `3100`, then run the start script again.
+- **The dashboard is empty:** import an Apple Health export or configure Health Auto Export; a fresh database contains no activities.
+- **Coach AI is unavailable:** add `OPENAI_API_KEY` to `.env` and restart both services.
+- **Google authorization returns to the wrong port:** set `PACEOS_FRONTEND_URL` to the exact dashboard URL, restart PaceOS, and authorize again.
