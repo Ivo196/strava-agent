@@ -377,6 +377,43 @@ def test_recovery_guidance_limits_training_when_activation_is_high() -> None:
     assert "activación fisiológica" in guidance["body"]
 
 
+def test_weekly_load_never_claims_training_happened_today() -> None:
+    guidance = api._recovery_guidance(
+        recovery_score=74,
+        activation_score=38,
+        sleep_hours=8.8,
+        sleep_goal=8,
+        sleep_debt=0,
+        load={"current_today": 0, "target_max": 20, "risk": "Alto"},
+        confidence="Alta",
+        factors=[],
+    )
+
+    assert guidance["level"] == "limit"
+    assert guidance["title"] == "Protege la próxima sesión"
+    assert guidance["body"].startswith("Hoy no hay entrenamiento registrado")
+    assert guidance["reasons"] == ["Carga semanal por encima de tu base"]
+
+
+def test_daily_movement_is_not_counted_as_training_load() -> None:
+    load = api._aggregate_load_7d(
+        [],
+        {
+            "exercises": [],
+            "daily_activity": {"days": [{
+                "date": "2026-08-09",
+                "zone_minutes": 24,
+                "active_minutes": 35,
+            }]},
+        },
+        date(2026, 8, 9),
+    )
+
+    assert load["total"] == 0
+    assert load["history"][-1] == {"date": "2026-08-09", "total": 0}
+    assert load["trend"][-1]["total"] == 0
+
+
 def test_fitbit_insights_load_the_full_recent_heart_rate_window(monkeypatch: pytest.MonkeyPatch) -> None:
     start = datetime(2026, 8, 1, 6, tzinfo=UTC)
     heart_rows = []

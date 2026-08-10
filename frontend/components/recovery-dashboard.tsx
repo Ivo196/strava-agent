@@ -123,13 +123,16 @@ function SummaryCard({
   );
 }
 
-function FactorItem({ factor, impact }: { factor: RecoveryFactor; impact: "help" | "brake" }) {
+function KeySignalItem({ factor }: { factor: RecoveryFactor }) {
+  const isBrake = factor.impact === "brake";
   return (
-    <li>
+    <li className={isBrake ? "signal-brake" : "signal-help"}>
       <span className="recovery-factor-icon">{factorIcon(factor.key)}</span>
-      <div><strong>{factor.label}</strong><small>{factor.status_label}</small></div>
-      <b>{factor.difference_text}</b>
-      {impact === "help" ? <TrendingUp aria-hidden="true" /> : <TrendingDown aria-hidden="true" />}
+      <div><strong>{factor.label}</strong><small>{factor.difference_text}</small></div>
+      <span className="recovery-signal-status">
+        {isBrake ? <TrendingDown aria-hidden="true" /> : <TrendingUp aria-hidden="true" />}
+        {isBrake ? "Atención" : "A favor"}
+      </span>
     </li>
   );
 }
@@ -217,6 +220,7 @@ function TrendCard({
 
 export function RecoveryDashboard({ data }: { data: DashboardData }) {
   const [range, setRange] = useState<RangeDays>(7);
+  const [showDetails, setShowDetails] = useState(false);
   const state = data.daily_state;
   const recovery = state.morning_recovery;
   const activation = state.physiological_stress;
@@ -226,6 +230,7 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
   const sleepHours = latestSleep?.hours ?? recovery.sleep_hours ?? sleep.average_hours;
   const sleepProgress = sleepHours == null ? 0 : sleepHours / sleep.goal_hours * 100;
   const groups = groupRecoveryFactors(recovery.factors);
+  const highlightedFactors = [...groups.braking, ...groups.helping];
   const factorsByKey = useMemo(
     () => Object.fromEntries(recovery.factors.map((factor) => [factor.key, factor])) as Partial<Record<RecoveryFactor["key"], RecoveryFactor>>,
     [recovery.factors],
@@ -242,7 +247,8 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
   const hrvTrend = state.trends.recovery.filter((item) => item.hrv != null).map((item) => ({ date: item.date, value: item.hrv! }));
   const restingTrend = state.trends.recovery.filter((item) => item.resting_hr != null).map((item) => ({ date: item.date, value: item.resting_hr! }));
   const loadTrend = state.trends.load.map((item) => ({ date: item.date, value: item.total }));
-  const loadProgress = load.target_max > 0 ? load.current_today / load.target_max * 100 : 0;
+  const hasTrainingToday = state.today_load.activities_count > 0 || load.current_today > 0;
+  const loadProgress = hasTrainingToday && load.target_max > 0 ? load.current_today / load.target_max * 100 : 0;
   const confidenceNeedsExplanation = state.confidence.level !== "Alta";
 
   return (
@@ -296,92 +302,100 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
         </SummaryCard>
         <SummaryCard
           icon={<Gauge aria-hidden="true" />}
-          title="Carga de entrenamiento"
-          value={`${load.current_today.toLocaleString("es-ES", { maximumFractionDigits: 1 })} pts`}
-          status={load.today_status}
-          tone={loadTone(load.today_status)}
+          title="Entrenamiento hoy"
+          value={hasTrainingToday ? `${load.current_today.toLocaleString("es-ES", { maximumFractionDigits: 1 })} pts` : "Sin sesión"}
+          status={hasTrainingToday ? load.today_status : "Descanso"}
+          tone={hasTrainingToday ? loadTone(load.today_status) : "neutral"}
           progress={loadProgress}
         >
-          Rango de hoy {load.target_min}–{load.target_max} pts
+          {hasTrainingToday
+            ? `Rango orientativo ${load.target_min}–${load.target_max} pts`
+            : "La actividad cotidiana no cuenta como entrenamiento."}
         </SummaryCard>
       </section>
 
-      <section className="recovery-factors-section" aria-labelledby="recovery-factors-title">
-        <div className="recovery-section-heading">
-          <div><span className="eyebrow">Base personal</span><h2 id="recovery-factors-title">Qué está ayudando o frenando</h2></div>
-          {groups.neutral.length > 0 && <small>{groups.neutral.length} {groups.neutral.length === 1 ? "señal" : "señales"} cerca de tu base</small>}
-        </div>
-        <div className="recovery-factor-columns">
-          <article className="factor-column factor-help">
-            <header><TrendingUp aria-hidden="true" /><span>Ayuda</span><b>{groups.helping.length}</b></header>
-            {groups.helping.length ? <ul>{groups.helping.map((factor) => <FactorItem key={factor.key} factor={factor} impact="help" />)}</ul> : <p>Hoy no hay señales claramente favorables.</p>}
-          </article>
-          <article className="factor-column factor-brake">
-            <header><TrendingDown aria-hidden="true" /><span>Frena</span><b>{groups.braking.length}</b></header>
-            {groups.braking.length ? <ul>{groups.braking.map((factor) => <FactorItem key={factor.key} factor={factor} impact="brake" />)}</ul> : <p>No hay frenos claros frente a tu base.</p>}
-          </article>
-        </div>
-      </section>
-
-      <details className="recovery-vitals">
-        <summary><span><HeartPulse aria-hidden="true" /> Ver señales vitales</span><ChevronDown aria-hidden="true" /></summary>
-        <div className="recovery-vitals-table-wrap">
-          <table>
-            <thead><tr><th>Señal</th><th>Hoy</th><th>Base</th><th>Diferencia</th><th>Estado</th></tr></thead>
-            <tbody>
-              {vitalFactors.map((factor) => (
-                <tr key={factor.key}>
-                  <th scope="row" aria-label={factor.label}><span>{factorIcon(factor.key)}{factor.label}</span></th>
-                  <td data-label="Hoy">{formatMetric(factor.numeric_value, factor.unit)}</td>
-                  <td data-label="Base">{factor.baseline == null ? "Construyendo" : formatMetric(factor.baseline, factor.unit)}</td>
-                  <td data-label="Diferencia">{factor.difference_text}</td>
-                  <td data-label="Estado"><b className={`factor-status status-${factor.impact}`}>{factor.status_label}</b></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
-
-      <section className="sleep-architecture-v3" aria-labelledby="sleep-architecture-title">
-        <header>
-          <div><span className="eyebrow">Última noche</span><h2 id="sleep-architecture-title">Arquitectura del sueño</h2></div>
-          <time>{dateLabel(latestSleep?.date ?? null)}</time>
-        </header>
-        {stageTotal > 0 ? (
-          <>
-            <div className="sleep-architecture-track" aria-label={`Etapas del sueño: ${stages.map((stage) => `${stage.label} ${stage.value} minutos`).join(", ")}`}>
-              {stages.map((stage) => <i key={stage.label} className={stage.className} style={{ width: `${stage.value / stageTotal * 100}%` }} />)}
-            </div>
-            <div className="sleep-architecture-legend">
-              {stages.map((stage) => <span key={stage.label}><i className={stage.className} /><small>{stage.label}</small></span>)}
-            </div>
-          </>
-        ) : <p className="recovery-inline-empty">Fitbit todavía no envió las etapas de esta noche.</p>}
-        <div className="sleep-architecture-stats">
-          <span><small>Profundo</small><strong>{latestSleep?.deep_minutes ?? "—"}<b>{latestSleep?.deep_minutes != null ? " min" : ""}</b></strong></span>
-          <span><small>REM</small><strong>{latestSleep?.rem_minutes ?? "—"}<b>{latestSleep?.rem_minutes != null ? " min" : ""}</b></strong></span>
-          <span><small>Despierto</small><strong>{latestSleep?.awake_minutes ?? "—"}<b>{latestSleep?.awake_minutes != null ? " min" : ""}</b></strong></span>
-          <span><small>Eficiencia</small><strong>{latestSleep?.efficiency ?? "—"}<b>{latestSleep?.efficiency != null ? "%" : ""}</b></strong></span>
-        </div>
-      </section>
-
-      <section className="recovery-trends-v3" aria-labelledby="recovery-trends-title">
-        <div className="recovery-section-heading">
-          <div><span className="eyebrow">Tendencias</span><h2 id="recovery-trends-title">Mira la dirección, no un solo día</h2></div>
-          <div className="recovery-range-toggle" aria-label="Rango de las tendencias">
-            {([7, 28] as RangeDays[]).map((days) => (
-              <button key={days} type="button" className={range === days ? "active" : ""} aria-pressed={range === days} onClick={() => setRange(days)}>{days} días</button>
-            ))}
+      {highlightedFactors.length > 0 && (
+        <section className="recovery-key-signals" aria-labelledby="recovery-signals-title">
+          <div className="recovery-section-heading">
+            <div><span className="eyebrow">Comparado con tu base</span><h2 id="recovery-signals-title">Qué explica tu recuperación</h2></div>
+            <small>
+              {groups.braking.length > 0 ? `${groups.braking.length} en atención` : "Sin alertas"}
+              {groups.helping.length > 0 ? ` · ${groups.helping.length} a favor` : ""}
+            </small>
           </div>
-        </div>
-        <div className="recovery-trend-grid-v3">
-          <TrendCard title="Sueño" unit="h" color="#a98bff" items={sleepTrend} range={range} baseline={sleep.goal_hours} />
-          <TrendCard title="HRV" unit="ms" color="#24c8f2" items={hrvTrend} range={range} baseline={factorsByKey.hrv?.baseline} />
-          <TrendCard title="Pulso en reposo" unit="bpm" color="#78c6ff" items={restingTrend} range={range} baseline={factorsByKey.resting_hr?.baseline} />
-          <TrendCard title="Carga" unit="pts" color="#5b8cff" items={loadTrend} range={range} baseline={load.baseline == null ? null : load.baseline / 7} normalMin={load.target_min} normalMax={load.target_max} />
-        </div>
-      </section>
+          <ul>{highlightedFactors.map((factor) => <KeySignalItem key={factor.key} factor={factor} />)}</ul>
+        </section>
+      )}
+
+      <details className="recovery-deep-dive" onToggle={(event) => setShowDetails(event.currentTarget.open)}>
+        <summary>
+          <span><HeartPulse aria-hidden="true" /><b>Ver sueño, señales vitales y tendencias</b><small>Detalle opcional</small></span>
+          <ChevronDown aria-hidden="true" />
+        </summary>
+        {showDetails && <div className="recovery-deep-dive-body">
+          <section className="recovery-vitals recovery-vitals-static" aria-labelledby="recovery-vitals-title">
+            <div className="recovery-section-heading">
+              <div><span className="eyebrow">Base personal</span><h2 id="recovery-vitals-title">Señales vitales</h2></div>
+            </div>
+            <div className="recovery-vitals-table-wrap">
+              <table>
+                <thead><tr><th>Señal</th><th>Hoy</th><th>Base</th><th>Diferencia</th><th>Estado</th></tr></thead>
+                <tbody>
+                  {vitalFactors.map((factor) => (
+                    <tr key={factor.key}>
+                      <th scope="row" aria-label={factor.label}><span>{factorIcon(factor.key)}{factor.label}</span></th>
+                      <td data-label="Hoy">{formatMetric(factor.numeric_value, factor.unit)}</td>
+                      <td data-label="Base">{factor.baseline == null ? "Construyendo" : formatMetric(factor.baseline, factor.unit)}</td>
+                      <td data-label="Diferencia">{factor.difference_text}</td>
+                      <td data-label="Estado"><b className={`factor-status status-${factor.impact}`}>{factor.status_label}</b></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="sleep-architecture-v3" aria-labelledby="sleep-architecture-title">
+            <header>
+              <div><span className="eyebrow">Última noche</span><h2 id="sleep-architecture-title">Arquitectura del sueño</h2></div>
+              <time>{dateLabel(latestSleep?.date ?? null)}</time>
+            </header>
+            {stageTotal > 0 ? (
+              <>
+                <div className="sleep-architecture-track" aria-label={`Etapas del sueño: ${stages.map((stage) => `${stage.label} ${stage.value} minutos`).join(", ")}`}>
+                  {stages.map((stage) => <i key={stage.label} className={stage.className} style={{ width: `${stage.value / stageTotal * 100}%` }} />)}
+                </div>
+                <div className="sleep-architecture-legend">
+                  {stages.map((stage) => <span key={stage.label}><i className={stage.className} /><small>{stage.label}</small></span>)}
+                </div>
+              </>
+            ) : <p className="recovery-inline-empty">Fitbit todavía no envió las etapas de esta noche.</p>}
+            <div className="sleep-architecture-stats">
+              <span><small>Profundo</small><strong>{latestSleep?.deep_minutes ?? "—"}<b>{latestSleep?.deep_minutes != null ? " min" : ""}</b></strong></span>
+              <span><small>REM</small><strong>{latestSleep?.rem_minutes ?? "—"}<b>{latestSleep?.rem_minutes != null ? " min" : ""}</b></strong></span>
+              <span><small>Despierto</small><strong>{latestSleep?.awake_minutes ?? "—"}<b>{latestSleep?.awake_minutes != null ? " min" : ""}</b></strong></span>
+              <span><small>Eficiencia</small><strong>{latestSleep?.efficiency ?? "—"}<b>{latestSleep?.efficiency != null ? "%" : ""}</b></strong></span>
+            </div>
+          </section>
+
+          <section className="recovery-trends-v3" aria-labelledby="recovery-trends-title">
+            <div className="recovery-section-heading">
+              <div><span className="eyebrow">Tendencias</span><h2 id="recovery-trends-title">Mira la dirección, no un solo día</h2></div>
+              <div className="recovery-range-toggle" aria-label="Rango de las tendencias">
+                {([7, 28] as RangeDays[]).map((days) => (
+                  <button key={days} type="button" className={range === days ? "active" : ""} aria-pressed={range === days} onClick={() => setRange(days)}>{days} días</button>
+                ))}
+              </div>
+            </div>
+            <div className="recovery-trend-grid-v3">
+              <TrendCard title="Sueño" unit="h" color="#a98bff" items={sleepTrend} range={range} baseline={sleep.goal_hours} />
+              <TrendCard title="HRV" unit="ms" color="#24c8f2" items={hrvTrend} range={range} baseline={factorsByKey.hrv?.baseline} />
+              <TrendCard title="Pulso en reposo" unit="bpm" color="#78c6ff" items={restingTrend} range={range} baseline={factorsByKey.resting_hr?.baseline} />
+              <TrendCard title="Carga" unit="pts" color="#5b8cff" items={loadTrend} range={range} baseline={load.baseline == null ? null : load.baseline / 7} normalMin={load.target_min} normalMax={load.target_max} />
+            </div>
+          </section>
+        </div>}
+      </details>
     </div>
   );
 }

@@ -1881,7 +1881,8 @@ def _recovery_guidance(
     ][:2]
     current_load = float(load.get("current_today") or 0)
     target_max = float(load.get("target_max") or 0)
-    load_high = bool(target_max and current_load > target_max) or load.get("risk") == "Alto"
+    today_load_high = bool(target_max and current_load > target_max)
+    weekly_load_high = load.get("risk") == "Alto"
     activation_high = activation_score is not None and activation_score >= 65
     sleep_low = sleep_hours is not None and sleep_hours < max(6, sleep_goal - 1.5)
     debt_high = sleep_debt is not None and sleep_debt >= 5
@@ -1893,12 +1894,25 @@ def _recovery_guidance(
             "body": "Aún faltan señales comparables. Mantén la sesión flexible y usa tus sensaciones para ajustar la intensidad.",
             "reasons": reasons,
         }
-    if load_high:
+    if today_load_high:
         return {
             "level": "limit",
-            "title": "La carga de hoy ya es suficiente",
-            "body": "Evita añadir intensidad. Prioriza comida, hidratación y movimiento suave para absorber la carga registrada.",
-            "reasons": reasons or ["Carga por encima del rango recomendado"],
+            "title": "El entrenamiento de hoy ya suma suficiente",
+            "body": "Evita añadir intensidad. Prioriza comida, hidratación y movimiento suave para absorber el entrenamiento registrado.",
+            "reasons": reasons or ["Entrenamiento de hoy por encima del rango"],
+        }
+    if weekly_load_high:
+        no_training_today = current_load <= 0
+        return {
+            "level": "limit",
+            "title": "Protege la próxima sesión",
+            "body": (
+                "Hoy no hay entrenamiento registrado, pero la carga de la semana está por encima de tu base. "
+                "Deja el día como recuperación o mantén cualquier sesión muy suave."
+                if no_training_today
+                else "La carga de la semana está por encima de tu base. Mantén controlada la próxima sesión y prioriza recuperar."
+            ),
+            "reasons": reasons or ["Carga semanal por encima de tu base"],
         }
     if recovery_score < 45 or activation_high or sleep_low or debt_high:
         cause = (
@@ -2338,7 +2352,6 @@ def _aggregate_load_7d(
             _activity_category(str(row.get("sport_type") or "")),
             activity_training_load(row),
         )
-    exercise_zones: dict[str, float] = {}
     for exercise in fitbit.get("exercises", []):
         day = str(exercise.get("date") or "")
         if not day:
@@ -2353,23 +2366,6 @@ def _aggregate_load_7d(
         duration = float(exercise.get("duration_minutes") or 0)
         zone = float(exercise.get("zone_minutes") or 0)
         add(day, category, zone + duration * (0.35 if category == "strength" else 0.2))
-        exercise_zones[day] = exercise_zones.get(day, 0) + zone
-    for activity_day in fitbit.get("daily_activity", {}).get("days", []):
-        day = str(activity_day.get("date") or "")
-        if not day:
-            continue
-        try:
-            parsed_day = date.fromisoformat(day)
-        except ValueError:
-            continue
-        if parsed_day < start or parsed_day > analysis_date:
-            continue
-        remaining_zone = max(
-            0,
-            float(activity_day.get("zone_minutes") or 0) - exercise_zones.get(day, 0),
-        )
-        active = float(activity_day.get("active_minutes") or 0)
-        add(day, "general", remaining_zone * 0.45 + active * 0.08)
 
     trend = []
     categories = {key: 0.0 for key in ("running", "cycling", "strength", "general")}
@@ -2429,7 +2425,7 @@ def _aggregate_load_7d(
         "trend": trend,
         "history": history,
         "baseline_weeks": len(baseline_weeks),
-        "method": "Carga interna estimada con duración, frecuencia cardiaca o minutos en zona; no es una medida clínica.",
+        "method": "Carga de entrenamientos registrados, estimada con duración, frecuencia cardiaca o minutos en zona; la actividad cotidiana no se cuenta como sesión.",
     }
 
 
