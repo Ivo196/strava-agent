@@ -4257,7 +4257,7 @@ body {
 .weekly-week-picker { display: flex; align-items: center; gap: 9px; }
 .weekly-week-picker > span { color: #727d74; font-size: 8px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
 .weekly-week-picker select { min-width: 174px; min-height: 44px; padding: 0 34px 0 12px; color: #dce4dc; border: 1px solid rgba(120,198,255,.16); border-radius: 9px; background: rgba(120,198,255,.055); cursor: pointer; font: 600 9px "Fira Code",ui-monospace,monospace; }
-.weekly-progress-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 24px; margin-top: 25px; }
+.weekly-progress-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 20px; margin-top: 25px; }
 .weekly-progress-metrics button { min-width: 0; min-height: 78px; padding: 10px 0 15px; color: inherit; border: 0; border-bottom: 2px solid rgba(218,232,211,.09); background: transparent; cursor: pointer; text-align: left; transition: border-color .18s ease,background .18s ease; }
 .weekly-progress-metrics button:hover { border-color: rgba(120,198,255,.35); background: linear-gradient(180deg,transparent,rgba(120,198,255,.025)); }
 .weekly-progress-metrics button.active { border-color: var(--orange); }
@@ -4267,9 +4267,10 @@ body {
 .weekly-chart-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 22px; }
 .weekly-chart-heading > span { color: #c7cec8; font-size: 12px; font-weight: 650; }
 .weekly-chart-heading .runs-range-switch button { min-height: 38px; }
-.weekly-progress-chart { height: 350px; margin-top: 10px; cursor: crosshair; touch-action: pan-y; }
-.weekly-progress-dot { fill: rgba(13,16,14,.98); stroke: var(--orange); stroke-width: 3px; cursor: pointer; transition: fill .18s ease,stroke-width .18s ease; }
-.weekly-progress-dot:hover, .weekly-progress-dot:focus-visible, .weekly-progress-dot.is-selected { fill: var(--orange); stroke: #f3f6ef; stroke-width: 3px; outline: none; }
+.weekly-progress-chart { height: 350px; margin-top: 10px; overflow: hidden; border: 1px solid rgba(218,232,211,.07); border-radius: 14px; background: linear-gradient(180deg,rgba(91,140,255,.035),rgba(3,7,6,.12)); cursor: crosshair; touch-action: pan-y; }
+.weekly-progress-hit { fill: transparent; cursor: pointer; outline: none; }
+.weekly-progress-dot { fill: rgba(13,16,14,.98); stroke: var(--orange); stroke-width: 3px; pointer-events: none; transition: fill .18s ease,stroke-width .18s ease; }
+.weekly-progress-hit:hover + .weekly-progress-dot, .weekly-progress-hit:focus-visible + .weekly-progress-dot, .weekly-progress-dot.is-selected { fill: var(--orange); stroke: #f3f6ef; stroke-width: 3px; }
 .weekly-progress-dot-halo { fill: rgba(120,198,255,.22); pointer-events: none; }
 .weekly-progress-tooltip strong { font-size: 13px; }
 .weekly-progress-footer { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-top: 10px; border-top: 1px solid rgba(218,232,211,.08); }
@@ -4413,7 +4414,7 @@ body {
   .weekly-progress-header { align-items: flex-start; flex-direction: column; gap: 13px; }
   .weekly-week-picker { width: 100%; }
   .weekly-week-picker select { flex: 1; min-width: 0; }
-  .weekly-progress-metrics { gap: 12px; margin-top: 18px; }
+  .weekly-progress-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px 12px; margin-top: 18px; }
   .weekly-progress-metrics button { min-height: 72px; }
   .weekly-progress-metrics small { font-size: 9px; }
   .weekly-progress-metrics strong { font-size: clamp(15px,4.2vw,20px); }

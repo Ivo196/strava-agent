@@ -16,10 +16,11 @@ import { isoWeekDetails } from "@/lib/iso-week";
 import type { Activity, RunProgressData } from "@/lib/types";
 
 type WeeklyPoint = RunProgressData["weekly"]["points"][number];
-type Range = 4 | 8 | 12;
-type Metric = "distance" | "time" | "elevation";
+type Range = 4 | 8;
+type Metric = "distance" | "time" | "pace" | "elevation";
 type ChartPoint = WeeklyPoint & {
   activities: Activity[];
+  average_pace_min_km: number | null;
   axisLabel: string;
   elevation_gain_m: number;
   moving_minutes: number;
@@ -33,8 +34,23 @@ const wholeNumber = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 0 })
 const metricOptions: { key: Metric; label: string; dataKey: keyof ChartPoint }[] = [
   { key: "distance", label: "Distancia", dataKey: "distance_km" },
   { key: "time", label: "Tiempo", dataKey: "moving_minutes" },
+  { key: "pace", label: "Ritmo medio", dataKey: "average_pace_min_km" },
   { key: "elevation", label: "Desnivel", dataKey: "elevation_gain_m" },
 ];
+
+function formatPace(value: number | null) {
+  if (value === null || !Number.isFinite(value)) return "—";
+  const totalSeconds = Math.round(value * 60);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function parsePace(value: string) {
+  const match = value.match(/(\d+):(\d{2})/);
+  if (!match) return null;
+  return Number(match[1]) + Number(match[2]) / 60;
+}
 
 function formatDuration(value: number) {
   const minutes = Math.round(value);
@@ -46,12 +62,15 @@ function formatDuration(value: number) {
 
 function metricValue(point: ChartPoint, metric: Metric) {
   if (metric === "time") return point.moving_minutes;
+  if (metric === "pace") return point.average_pace_min_km;
   if (metric === "elevation") return point.elevation_gain_m;
   return point.distance_km;
 }
 
-function formatMetric(value: number, metric: Metric) {
+function formatMetric(value: number | null, metric: Metric) {
+  if (value === null) return "Sin carreras";
   if (metric === "time") return formatDuration(value);
+  if (metric === "pace") return `${formatPace(value)} min/km`;
   if (metric === "elevation") return `${wholeNumber.format(value)} m`;
   return `${oneDecimal.format(value)} km`;
 }
@@ -61,8 +80,23 @@ function formatAxis(value: number, metric: Metric) {
     if (value >= 60) return `${oneDecimal.format(value / 60)} h`;
     return `${wholeNumber.format(value)} min`;
   }
+  if (metric === "pace") return `${formatPace(value)}`;
   if (metric === "elevation") return `${wholeNumber.format(value)} m`;
   return `${wholeNumber.format(value)} km`;
+}
+
+function useReducedMotion() {
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updatePreference = () => setReducedMotion(media.matches);
+    updatePreference();
+    media.addEventListener("change", updatePreference);
+    return () => media.removeEventListener("change", updatePreference);
+  }, []);
+
+  return reducedMotion;
 }
 
 function selectedWeekFor(points: ChartPoint[]) {
@@ -78,7 +112,8 @@ function WeeklyTooltip({ active, payload }: { active?: boolean; payload?: { payl
     <div className="runs-chart-tooltip weekly-progress-tooltip">
       <span>Semana {point.weekNumber} · {point.rangeLabel}</span>
       <strong>{oneDecimal.format(point.distance_km)} km</strong>
-      <small>{formatDuration(point.moving_minutes)} · {wholeNumber.format(point.elevation_gain_m)} m</small>
+      <small>{formatDuration(point.moving_minutes)} · {formatPace(point.average_pace_min_km)} min/km</small>
+      <small>{wholeNumber.format(point.elevation_gain_m)} m de desnivel</small>
       <small>{point.runs} {point.runs === 1 ? "carrera" : "carreras"}</small>
     </div>
   );
@@ -99,7 +134,7 @@ function WeeklyProgressDot({
   payload?: ChartPoint;
   selectedWeek: string;
 }) {
-  if (cx === undefined || cy === undefined || !payload) return null;
+  if (cx === undefined || cy === undefined || !payload || metricValue(payload, metric) === null) return null;
   const selected = payload.week === selectedWeek;
   const label = `Semana ${payload.weekNumber}, ${formatMetric(metricValue(payload, metric), metric)}`;
   return (
@@ -107,7 +142,7 @@ function WeeklyProgressDot({
       {selected && <circle className="weekly-progress-dot-halo" cx={cx} cy={cy} r={13} />}
       <circle
         aria-label={label}
-        className={`weekly-progress-dot${selected ? " is-selected" : ""}`}
+        className="weekly-progress-hit"
         cx={cx}
         cy={cy}
         focusable="true"
@@ -118,9 +153,16 @@ function WeeklyProgressDot({
             onSelect(payload.week);
           }
         }}
-        r={selected ? 6 : 5}
+        r={22}
         role="button"
         tabIndex={0}
+      />
+      <circle
+        aria-hidden="true"
+        className={`weekly-progress-dot${selected ? " is-selected" : ""}`}
+        cx={cx}
+        cy={cy}
+        r={selected ? 6 : 5}
       />
     </g>
   );
@@ -133,17 +175,29 @@ export function WeeklyMileageChart({
   activities: Activity[];
   progress: RunProgressData;
 }) {
-  const [range, setRange] = useState<Range>(12);
+  const [range, setRange] = useState<Range>(8);
   const [metric, setMetric] = useState<Metric>("distance");
+  const reducedMotion = useReducedMotion();
   const activityTotals = useMemo(() => {
-    const totals = new Map<string, { activities: Activity[]; elevation: number; minutes: number }>();
+    const totals = new Map<string, {
+      activities: Activity[];
+      elevation: number;
+      minutes: number;
+      paceDistance: number;
+      weightedPace: number;
+    }>();
     activities.forEach((activity) => {
       if (progress.activity_quality[activity.id]?.duplicate_excluded) return;
       const key = isoWeekDetails(activity.date).key;
-      const week = totals.get(key) ?? { activities: [], elevation: 0, minutes: 0 };
+      const week = totals.get(key) ?? { activities: [], elevation: 0, minutes: 0, paceDistance: 0, weightedPace: 0 };
+      const pace = parsePace(activity.pace);
       week.activities.push(activity);
       week.elevation += activity.elevation_gain_m ?? 0;
       week.minutes += activity.moving_minutes ?? 0;
+      if (pace !== null && activity.distance_km > 0) {
+        week.paceDistance += activity.distance_km;
+        week.weightedPace += pace * activity.distance_km;
+      }
       totals.set(key, week);
     });
     return totals;
@@ -155,6 +209,9 @@ export function WeeklyMileageChart({
     return {
       ...point,
       activities: totals?.activities ?? [],
+      average_pace_min_km: totals?.paceDistance
+        ? totals.weightedPace / totals.paceDistance
+        : null,
       axisLabel: `S${details.weekNumber}`,
       elevation_gain_m: totals?.elevation ?? 0,
       moving_minutes: totals?.minutes ?? 0,
@@ -218,7 +275,7 @@ export function WeeklyMileageChart({
       <div className="weekly-chart-heading">
         <span>Últimas {range} semanas</span>
         <div className="runs-range-switch" aria-label="Rango de semanas visible">
-          {([4, 8, 12] as const).map((option) => (
+          {([4, 8] as const).map((option) => (
             <button
               aria-pressed={range === option}
               className={range === option ? "active" : ""}
@@ -233,7 +290,7 @@ export function WeeklyMileageChart({
       </div>
 
       <div
-        aria-label={`Gráfico interactivo de ${metricOption.label.toLowerCase()} durante ${range} semanas. Seleccioná un punto para actualizar el resumen.`}
+        aria-label={`Gráfico interactivo de ${metricOption.label.toLowerCase()} durante ${range} semanas. Pasá el cursor o seleccioná un punto para actualizar el resumen.`}
         className="weekly-progress-chart"
         role="group"
       >
@@ -247,6 +304,11 @@ export function WeeklyMileageChart({
               const point = Number.isInteger(activeIndex) ? points[activeIndex] : undefined;
               if (point) setSelectedWeek(point.week);
             }}
+            onMouseMove={(state) => {
+              const activeIndex = Number(state?.activeIndex);
+              const point = Number.isInteger(activeIndex) ? points[activeIndex] : undefined;
+              if (point && point.week !== selectedWeek) setSelectedWeek(point.week);
+            }}
           >
             <defs>
               <linearGradient id="weeklyProgressFill" x1="0" x2="0" y1="0" y2="1">
@@ -258,25 +320,31 @@ export function WeeklyMileageChart({
             <XAxis
               axisLine={false}
               dataKey="axisLabel"
-              interval={range === 12 ? 1 : 0}
+              interval={0}
               padding={{ left: 8, right: 8 }}
               tick={{ fill: "var(--muted)", fontSize: 10 }}
               tickLine={false}
             />
             <YAxis
               axisLine={false}
+              domain={metric === "pace" ? ["dataMin - 0.12", "dataMax + 0.12"] : [0, "auto"]}
               orientation="right"
+              reversed={metric === "pace"}
               tick={{ fill: "var(--muted)", fontSize: 10 }}
               tickCount={3}
               tickFormatter={(value: number) => formatAxis(value, metric)}
               tickLine={false}
               width={62}
             />
-            <Tooltip content={<WeeklyTooltip />} cursor={false} />
+            <Tooltip
+              content={<WeeklyTooltip />}
+              cursor={{ stroke: "rgba(120,198,255,.34)", strokeDasharray: "3 5" }}
+            />
             {selected && (
               <ReferenceLine
                 stroke="rgba(243,246,239,.82)"
-                strokeWidth={2}
+                strokeDasharray="3 5"
+                strokeWidth={1.5}
                 x={selected.axisLabel}
               />
             )}
@@ -294,7 +362,9 @@ export function WeeklyMileageChart({
               )}
               fill="url(#weeklyProgressFill)"
               fillOpacity={1}
-              isAnimationActive="auto"
+              baseValue={metric === "pace" ? "dataMax" : 0}
+              connectNulls={false}
+              isAnimationActive={!reducedMotion}
               stroke="var(--orange)"
               strokeWidth={3}
               type="linear"
@@ -304,7 +374,7 @@ export function WeeklyMileageChart({
       </div>
 
       <footer className="weekly-progress-footer">
-        <span>Seleccioná un punto para explorar otra semana.</span>
+        <span>Pasá el cursor o tocá un punto para explorar otra semana.</span>
         {selected && selected.runs > 0 ? (
           <a href={historyTarget}>
             Ver {selected.runs} {selected.runs === 1 ? "carrera" : "carreras"} de la semana
@@ -319,7 +389,7 @@ export function WeeklyMileageChart({
         <summary>Ver datos por semana</summary>
         <div className="runs-data-table-scroll">
           <table>
-            <thead><tr><th>Semana</th><th>Fechas</th><th>Distancia</th><th>Tiempo</th><th>Desnivel</th><th>Carreras</th></tr></thead>
+            <thead><tr><th>Semana</th><th>Fechas</th><th>Distancia</th><th>Tiempo</th><th>Ritmo medio</th><th>Desnivel</th><th>Carreras</th></tr></thead>
             <tbody>
               {points.map((point) => (
                 <tr key={point.week}>
@@ -327,6 +397,7 @@ export function WeeklyMileageChart({
                   <td>{point.rangeLabel}</td>
                   <td>{oneDecimal.format(point.distance_km)} km</td>
                   <td>{formatDuration(point.moving_minutes)}</td>
+                  <td>{formatPace(point.average_pace_min_km)} min/km</td>
                   <td>{wholeNumber.format(point.elevation_gain_m)} m</td>
                   <td>{point.runs}</td>
                 </tr>
