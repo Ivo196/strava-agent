@@ -2,13 +2,20 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ChevronRight, Clock3, Gauge, HeartPulse, Mountain } from "lucide-react";
+import { ArrowUpRight, Clock3, Gauge, HeartPulse, Mountain } from "lucide-react";
 import { isGenericAppleRun } from "@/lib/activity-display";
 import { isoWeekDetails, parseLocalDate, startOfIsoWeek } from "@/lib/iso-week";
 import type { Activity, RunProgressData } from "@/lib/types";
 
 type HistoryRange = "4" | "8" | "12" | "all";
-type HistoryGroup = { key: string; label: string; activities: Activity[]; distance: number; isCurrent: boolean };
+type HistoryGroup = {
+  key: string;
+  weekLabel: string;
+  rangeLabel: string;
+  activities: Activity[];
+  distance: number;
+  isCurrent: boolean;
+};
 
 const filters: { key: HistoryRange; label: string }[] = [
   { key: "4", label: "4 semanas" },
@@ -35,10 +42,12 @@ function groupActivities(
     const week = isoWeekDetails(activity.date);
     const isCurrent = week.key === currentWeek.key;
     const yearSuffix = week.weekYear === currentWeek.weekYear ? "" : ` · ${week.weekYear}`;
-    const label = `Semana ${week.weekNumber}${isCurrent ? " · actual" : ""} · ${week.rangeLabel}${yearSuffix}`;
+    const weekLabel = `Semana ${week.weekNumber}${isCurrent ? " · actual" : ""}`;
+    const rangeLabel = `${week.rangeLabel}${yearSuffix}`;
     const existing = grouped.get(week.key) ?? {
       key: week.key,
-      label,
+      weekLabel,
+      rangeLabel,
       activities: [],
       distance: 0,
       isCurrent,
@@ -116,9 +125,18 @@ export function RunHistory({ activities, progress }: { activities: Activity[]; p
         <div className="run-history-groups">
           {groups.map((group) => (
             <section className={`run-history-group${group.isCurrent ? " is-current" : ""}`} key={group.key} aria-labelledby={`history-${group.key}`}>
-              <header>
-                <h3 id={`history-${group.key}`}>{group.label}</h3>
-                <span>{oneDecimal.format(group.distance)} km · {group.activities.length} {group.activities.length === 1 ? "carrera" : "carreras"}</span>
+              <header className="run-history-week-header">
+                <div className="run-history-week-title">
+                  <span>{group.weekLabel}</span>
+                  <h3 id={`history-${group.key}`}>{group.rangeLabel}</h3>
+                </div>
+                <div
+                  aria-label={`${oneDecimal.format(group.distance)} kilómetros y ${group.activities.length} ${group.activities.length === 1 ? "carrera" : "carreras"}`}
+                  className="run-history-week-summary"
+                >
+                  <strong>{oneDecimal.format(group.distance)} <small>km</small></strong>
+                  <span>{group.activities.length} {group.activities.length === 1 ? "carrera" : "carreras"}</span>
+                </div>
               </header>
               <div className="run-history-list">
                 {group.activities.map((activity) => {
@@ -138,13 +156,16 @@ export function RunHistory({ activities, progress }: { activities: Activity[]; p
                       href={`/activities/${activity.id}`}
                       key={activity.id}
                     >
-                      <div className="run-history-date">
-                        <time dateTime={activity.date}>{activityDate.format(parseLocalDate(activity.date))}</time>
-                        <div className="run-history-tags">
-                          {runType && <span className="run-type-chip">{runType}</span>}
-                          {quality?.flags.slice(0, 2).map((flag) => <span className="run-quality-chip" key={flag}>{flag}</span>)}
-                          {quality && quality.flags.length > 2 && <span className="run-quality-more" title={quality.flags.join(", ")}>+{quality.flags.length - 2}</span>}
+                      <div className="run-history-card-top">
+                        <div className="run-history-date">
+                          <time dateTime={activity.date}>{activityDate.format(parseLocalDate(activity.date))}</time>
+                          <div className="run-history-tags">
+                            {runType && <span className="run-type-chip">{runType}</span>}
+                            {quality?.flags.slice(0, 2).map((flag) => <span className="run-quality-chip" key={flag}>{flag}</span>)}
+                            {quality && quality.flags.length > 2 && <span className="run-quality-more" title={quality.flags.join(", ")}>+{quality.flags.length - 2}</span>}
+                          </div>
                         </div>
+                        <span className="run-details-action">Ver detalles <ArrowUpRight aria-hidden="true" size={15} /></span>
                       </div>
                       <div className="run-history-distance">
                         <strong>{oneDecimal.format(activity.distance_km)}</strong><small>km</small>
@@ -155,7 +176,6 @@ export function RunHistory({ activities, progress }: { activities: Activity[]; p
                           <span key={label}><Icon aria-hidden="true" size={14} /><small>{label}</small><strong>{value}</strong></span>
                         ))}
                       </div>
-                      <span className="run-details-action">Ver detalles <ChevronRight aria-hidden="true" size={16} /></span>
                     </Link>
                   );
                 })}
