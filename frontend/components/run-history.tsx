@@ -123,41 +123,44 @@ export function RunHistory({ activities, progress }: { activities: Activity[]; p
 
       {groups.length ? (
         <div className="run-history-groups">
-          {groups.map((group) => (
-            <section className={`run-history-group${group.isCurrent ? " is-current" : ""}`} key={group.key} aria-labelledby={`history-${group.key}`}>
-              <header className="run-history-week-header">
-                <div className="run-history-week-title">
-                  <span>{group.weekLabel}</span>
-                  <h3 id={`history-${group.key}`}>{group.rangeLabel}</h3>
-                </div>
-                <div
-                  aria-label={`${oneDecimal.format(group.distance)} kilómetros y ${group.activities.length} ${group.activities.length === 1 ? "carrera" : "carreras"}`}
-                  className="run-history-week-summary"
-                >
-                  <strong>{oneDecimal.format(group.distance)} <small>km</small></strong>
-                  <span>{group.activities.length} {group.activities.length === 1 ? "carrera" : "carreras"}</span>
-                </div>
-              </header>
-              <div className="run-history-list">
-                {group.activities.map((activity) => {
-                  const quality = progress.activity_quality[activity.id];
-                  const runType = runTypeLabel(activity);
-                  const meaningfulName = isGenericAppleRun(activity.name) ? null : activity.name.replace(/Apple Health/gi, "Apple Watch");
-                  const metrics = [
-                    activity.moving_minutes ? { icon: Clock3, label: "Tiempo", value: `${activity.moving_minutes} min` } : null,
-                    activity.pace && activity.pace !== "—" ? { icon: Gauge, label: "Ritmo", value: activity.pace } : null,
-                    activity.average_heartrate ? { icon: HeartPulse, label: "Pulso", value: `${Math.round(activity.average_heartrate)} bpm` } : null,
-                    activity.elevation_gain_m && activity.elevation_gain_m >= 10 ? { icon: Mountain, label: "Desnivel", value: `${Math.round(activity.elevation_gain_m)} m` } : null,
-                  ].filter((metric): metric is NonNullable<typeof metric> => metric !== null);
-                  return (
-                    <Link
-                      aria-label={`Ver detalles de la carrera de ${oneDecimal.format(activity.distance_km)} km del ${activityDate.format(parseLocalDate(activity.date))}`}
-                      className="run-history-card"
-                      href={`/activities/${activity.id}`}
-                      key={activity.id}
-                    >
-                      <div className="run-history-card-top">
+          {groups.map((group) => {
+            const maxDistance = Math.max(...group.activities.map((run) => run.distance_km), 1);
+            return (
+              <section className={`run-history-group${group.isCurrent ? " is-current" : ""}`} key={group.key} aria-labelledby={`history-${group.key}`}>
+                <header className="run-history-week-header">
+                  <div className="run-history-week-title">
+                    <span>{group.weekLabel}</span>
+                    <h3 id={`history-${group.key}`}>{group.rangeLabel}</h3>
+                  </div>
+                  <div
+                    aria-label={`${oneDecimal.format(group.distance)} kilómetros y ${group.activities.length} ${group.activities.length === 1 ? "carrera" : "carreras"}`}
+                    className="run-history-week-summary"
+                  >
+                    <strong>{oneDecimal.format(group.distance)} <small>km</small></strong>
+                    <span>{group.activities.length} {group.activities.length === 1 ? "carrera" : "carreras"}</span>
+                  </div>
+                </header>
+                <div className="run-history-list">
+                  {group.activities.map((activity, activityIndex) => {
+                    const quality = progress.activity_quality[activity.id];
+                    const runType = runTypeLabel(activity);
+                    const meaningfulName = isGenericAppleRun(activity.name) ? null : activity.name.replace(/Apple Health/gi, "Apple Watch");
+                    const distanceProgress = Math.max((activity.distance_km / maxDistance) * 100, 8);
+                    const metrics = [
+                      activity.moving_minutes ? { icon: Clock3, label: "Tiempo", tone: "time", value: `${activity.moving_minutes} min` } : null,
+                      activity.pace && activity.pace !== "—" ? { icon: Gauge, label: "Ritmo", tone: "pace", value: activity.pace } : null,
+                      activity.average_heartrate ? { icon: HeartPulse, label: "Pulso", tone: "heart", value: `${Math.round(activity.average_heartrate)} bpm` } : null,
+                      activity.elevation_gain_m && activity.elevation_gain_m >= 10 ? { icon: Mountain, label: "Desnivel", tone: "elevation", value: `${Math.round(activity.elevation_gain_m)} m` } : null,
+                    ].filter((metric): metric is NonNullable<typeof metric> => metric !== null);
+                    return (
+                      <Link
+                        aria-label={`Ver detalles de la carrera de ${oneDecimal.format(activity.distance_km)} km del ${activityDate.format(parseLocalDate(activity.date))}`}
+                        className={`run-history-entry run-history-entry-tone-${activityIndex % 4}`}
+                        href={`/activities/${activity.id}`}
+                        key={activity.id}
+                      >
                         <div className="run-history-date">
+                          <span>Carrera {String(activityIndex + 1).padStart(2, "0")}</span>
                           <time dateTime={activity.date}>{activityDate.format(parseLocalDate(activity.date))}</time>
                           <div className="run-history-tags">
                             {runType && <span className="run-type-chip">{runType}</span>}
@@ -165,23 +168,26 @@ export function RunHistory({ activities, progress }: { activities: Activity[]; p
                             {quality && quality.flags.length > 2 && <span className="run-quality-more" title={quality.flags.join(", ")}>+{quality.flags.length - 2}</span>}
                           </div>
                         </div>
-                        <span className="run-details-action">Ver detalles <ArrowUpRight aria-hidden="true" size={15} /></span>
-                      </div>
-                      <div className="run-history-distance">
-                        <strong>{oneDecimal.format(activity.distance_km)}</strong><small>km</small>
-                        {meaningfulName && <p>{meaningfulName}</p>}
-                      </div>
-                      <div className="run-history-metrics">
-                        {metrics.map(({ icon: Icon, label, value }) => (
-                          <span key={label}><Icon aria-hidden="true" size={14} /><small>{label}</small><strong>{value}</strong></span>
-                        ))}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
+                        <div className="run-history-distance">
+                          <div><strong>{oneDecimal.format(activity.distance_km)}</strong><small>km</small></div>
+                          <span aria-hidden="true" className="run-history-distance-bar"><i style={{ width: `${distanceProgress}%` }} /></span>
+                          {meaningfulName && <p>{meaningfulName}</p>}
+                        </div>
+                        <div className="run-history-metrics">
+                          {metrics.map(({ icon: Icon, label, tone, value }) => (
+                            <span className={`run-history-metric run-history-metric-${tone}`} key={label}>
+                              <Icon aria-hidden="true" size={16} /><small>{label}</small><strong>{value}</strong>
+                            </span>
+                          ))}
+                        </div>
+                        <span className="run-details-action">Abrir <ArrowUpRight aria-hidden="true" size={16} /></span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
         </div>
       ) : (
         <div className="run-history-empty">
