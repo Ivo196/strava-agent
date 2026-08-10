@@ -41,8 +41,8 @@ import {
 } from "@/lib/recovery";
 import type { DashboardData } from "@/lib/types";
 
-type RangeDays = 7 | 28;
 type TrendPoint = { date: string; value: number };
+const TREND_DAYS = 30;
 
 function factorIcon(key: RecoveryFactor["key"]) {
   if (key === "sleep") return <BedDouble aria-hidden="true" />;
@@ -139,7 +139,6 @@ function TrendCard({
   unit,
   color,
   items,
-  range,
   baseline,
   normalMin,
   normalMax,
@@ -148,12 +147,11 @@ function TrendCard({
   unit: string;
   color: string;
   items: TrendPoint[];
-  range: RangeDays;
   baseline?: number | null;
   normalMin?: number | null;
   normalMax?: number | null;
 }) {
-  const visible = items.slice(-range);
+  const visible = items.slice(-TREND_DAYS);
   const latest = visible.at(-1);
   const values = visible.map((item) => item.value);
   const allReferenceValues = [baseline, normalMin, normalMax].filter((value): value is number => value != null);
@@ -166,14 +164,14 @@ function TrendCard({
   return (
     <article className="recovery-trend-card">
       <header>
-        <div><span>{title}</span><small>{range} días</small></div>
+        <div><span>{title}</span><small>{TREND_DAYS} días</small></div>
         <strong>{latest ? formatMetric(latest.value, unit) : "—"}</strong>
       </header>
       {visible.length >= 2 ? (
         <div
           className="recovery-line-chart"
           role="img"
-          aria-label={`${title}, tendencia de ${range} días. Último valor ${latest ? formatMetric(latest.value, unit) : "sin dato"}${baseline != null ? `; base ${formatMetric(baseline, unit)}` : ""}.`}
+          aria-label={`${title}, tendencia de ${TREND_DAYS} días. Último valor ${latest ? formatMetric(latest.value, unit) : "sin dato"}${baseline != null ? `; base ${formatMetric(baseline, unit)}` : ""}.`}
         >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={visible} margin={{ top: 12, right: 8, bottom: 0, left: 0 }}>
@@ -200,7 +198,7 @@ function TrendCard({
       {visible.length > 0 && (
         <div className="sr-only">
           <table>
-            <caption>{title}, valores de los últimos {range} días disponibles</caption>
+            <caption>{title}, valores de los últimos {TREND_DAYS} días disponibles</caption>
             <thead><tr><th>Fecha</th><th>Valor</th></tr></thead>
             <tbody>{visible.map((item) => <tr key={item.date}><td>{dateLabel(item.date)}</td><td>{formatMetric(item.value, unit)}</td></tr>)}</tbody>
           </table>
@@ -216,7 +214,6 @@ function TrendCard({
 }
 
 export function RecoveryDashboard({ data }: { data: DashboardData }) {
-  const [range, setRange] = useState<RangeDays>(7);
   const [showDetails, setShowDetails] = useState(false);
   const state = data.daily_state;
   const recovery = state.morning_recovery;
@@ -323,17 +320,12 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
           <section className="recovery-trends-v3" aria-labelledby="recovery-trends-title">
             <div className="recovery-section-heading">
               <div><span className="eyebrow">Tendencias</span><h2 id="recovery-trends-title">Mira la dirección, no un solo día</h2></div>
-              <div className="recovery-range-toggle" aria-label="Rango de las tendencias">
-                {([7, 28] as RangeDays[]).map((days) => (
-                  <button key={days} type="button" className={range === days ? "active" : ""} aria-pressed={range === days} onClick={() => setRange(days)}>{days} días</button>
-                ))}
-              </div>
             </div>
             <div className="recovery-trend-grid-v3">
-              <TrendCard title="Sueño" unit="h" color="#a98bff" items={sleepTrend} range={range} baseline={sleep.goal_hours} />
-              <TrendCard title="HRV" unit="ms" color="#24c8f2" items={hrvTrend} range={range} baseline={factorsByKey.hrv?.baseline} />
-              <TrendCard title="Pulso en reposo" unit="bpm" color="#78c6ff" items={restingTrend} range={range} baseline={factorsByKey.resting_hr?.baseline} />
-              <TrendCard title="Carga" unit="pts" color="#5b8cff" items={loadTrend} range={range} baseline={load.baseline == null ? null : load.baseline / 7} normalMin={load.target_min} normalMax={load.target_max} />
+              <TrendCard title="Sueño" unit="h" color="#a98bff" items={sleepTrend} baseline={sleep.goal_hours} />
+              <TrendCard title="HRV" unit="ms" color="#24c8f2" items={hrvTrend} baseline={factorsByKey.hrv?.baseline} />
+              <TrendCard title="Pulso en reposo" unit="bpm" color="#78c6ff" items={restingTrend} baseline={factorsByKey.resting_hr?.baseline} />
+              <TrendCard title="Carga" unit="pts" color="#5b8cff" items={loadTrend} baseline={load.baseline == null ? null : load.baseline / 7} normalMin={load.target_min} normalMax={load.target_max} />
             </div>
           </section>
         </div>}
