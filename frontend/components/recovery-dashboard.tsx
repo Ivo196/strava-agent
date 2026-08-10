@@ -6,7 +6,6 @@ import {
   BedDouble,
   ChevronDown,
   CircleGauge,
-  Gauge,
   HeartPulse,
   Info,
   Minus,
@@ -36,7 +35,6 @@ import {
   formatDuration,
   formatMetric,
   groupRecoveryFactors,
-  loadTone,
   recoveryTone,
   type RecoveryFactor,
   type RecoveryTone,
@@ -246,8 +244,6 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
   const hrvTrend = state.trends.recovery.filter((item) => item.hrv != null).map((item) => ({ date: item.date, value: item.hrv! }));
   const restingTrend = state.trends.recovery.filter((item) => item.resting_hr != null).map((item) => ({ date: item.date, value: item.resting_hr! }));
   const loadTrend = state.trends.load.map((item) => ({ date: item.date, value: item.total }));
-  const hasTrainingToday = state.today_load.activities_count > 0 || load.current_today > 0;
-  const loadProgress = hasTrainingToday && load.target_max > 0 ? load.current_today / load.target_max * 100 : 0;
   const confidenceNeedsExplanation = state.confidence.level !== "Alta";
 
   return (
@@ -287,18 +283,6 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
           progress={activation.score ?? 0}
         >
           Estima la respuesta corporal; no cómo te sientes.
-        </SummaryCard>
-        <SummaryCard
-          icon={<Gauge aria-hidden="true" />}
-          title="Entrenamiento hoy"
-          value={hasTrainingToday ? `${load.current_today.toLocaleString("es-ES", { maximumFractionDigits: 1 })} pts` : "Sin sesión"}
-          status={hasTrainingToday ? load.today_status : "Descanso"}
-          tone={hasTrainingToday ? loadTone(load.today_status) : "neutral"}
-          progress={loadProgress}
-        >
-          {hasTrainingToday
-            ? `Rango orientativo ${load.target_min}–${load.target_max} pts`
-            : "La actividad cotidiana no cuenta como entrenamiento."}
         </SummaryCard>
       </section>
 
