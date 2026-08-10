@@ -4,11 +4,11 @@ import { useState } from "react";
 import { ChartNoAxesColumnIncreasing, HeartPulse } from "lucide-react";
 import { AerobicTrendChart } from "@/components/aerobic-trend-chart";
 import { WeeklyMileageChart } from "@/components/weekly-mileage-chart";
-import type { RunProgressData } from "@/lib/types";
+import type { Activity, RunProgressData } from "@/lib/types";
 
 type AnalyticsView = "volume" | "aerobic";
 
-export function RunAnalytics({ progress }: { progress: RunProgressData }) {
+export function RunAnalytics({ activities, progress }: { activities: Activity[]; progress: RunProgressData }) {
   const [view, setView] = useState<AnalyticsView>("volume");
 
   return (
@@ -51,7 +51,7 @@ export function RunAnalytics({ progress }: { progress: RunProgressData }) {
         role="tabpanel"
       >
         {view === "volume"
-          ? <WeeklyMileageChart weekly={progress.weekly} />
+          ? <WeeklyMileageChart activities={activities} progress={progress} />
           : <AerobicTrendChart aerobic={progress.aerobic} />}
       </div>
     </section>

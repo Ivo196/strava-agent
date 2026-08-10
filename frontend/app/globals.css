@@ -4246,33 +4246,37 @@ body {
 .runs-range-switch, .history-filter-switch { display: flex; gap: 5px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: rgba(3,7,6,.34); }
 .runs-range-switch button, .history-filter-switch button { min-height: 44px; padding: 0 12px; color: #758077; border: 1px solid transparent; border-radius: 7px; background: transparent; cursor: pointer; font-size: 9px; font-weight: 750; transition: color .18s ease,background .18s ease,border-color .18s ease; }
 .runs-range-switch button:hover, .history-filter-switch button:hover { color: #d7ddd7; background: rgba(120,198,255,.06); }
-.runs-range-switch button:focus-visible, .history-filter-switch button:focus-visible, .run-history-card:focus-visible, .runs-data-table summary:focus-visible, .run-quality-method summary:focus-visible, .weekly-week-select select:focus-visible { outline: 2px solid var(--orange-deep); outline-offset: 2px; }
+.runs-range-switch button:focus-visible, .history-filter-switch button:focus-visible, .run-history-card:focus-visible, .runs-data-table summary:focus-visible, .run-quality-method summary:focus-visible, .weekly-week-picker select:focus-visible, .weekly-progress-metrics button:focus-visible { outline: 2px solid var(--orange-deep); outline-offset: 2px; }
 .runs-range-switch button.active, .history-filter-switch button.active { color: #edf3ed; border-color: rgba(120,198,255,.18); background: rgba(120,198,255,.1); }
 .runs-chart-frame { width: 100%; min-width: 0; margin-top: 14px; overflow: hidden; }
-.weekly-mileage-heading { align-items: flex-end; }
-.weekly-selection { display: grid; grid-template-columns: minmax(160px,.65fr) minmax(0,1.8fr) minmax(190px,.75fr); gap: 1px; margin-top: 18px; overflow: hidden; border: 1px solid rgba(120,198,255,.14); border-radius: 14px; background: rgba(120,198,255,.1); }
-.weekly-selection > * { min-width: 0; padding: 16px; background: rgba(6,11,9,.92); }
-.weekly-selection-title span, .weekly-selection-title strong, .weekly-selection-title small { display: block; }
-.weekly-selection-title span { color: var(--orange); font-size: 8px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.weekly-selection-title strong { margin-top: 7px; color: #f1f5f0; font: 650 24px/.95 "Fira Code",ui-monospace,monospace; letter-spacing: -.045em; }
-.weekly-selection-title small { margin-top: 7px; color: #7d887f; font-size: 9px; text-transform: capitalize; }
-.weekly-selection-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1px; padding: 0; background: var(--line); }
-.weekly-selection-metrics > span { display: grid; grid-template-columns: 18px minmax(0,1fr); align-content: center; gap: 5px 6px; padding: 14px; background: rgba(6,11,9,.94); }
-.weekly-selection-metrics svg { grid-row: 1 / span 2; color: var(--orange); }
-.weekly-selection-metrics small, .weekly-selection-metrics strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.weekly-selection-metrics small { color: #69746c; font-size: 7px; letter-spacing: .05em; text-transform: uppercase; }
-.weekly-selection-metrics strong { color: #dce4dc; font: 600 11px "Fira Code",ui-monospace,monospace; }
-.weekly-week-select { display: grid; align-content: center; gap: 7px; }
-.weekly-week-select > span { color: #69746c; font-size: 7px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
-.weekly-week-select select { width: 100%; min-height: 44px; padding: 0 34px 0 11px; color: #dce4dc; border: 1px solid rgba(120,198,255,.16); border-radius: 9px; background: rgba(120,198,255,.06); cursor: pointer; font: 600 9px "Fira Code",ui-monospace,monospace; }
-.weekly-chart-scroll { width: 100%; margin-top: 8px; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-color: rgba(120,198,255,.26) transparent; scrollbar-width: thin; }
-.weekly-mileage-panel .weekly-chart-canvas { height: 330px; margin-top: 0; }
-.weekly-chart-bar { transition: opacity .18s ease,filter .18s ease; }
-.weekly-chart-bar:hover { filter: brightness(1.16); }
-.weekly-chart-caption { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 4px; color: #6f7a72; font-size: 8px; }
-.weekly-chart-caption span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
-.weekly-chart-caption span i { width: 18px; height: 7px; border-radius: 99px; background: var(--orange); }
-.weekly-chart-caption p { margin: 0; text-align: right; }
+.weekly-mileage-panel { padding: 26px 28px 22px; }
+.weekly-progress-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.weekly-progress-header > div span, .weekly-progress-header > div strong { display: block; }
+.weekly-progress-header > div span { color: var(--orange); font-size: 9px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.weekly-progress-header > div strong { margin-top: 7px; color: #f3f6ef; font: 650 clamp(27px,3vw,39px)/1 "Fira Code",ui-monospace,monospace; letter-spacing: -.045em; text-transform: capitalize; }
+.weekly-week-picker { display: flex; align-items: center; gap: 9px; }
+.weekly-week-picker > span { color: #727d74; font-size: 8px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.weekly-week-picker select { min-width: 174px; min-height: 44px; padding: 0 34px 0 12px; color: #dce4dc; border: 1px solid rgba(120,198,255,.16); border-radius: 9px; background: rgba(120,198,255,.055); cursor: pointer; font: 600 9px "Fira Code",ui-monospace,monospace; }
+.weekly-progress-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 24px; margin-top: 25px; }
+.weekly-progress-metrics button { min-width: 0; min-height: 78px; padding: 10px 0 15px; color: inherit; border: 0; border-bottom: 2px solid rgba(218,232,211,.09); background: transparent; cursor: pointer; text-align: left; transition: border-color .18s ease,background .18s ease; }
+.weekly-progress-metrics button:hover { border-color: rgba(120,198,255,.35); background: linear-gradient(180deg,transparent,rgba(120,198,255,.025)); }
+.weekly-progress-metrics button.active { border-color: var(--orange); }
+.weekly-progress-metrics small, .weekly-progress-metrics strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.weekly-progress-metrics small { color: #a2aba3; font-size: 11px; }
+.weekly-progress-metrics strong { margin-top: 9px; color: #f2f5f0; font: 650 clamp(22px,2.4vw,34px)/1 "Fira Code",ui-monospace,monospace; letter-spacing: -.045em; }
+.weekly-chart-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 22px; }
+.weekly-chart-heading > span { color: #c7cec8; font-size: 12px; font-weight: 650; }
+.weekly-chart-heading .runs-range-switch button { min-height: 38px; }
+.weekly-progress-chart { height: 350px; margin-top: 10px; cursor: crosshair; touch-action: pan-y; }
+.weekly-progress-dot { fill: rgba(13,16,14,.98); stroke: var(--orange); stroke-width: 3px; cursor: pointer; transition: fill .18s ease,stroke-width .18s ease; }
+.weekly-progress-dot:hover, .weekly-progress-dot:focus-visible, .weekly-progress-dot.is-selected { fill: var(--orange); stroke: #f3f6ef; stroke-width: 3px; outline: none; }
+.weekly-progress-dot-halo { fill: rgba(120,198,255,.22); pointer-events: none; }
+.weekly-progress-tooltip strong { font-size: 13px; }
+.weekly-progress-footer { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-top: 10px; border-top: 1px solid rgba(218,232,211,.08); }
+.weekly-progress-footer > span, .weekly-progress-footer > small { color: #78837a; font-size: 9px; }
+.weekly-progress-footer a { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; color: var(--orange); font-size: 9px; font-weight: 750; text-decoration: none; }
+.weekly-progress-footer a:hover { color: #dff1ff; }
+.weekly-progress-footer a:focus-visible { outline: 2px solid var(--orange-deep); outline-offset: 2px; }
 .aerobic-panel .aerobic-chart-frame { height: 340px; }
 .runs-chart-tooltip { display: grid; gap: 4px; max-width: 230px; padding: 10px 12px; color: #dfe6df; border: 1px solid rgba(218,232,211,.18); border-radius: 9px; background: rgba(3,7,6,.96); box-shadow: 0 16px 30px rgba(0,0,0,.3); }
 .runs-chart-tooltip span { color: #7f8a80; font-size: 8px; text-transform: capitalize; }
@@ -4351,8 +4355,6 @@ body {
 .run-history-empty p { margin: 6px 0 0; color: #6f7a70; font-size: 10px; }
 
 @media (max-width: 1120px) {
-  .weekly-selection { grid-template-columns: 180px minmax(0,1fr); }
-  .weekly-week-select { grid-column: 1 / -1; }
   .run-history-card { grid-template-columns: 130px 125px minmax(0,1fr) 82px; gap: 13px; }
 }
 
@@ -4366,15 +4368,19 @@ body {
   .run-analytics-panel .runs-analysis-panel { padding: 17px 14px; }
   .runs-range-switch, .history-filter-switch { width: 100%; }
   .runs-range-switch button, .history-filter-switch button { flex: 1; min-height: 44px; padding-inline: 6px; }
-  .weekly-selection { grid-template-columns: 1fr; }
-  .weekly-selection-metrics { grid-template-columns: repeat(3,minmax(0,1fr)); }
-  .weekly-week-select { grid-column: 1; }
+  .weekly-mileage-panel { padding: 20px 14px 16px !important; }
+  .weekly-progress-header { align-items: flex-start; flex-direction: column; gap: 13px; }
+  .weekly-week-picker { width: 100%; }
+  .weekly-week-picker select { flex: 1; min-width: 0; }
+  .weekly-progress-metrics { gap: 12px; margin-top: 18px; }
+  .weekly-progress-metrics button { min-height: 72px; }
+  .weekly-progress-metrics small { font-size: 9px; }
+  .weekly-progress-metrics strong { font-size: clamp(15px,4.2vw,20px); }
+  .weekly-chart-heading { align-items: flex-start; flex-direction: column; gap: 10px; margin-top: 18px; }
+  .weekly-chart-heading .runs-range-switch { width: 100%; }
   .runs-chart-frame { margin-inline: -8px; width: calc(100% + 16px); }
-  .weekly-chart-scroll { width: calc(100% + 8px); margin-inline: -4px; }
-  .weekly-chart-scroll .runs-chart-frame { width: 100%; margin-inline: 0; }
-  .weekly-mileage-panel .weekly-chart-canvas { height: 290px; }
-  .weekly-chart-caption { align-items: flex-start; flex-direction: column; gap: 7px; }
-  .weekly-chart-caption p { text-align: left; }
+  .weekly-progress-chart { height: 290px; margin-inline: -6px; }
+  .weekly-progress-footer { align-items: flex-start; flex-direction: column; gap: 2px; }
   .aerobic-panel .aerobic-chart-frame { height: 310px; }
   .run-history-card { grid-template-columns: minmax(0,1fr) auto; gap: 13px; padding: 16px 4px; }
   .run-history-date { grid-column: 1; }
@@ -4394,7 +4400,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .run-history-card, .runs-range-switch button, .history-filter-switch button, .run-analytics-tabs button, .weekly-chart-bar { transition: none; }
+  .run-history-card, .runs-range-switch button, .history-filter-switch button, .run-analytics-tabs button, .weekly-progress-dot, .weekly-progress-metrics button { transition: none; }
 }
 
 /* Recovery v3 — one decision, progressive disclosure, personal baselines */

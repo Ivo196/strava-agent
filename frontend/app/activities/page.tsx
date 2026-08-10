@@ -24,7 +24,7 @@ export default async function ActivitiesPage() {
         </div>
       </header>
 
-      <RunAnalytics progress={progress} />
+      <RunAnalytics activities={data.activities} progress={progress} />
 
       {data.activities.length ? (
         <RunHistory activities={data.activities} progress={progress} />
