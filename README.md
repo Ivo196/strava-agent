@@ -1,17 +1,32 @@
-# PaceOS
+# PaceOS — Self-Hosted Apple Health & Fitbit Running Dashboard
 
-**A private, self-hosted running dashboard powered by Apple Health, Apple Watch, Fitbit, and an optional AI coach.**
+**PaceOS is a private, self-hosted running analytics and marathon training dashboard for Apple Health, Apple Watch, Fitbit, and Google Health, with an optional OpenAI-powered running coach.**
+
+Built for runners looking for Apple Health data visualization, an Apple Watch workout dashboard, Fitbit sleep and HRV recovery analytics, a marathon training tracker, or a local AI running coach. PaceOS imports health and fitness data, normalizes it in a local SQLite database, and presents training, recovery, sleep, route, and running-dynamics insights through a responsive web app.
 
 [Download the latest ZIP](https://github.com/Ivo196/strava-agent/archive/refs/heads/main.zip) · [Clone the repository](https://github.com/Ivo196/strava-agent.git)
 
-PaceOS turns workout, recovery, and sleep data into a daily training view. It combines a Next.js dashboard with a FastAPI backend and stores everything in a local SQLite database. You can use the dashboard without cloud hosting and add each data source only when you need it.
+PaceOS combines a Next.js fitness dashboard with a Python FastAPI backend. It runs on Windows, macOS, Linux, and Raspberry Pi without requiring a cloud deployment, and each external data source is optional.
 
 > [!IMPORTANT]
 > PaceOS is currently a personal, single-user project. The interface and AI coach are in Spanish, and the bundled training plan is fixed around the 2026 Chicago Marathon. Despite the repository name, the current version does **not** connect to Strava.
 
-![PaceOS recovery dashboard](output/playwright/recovery-desktop-final.png)
+![Self-hosted Apple Health and Fitbit recovery dashboard in PaceOS](output/playwright/recovery-desktop-final.png)
 
-## What PaceOS does
+## Who PaceOS is for
+
+PaceOS may be a good fit if you want to:
+
+- Self-host a private running or fitness dashboard instead of storing every analysis in a third-party service.
+- Visualize Apple Health exports and automatically receive Apple Watch workouts through Health Auto Export.
+- Combine Apple Watch running data with Fitbit sleep, HRV, resting heart rate, SpO2, and recovery signals.
+- Track marathon mileage, training load, long runs, planned sessions, and weekly progress in one place.
+- Experiment with an AI running coach that uses your real training context without sending GPS routes.
+- Use a Python, FastAPI, Next.js, React, and SQLite project as the starting point for your own quantified-self or health analytics dashboard.
+
+PaceOS is closer to a private personal analytics dashboard than a complete Strava alternative. It does not provide a social feed, clubs, segments, challenges, or a Strava API connection.
+
+## Running analytics, recovery, and training features
 
 - Shows today's session and the next seven days of the training plan.
 - Tracks weekly distance, recent load, long runs, and running history.
@@ -21,7 +36,7 @@ PaceOS turns workout, recovery, and sleep data into a daily training view. It co
 - Provides an optional AI coach grounded in the athlete's local data.
 - Keeps secrets, health exports, and the SQLite database outside Git.
 
-## How it works
+## Architecture: Apple Health, Fitbit, FastAPI, and Next.js
 
 ```mermaid
 flowchart LR
@@ -114,7 +129,7 @@ The health endpoint should return:
 {"status":"ok"}
 ```
 
-## Add your data
+## Connect Apple Health, Apple Watch, and Fitbit
 
 All integrations are optional. You can start PaceOS first and configure them later.
 
