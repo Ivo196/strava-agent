@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import {
   Activity,
   BedDouble,
-  ChevronDown,
   CircleGauge,
   HeartPulse,
   Info,
@@ -12,8 +11,6 @@ import {
   MoonStar,
   ShieldCheck,
   Thermometer,
-  TrendingDown,
-  TrendingUp,
   Wind,
 } from "lucide-react";
 import {
@@ -34,7 +31,6 @@ import {
   dateLabel,
   formatDuration,
   formatMetric,
-  groupRecoveryFactors,
   recoveryTone,
   type RecoveryFactor,
   type RecoveryTone,
@@ -51,6 +47,18 @@ function factorIcon(key: RecoveryFactor["key"]) {
   if (key === "respiratory_rate") return <Wind aria-hidden="true" />;
   if (key === "temperature") return <Thermometer aria-hidden="true" />;
   return <ShieldCheck aria-hidden="true" />;
+}
+
+function cleanDifference(text: string) {
+  return text.replace(/\s+vs\s+base\b/gi, "").trim();
+}
+
+function compactVitalStatus(label: string) {
+  if (/^cerca de tu base$/i.test(label)) return "En rango";
+  if (/^por encima de tu base$/i.test(label)) return "Por encima";
+  if (/^por debajo de tu base$/i.test(label)) return "Por debajo";
+  if (/^fuera de tu rango reciente$/i.test(label)) return "Fuera de rango";
+  return label;
 }
 
 function RecoveryGauge({ score, label, provisional }: { score: number | null; label: string; provisional?: boolean }) {
@@ -117,20 +125,6 @@ function SummaryCard({
       ><i style={{ width: `${clampPercent(progress)}%` }} /></div>
       <p>{children}</p>
     </article>
-  );
-}
-
-function KeySignalItem({ factor }: { factor: RecoveryFactor }) {
-  const isBrake = factor.impact === "brake";
-  return (
-    <li className={isBrake ? "signal-brake" : "signal-help"}>
-      <span className="recovery-factor-icon">{factorIcon(factor.key)}</span>
-      <div><strong>{factor.label}</strong><small>{factor.difference_text}</small></div>
-      <span className="recovery-signal-status">
-        {isBrake ? <TrendingDown aria-hidden="true" /> : <TrendingUp aria-hidden="true" />}
-        {isBrake ? "Atención" : "A favor"}
-      </span>
-    </li>
   );
 }
 
@@ -214,7 +208,6 @@ function TrendCard({
 }
 
 export function RecoveryDashboard({ data }: { data: DashboardData }) {
-  const [showDetails, setShowDetails] = useState(false);
   const state = data.daily_state;
   const recovery = state.morning_recovery;
   const activation = state.physiological_stress;
@@ -223,8 +216,6 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
   const latestSleep = data.devices.fitbit.sleep.latest;
   const sleepHours = latestSleep?.hours ?? recovery.sleep_hours ?? sleep.average_hours;
   const sleepProgress = sleepHours == null ? 0 : sleepHours / sleep.goal_hours * 100;
-  const groups = groupRecoveryFactors(recovery.factors);
-  const highlightedFactors = [...groups.braking, ...groups.helping];
   const factorsByKey = useMemo(
     () => Object.fromEntries(recovery.factors.map((factor) => [factor.key, factor])) as Partial<Record<RecoveryFactor["key"], RecoveryFactor>>,
     [recovery.factors],
@@ -242,7 +233,7 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
         <div>
           <span className="eyebrow">Fitbit + Apple Watch</span>
           <h1>Recuperación</h1>
-          <p>Tu estado de hoy, comparado con tu base personal.</p>
+          <p>Tu estado de recuperación de hoy.</p>
         </div>
       </header>
 
@@ -276,48 +267,40 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
         </SummaryCard>
       </section>
 
-      {highlightedFactors.length > 0 && (
-        <section className="recovery-key-signals" aria-labelledby="recovery-signals-title">
-          <div className="recovery-section-heading">
-            <div><span className="eyebrow">Comparado con tu base</span><h2 id="recovery-signals-title">Qué explica tu recuperación</h2></div>
-            <small>
-              {groups.braking.length > 0 ? `${groups.braking.length} en atención` : "Sin alertas"}
-              {groups.helping.length > 0 ? ` · ${groups.helping.length} a favor` : ""}
-            </small>
-          </div>
-          <ul>{highlightedFactors.map((factor) => <KeySignalItem key={factor.key} factor={factor} />)}</ul>
-        </section>
-      )}
-
-      <details className="recovery-deep-dive" onToggle={(event) => setShowDetails(event.currentTarget.open)}>
-        <summary>
-          <span><HeartPulse aria-hidden="true" /><b>Ver sueño, señales vitales y tendencias</b><small>Detalle opcional</small></span>
-          <ChevronDown aria-hidden="true" />
-        </summary>
-        {showDetails && <div className="recovery-deep-dive-body">
-          <section className="recovery-vitals recovery-vitals-static" aria-labelledby="recovery-vitals-title">
+      <section className="recovery-details" aria-label="Señales vitales y tendencias">
+        <section className="recovery-vitals recovery-vitals-static" aria-labelledby="recovery-vitals-title">
             <div className="recovery-section-heading">
               <div><span className="eyebrow">Base personal</span><h2 id="recovery-vitals-title">Señales vitales</h2></div>
+              <small>Hoy y tu referencia habitual</small>
             </div>
-            <div className="recovery-vitals-table-wrap">
-              <table>
-                <thead><tr><th>Señal</th><th>Hoy</th><th>Base</th><th>Diferencia</th><th>Estado</th></tr></thead>
-                <tbody>
-                  {vitalFactors.map((factor) => (
-                    <tr key={factor.key}>
-                      <th scope="row" aria-label={factor.label}><span>{factorIcon(factor.key)}{factor.label}</span></th>
-                      <td data-label="Hoy">{formatMetric(factor.numeric_value, factor.unit)}</td>
-                      <td data-label="Base">{factor.baseline == null ? "Construyendo" : formatMetric(factor.baseline, factor.unit)}</td>
-                      <td data-label="Diferencia">{factor.difference_text}</td>
-                      <td data-label="Estado"><b className={`factor-status status-${factor.impact}`}>{factor.status_label}</b></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="recovery-vitals-grid">
+              {vitalFactors.map((factor) => {
+                const today = formatMetric(factor.numeric_value, factor.unit);
+                const baseline = factor.baseline == null ? "Construyendo" : formatMetric(factor.baseline, factor.unit);
+                const difference = cleanDifference(factor.difference_text);
+                const status = compactVitalStatus(factor.status_label);
+                return (
+                  <article
+                    className={`recovery-vital-card signal-${factor.impact}`}
+                    key={factor.key}
+                    aria-label={`${factor.label}. Hoy ${today}. Base ${baseline}. Cambio ${difference}. ${status}.`}
+                  >
+                    <header>
+                      <span className="recovery-vital-name">{factorIcon(factor.key)}<strong>{factor.label}</strong></span>
+                      <b className={`factor-status status-${factor.impact}`}>{status}</b>
+                    </header>
+                    <div className="recovery-vital-reading"><small>Hoy</small><strong>{today}</strong></div>
+                    <div className="recovery-vital-comparison">
+                      <span><small>Base</small><b>{baseline}</b></span>
+                      <span><small>Cambio</small><b>{difference}</b></span>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
-          </section>
+        </section>
 
-          <section className="recovery-trends-v3" aria-labelledby="recovery-trends-title">
+        <section className="recovery-trends-v3" aria-labelledby="recovery-trends-title">
             <div className="recovery-section-heading">
               <div><span className="eyebrow">Tendencias</span><h2 id="recovery-trends-title">Mira la dirección, no un solo día</h2></div>
             </div>
@@ -327,9 +310,8 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
               <TrendCard title="Pulso en reposo" unit="bpm" color="#78c6ff" items={restingTrend} baseline={factorsByKey.resting_hr?.baseline} />
               <TrendCard title="Carga" unit="pts" color="#5b8cff" items={loadTrend} baseline={load.baseline == null ? null : load.baseline / 7} normalMin={load.target_min} normalMax={load.target_max} />
             </div>
-          </section>
-        </div>}
-      </details>
+        </section>
+      </section>
     </div>
   );
 }
