@@ -31,6 +31,13 @@ function DayIcon({ category }: { category: DailyAgendaItem["category"] }) {
   return <MoonStar size={16} />;
 }
 
+function categoryLabel(category: DailyAgendaItem["category"]) {
+  if (category === "run") return "Carrera";
+  if (category === "strength") return "Gimnasio";
+  if (category === "bike") return "Bicicleta";
+  return "Recuperación";
+}
+
 function ActivityIcon({ activity }: { activity: CalendarActualActivity }) {
   if (activity.type === "RUNNING") return <Footprints size={14} />;
   if (activity.type === "BIKING") return <Bike size={14} />;
@@ -97,7 +104,17 @@ function WeekBlock({
           </small>
         </div>
         <div className="calendar-week-summary">
-          <b><CheckCircle2 size={13} /> {completed}/7</b>
+          <div
+            aria-label={`${completed} de ${week.length} sesiones completadas`}
+            className="calendar-week-progress"
+          >
+            <span>
+              <CheckCircle2 aria-hidden="true" size={14} />
+              <small>{current ? "Progreso semanal" : "Completadas"}</small>
+              <strong>{completed}/{week.length}</strong>
+            </span>
+            <progress aria-hidden="true" max={week.length} value={completed} />
+          </div>
           <ChevronDown aria-hidden="true" className="calendar-week-chevron" size={18} />
         </div>
       </summary>
@@ -121,7 +138,7 @@ function WeekBlock({
               </div>
 
               <div className="calendar-plan-copy">
-                <small>{item.is_today ? "Hoy · Plan" : "Plan"}</small>
+                <small>{item.is_today ? "Hoy · " : ""}{categoryLabel(item.category)}</small>
                 <p>{item.title}</p>
                 <span>{item.detail}</span>
               </div>
@@ -141,9 +158,9 @@ function WeekBlock({
                     ))}
                   </>
                 ) : item.is_past ? (
-                  <span className="calendar-no-data">Sin actividad registrada</span>
+                  <span className="calendar-no-data"><Clock3 aria-hidden="true" size={12} /> Sin actividad registrada</span>
                 ) : (
-                  <span className="calendar-no-data">Aún sin realizar</span>
+                  <span className="calendar-no-data"><Clock3 aria-hidden="true" size={12} /> Aún sin realizar</span>
                 )}
               </div>
 
