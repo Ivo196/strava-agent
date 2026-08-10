@@ -128,10 +128,10 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
           />
           <MetricTile
             label="Energía"
-            value={energy.score}
-            unit="/100"
-            percent={energy.score}
-            caption={energy.label}
+            value={energy.score ?? "—"}
+            unit={energy.score != null ? "/100" : undefined}
+            percent={energy.score ?? 0}
+            caption={energy.score == null ? "Sin señal suficiente" : energy.label}
             tone="blue"
             icon={<BatteryCharging size={16} />}
           />

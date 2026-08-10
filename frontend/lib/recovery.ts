@@ -39,6 +39,7 @@ export function activationLabel(score: number | null) {
 }
 
 export function loadTone(status: DashboardData["daily_state"]["load_7d"]["today_status"]): RecoveryTone {
+  if (status === "Sin base") return "neutral";
   if (status === "Alta") return "bad";
   if (status === "Adecuada") return "good";
   return "balanced";

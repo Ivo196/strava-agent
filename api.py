@@ -97,6 +97,13 @@ RECOVERY_FACTOR_THRESHOLDS = {
     "temperature": {"stable_delta": 0.2, "brake_delta": 0.4},
     "oxygen": {"stable_delta": 0.5, "brake_delta": -1.0, "low_floor": 92.0},
 }
+MIN_RECOVERY_BASELINE_SAMPLES = 3
+MIN_LOAD_BASELINE_WINDOWS = 3
+
+
+def _personal_baseline(values: list[float]) -> float | None:
+    """Use a robust center so one unusual wearable reading cannot move the baseline."""
+    return float(median(values)) if values else None
 
 
 def _invalidate_health_insights_cache() -> None:
@@ -1599,16 +1606,8 @@ def _dashboard_daily_state(
     ]
     hrv = today_recovery.get("hrv")
     resting_hr = today_recovery.get("resting_hr")
-    hrv_baseline = (
-        sum(hrv_baseline_values) / len(hrv_baseline_values)
-        if hrv_baseline_values
-        else None
-    )
-    rhr_baseline = (
-        sum(rhr_baseline_values) / len(rhr_baseline_values)
-        if rhr_baseline_values
-        else None
-    )
+    hrv_baseline = _personal_baseline(hrv_baseline_values)
+    rhr_baseline = _personal_baseline(rhr_baseline_values)
     calibration_nights = len({night["date"] for night in sleep_days})
     calibrated = (
         calibration_nights >= 7
@@ -1881,7 +1880,12 @@ def _recovery_guidance(
     ][:2]
     current_load = float(load.get("current_today") or 0)
     target_max = float(load.get("target_max") or 0)
-    today_load_high = bool(target_max and current_load > target_max)
+    load_baseline_ready = (
+        int(load.get("baseline_weeks") or 0) >= MIN_LOAD_BASELINE_WINDOWS
+    )
+    today_load_high = bool(
+        load_baseline_ready and target_max and current_load > target_max
+    )
     weekly_load_high = load.get("risk") == "Alto"
     activation_high = activation_score is not None and activation_score >= 65
     sleep_low = sleep_hours is not None and sleep_hours < max(6, sleep_goal - 1.5)
@@ -2002,18 +2006,31 @@ def _performance_daily_state(
             float(item[key]) for item in prior if item.get(key) is not None
         ]
         baseline_counts[key] = len(baseline_values)
-        baseline = sum(baseline_values) / len(baseline_values) if baseline_values else None
+        baseline = _personal_baseline(baseline_values)
         signal_score: float | None = None
         if key == "sleep" and value is not None:
             signal_score = max(0, min(100, float(value) / sleep_goal * 100))
-        elif value is not None and baseline is not None and len(baseline_values) >= 3:
+        elif (
+            value is not None
+            and baseline is not None
+            and len(baseline_values) >= MIN_RECOVERY_BASELINE_SAMPLES
+        ):
             number = float(value)
             if key == "hrv":
                 signal_score = 50 + ((number / baseline) - 1) * 250 if baseline else 50
             elif key == "resting_hr":
                 signal_score = 50 - ((number / baseline) - 1) * 250 if baseline else 50
             elif key == "oxygen":
-                signal_score = 75 if number >= 95 else 45 if number >= 92 else 20
+                oxygen_drop = number - baseline
+                signal_score = (
+                    20
+                    if number < RECOVERY_FACTOR_THRESHOLDS["oxygen"]["low_floor"]
+                    else 35
+                    if oxygen_drop <= RECOVERY_FACTOR_THRESHOLDS["oxygen"]["brake_delta"]
+                    else 75
+                    if number >= 95
+                    else 45
+                )
             elif key == "temperature":
                 signal_score = 80 - abs(number - baseline) * 55
             else:
@@ -2048,8 +2065,11 @@ def _performance_daily_state(
             detail = "Sin medición para hoy"
         elif key == "sleep":
             detail = f"{freshness} · Objetivo {sleep_goal:g} h"
-        elif baseline is None or len(baseline_values) < 3:
-            detail = f"{freshness} · {len(baseline_values)}/3 días para una referencia"
+        elif baseline is None or len(baseline_values) < MIN_RECOVERY_BASELINE_SAMPLES:
+            detail = (
+                f"{freshness} · {len(baseline_values)}/"
+                f"{MIN_RECOVERY_BASELINE_SAMPLES} días para una referencia"
+            )
         else:
             detail = f"{freshness} · Base 28 d: {baseline:.1f} {unit}"
         factors.append({
@@ -2126,7 +2146,17 @@ def _performance_daily_state(
         analysis_date,
     )
     state["sleep_utility"] = _sleep_utility(fitbit, analysis_date)
-    resting_reference = today_signals.get("resting_hr")
+    resting_factor = next(
+        (factor for factor in factors if factor["key"] == "resting_hr"),
+        None,
+    )
+    resting_reference = (
+        float(resting_factor["baseline"])
+        if resting_factor is not None
+        and resting_factor.get("baseline") is not None
+        and baseline_counts.get("resting_hr", 0) >= MIN_RECOVERY_BASELINE_SAMPLES
+        else 55.0
+    )
     heart_rate = fitbit.get("heart_rate", {})
     heart_rate_date = str(heart_rate.get("date") or "")
     heart_rate_fresh = bool(
@@ -2135,9 +2165,8 @@ def _performance_daily_state(
     )
 
     def activation_score(bpm: float) -> int:
-        reference = float(resting_reference or 55)
-        expected_awake = reference * 1.12
-        response_span = max(18, reference * 0.4)
+        expected_awake = resting_reference * 1.12
+        response_span = max(18, resting_reference * 0.4)
         return round(max(0, min(100, (bpm - expected_awake) / response_span * 100)))
 
     def percentile(values: list[int], ratio: float) -> float:
@@ -2244,6 +2273,7 @@ def _performance_daily_state(
             "daytime_activation": daytime_activation,
             "nightly_strain": nightly_strain,
             "passive_bpm": round(passive_bpm) if passive_bpm else None,
+            "resting_reference_bpm": round(resting_reference, 1),
             "coverage_hours": stress_coverage,
             "total_coverage_hours": total_coverage,
             "classified": classification_available,
@@ -2257,22 +2287,32 @@ def _performance_daily_state(
         (float(item["total"]) for item in state["load_7d"]["trend"] if item["date"] == current_day),
         0.0,
     )
-    readiness_estimate = round(weighted_score / available_weight) if available_weight else 50
-    baseline_daily = float(state["load_7d"]["baseline"] or 70) / 7
-    readiness_multiplier = 0.75 + readiness_estimate / 200
-    target_mid = max(6, baseline_daily * readiness_multiplier)
+    readiness_estimate = score
+    load_baseline = state["load_7d"]["baseline"]
+    baseline_daily = float(load_baseline) / 7 if load_baseline is not None else None
+    readiness_multiplier = (
+        0.75 + readiness_estimate / 200
+        if readiness_estimate is not None
+        else 1.0
+    )
+    target_mid = (
+        max(6, baseline_daily * readiness_multiplier)
+        if baseline_daily is not None
+        else None
+    )
     state["load_7d"].update({
         "current_today": round(current_load, 1),
-        "target_min": round(target_mid * 0.8, 1),
-        "target_max": round(target_mid * 1.2, 1),
+        "target_min": round(target_mid * 0.8, 1) if target_mid is not None else None,
+        "target_max": round(target_mid * 1.2, 1) if target_mid is not None else None,
     })
-    state["load_7d"]["today_status"] = (
-        "Alta"
-        if current_load > state["load_7d"]["target_max"]
-        else "Baja"
-        if current_load < state["load_7d"]["target_min"]
-        else "Adecuada"
-    )
+    if target_mid is None:
+        state["load_7d"]["today_status"] = "Sin base"
+    elif current_load > state["load_7d"]["target_max"]:
+        state["load_7d"]["today_status"] = "Alta"
+    elif current_load < state["load_7d"]["target_min"]:
+        state["load_7d"]["today_status"] = "Baja"
+    else:
+        state["load_7d"]["today_status"] = "Adecuada"
     state["recovery_guidance"] = _recovery_guidance(
         recovery_score=score,
         activation_score=stress_score,
@@ -2283,14 +2323,34 @@ def _performance_daily_state(
         confidence=confidence_level,
         factors=factors,
     )
-    drain = min(70, current_load * 0.7 + float(stress_score or 0) * 0.18)
-    energy_score = round(max(0, min(100, readiness_estimate - drain)))
+    drain = (
+        min(70, current_load * 0.7 + float(stress_score) * 0.18)
+        if readiness_estimate is not None and stress_score is not None
+        else None
+    )
+    energy_score = (
+        round(max(0, min(100, readiness_estimate - drain)))
+        if readiness_estimate is not None and drain is not None
+        else None
+    )
     state["energy"] = {
         "score": energy_score,
-        "label": "Alta" if energy_score >= 70 else "Disponible" if energy_score >= 45 else "Baja",
+        "label": (
+            "Sin datos"
+            if energy_score is None
+            else "Alta"
+            if energy_score >= 70
+            else "Disponible"
+            if energy_score >= 45
+            else "Baja"
+        ),
         "recharged": readiness_estimate,
-        "used": round(drain),
-        "explanation": f"+{readiness_estimate} por recuperación · −{round(drain)} por carga y activación",
+        "used": round(drain) if drain is not None else None,
+        "explanation": (
+            f"+{readiness_estimate} por recuperación · −{round(drain)} por carga y activación"
+            if readiness_estimate is not None and drain is not None
+            else "Faltan señales suficientes de recuperación o activación."
+        ),
         "method": "Balance estimado entre recuperación nocturna, carga de hoy y activación fisiológica.",
     }
     state["trends"] = {
@@ -2332,8 +2392,8 @@ def _aggregate_load_7d(
     fitbit: dict[str, Any],
     analysis_date: date,
 ) -> dict[str, Any]:
-    week_start = analysis_date - timedelta(days=analysis_date.weekday())
-    week_end = week_start + timedelta(days=6)
+    window_start = analysis_date - timedelta(days=6)
+    window_end = analysis_date
     start = analysis_date - timedelta(days=34)
     daily: dict[str, dict[str, float]] = {}
 
@@ -2370,7 +2430,7 @@ def _aggregate_load_7d(
     trend = []
     categories = {key: 0.0 for key in ("running", "cycling", "strength", "general")}
     for offset in range(7):
-        day = week_start + timedelta(days=offset)
+        day = window_start + timedelta(days=offset)
         values = daily.get(day.isoformat(), {key: 0.0 for key in categories})
         total = sum(values.values())
         trend.append({
@@ -2390,14 +2450,20 @@ def _aggregate_load_7d(
         })
     acute = sum(item["total"] for item in trend)
     baseline_weeks = []
-    for week_index in range(1, 5):
-        baseline_week_start = week_start - timedelta(weeks=week_index)
-        week_total = 0.0
+    for window_index in range(4):
+        baseline_window_end = window_start - timedelta(days=1 + window_index * 7)
+        baseline_window_start = baseline_window_end - timedelta(days=6)
+        window_total = 0.0
         for offset in range(7):
-            week_total += sum(daily.get((baseline_week_start + timedelta(days=offset)).isoformat(), {}).values())
-        if week_total > 0:
-            baseline_weeks.append(week_total)
-    baseline = sum(baseline_weeks) / len(baseline_weeks) if baseline_weeks else None
+            day = baseline_window_start + timedelta(days=offset)
+            window_total += sum(daily.get(day.isoformat(), {}).values())
+        if window_total > 0:
+            baseline_weeks.append(window_total)
+    baseline = (
+        sum(baseline_weeks) / len(baseline_weeks)
+        if len(baseline_weeks) >= MIN_LOAD_BASELINE_WINDOWS
+        else None
+    )
     ratio = acute / baseline if baseline else None
     risk = "Sin base" if ratio is None else "Bajo"
     if ratio is not None and ratio > 1.5:
@@ -2411,11 +2477,16 @@ def _aggregate_load_7d(
         if risk == "Moderado"
         else "La carga está dentro de tu rango reciente; progresa solo si recuperación y sensaciones acompañan."
         if baseline is not None
-        else "Aún no hay cuatro semanas comparables; usa la tendencia como registro, no como límite prescriptivo."
+        else (
+            f"Aún no hay {MIN_LOAD_BASELINE_WINDOWS} ventanas de siete días comparables; "
+            "usa la tendencia como registro, no como límite prescriptivo."
+        )
     )
     return {
-        "week_start": week_start.isoformat(),
-        "week_end": week_end.isoformat(),
+        "week_start": window_start.isoformat(),
+        "week_end": window_end.isoformat(),
+        "window_start": window_start.isoformat(),
+        "window_end": window_end.isoformat(),
         "total": round(acute, 1),
         "baseline": round(baseline, 1) if baseline is not None else None,
         "ratio": round(ratio, 2) if ratio is not None else None,
@@ -2425,7 +2496,10 @@ def _aggregate_load_7d(
         "trend": trend,
         "history": history,
         "baseline_weeks": len(baseline_weeks),
-        "method": "Carga de entrenamientos registrados, estimada con duración, frecuencia cardiaca o minutos en zona; la actividad cotidiana no se cuenta como sesión.",
+        "method": (
+            "Carga móvil de siete días de entrenamientos registrados, comparada con "
+            "hasta cuatro ventanas anteriores; la actividad cotidiana no se cuenta como sesión."
+        ),
     }
 
 

@@ -186,19 +186,19 @@ def test_performance_state_uses_six_signals_and_multisport_load() -> None:
     assert state["load_7d"]["categories"]["running"] == 55
     assert state["load_7d"]["categories"]["strength"] > 0
     assert state["load_7d"]["risk"] == "Sin base"
-    assert state["load_7d"]["week_start"] == "2026-07-20"
-    assert state["load_7d"]["week_end"] == "2026-07-26"
+    assert state["load_7d"]["week_start"] == "2026-07-14"
+    assert state["load_7d"]["week_end"] == "2026-07-20"
     assert [day["date"] for day in state["load_7d"]["trend"]] == [
+        "2026-07-14",
+        "2026-07-15",
+        "2026-07-16",
+        "2026-07-17",
+        "2026-07-18",
+        "2026-07-19",
         "2026-07-20",
-        "2026-07-21",
-        "2026-07-22",
-        "2026-07-23",
-        "2026-07-24",
-        "2026-07-25",
-        "2026-07-26",
     ]
     assert len(state["load_7d"]["history"]) == 28
-    assert state["load_7d"]["today_status"] in {"Baja", "Adecuada", "Alta"}
+    assert state["load_7d"]["today_status"] == "Sin base"
     assert state["sleep_utility"]["debt_hours"] == 3.5
     assert state["recovery_guidance"]["level"] in {"go", "flex", "limit", "uncertain"}
     assert state["journal"]["insights"] == []
@@ -244,7 +244,8 @@ def test_performance_state_uses_previous_night_without_rendering_false_gaps() ->
     assert state["physiological_stress"]["score"] is not None
     assert state["physiological_stress"]["source"].startswith("Estimación nocturna")
     assert 0 <= state["energy"]["score"] <= 100
-    assert state["load_7d"]["target_min"] < state["load_7d"]["target_max"]
+    assert state["load_7d"]["target_min"] is None
+    assert state["load_7d"]["target_max"] is None
 
 
 def test_fitbit_stress_is_calculated_automatically_from_day_and_night_signals() -> None:
@@ -305,6 +306,126 @@ def test_fitbit_stress_is_calculated_automatically_from_day_and_night_signals() 
     assert stress["components"]["classified"] is True
     assert stress["components"]["excluded_samples"] == 24
     assert "60%" in stress["method"]
+
+
+def test_stress_uses_personal_resting_baseline_instead_of_todays_rhr() -> None:
+    days = [f"2026-08-{day:02d}" for day in range(1, 11)]
+
+    def calculate(today_rhr: float) -> dict[str, object]:
+        recovery_history = [
+            {
+                "date": day,
+                "hrv": 90,
+                "resting_hr": 50,
+                "respiratory_rate": 15,
+                "temperature": 33.5,
+                "oxygen": 96,
+            }
+            for day in days[:-1]
+        ]
+        recovery_history.append({
+            "date": days[-1],
+            "hrv": 90,
+            "resting_hr": today_rhr,
+            "respiratory_rate": 15,
+            "temperature": 33.5,
+            "oxygen": 96,
+        })
+        fitbit = {
+            "sleep": {
+                "goal": 8,
+                "days": [{"date": day, "hours": 8} for day in days],
+            },
+            "recovery_history": recovery_history,
+            "heart_rate": {
+                "date": days[-1],
+                "latest": 70,
+                "coverage_hours": 6,
+                "stress_coverage_hours": 6,
+                "stress_classification_available": True,
+                "stress_excluded_samples": 0,
+                "stress_series": [
+                    {"time": f"{hour:02d}:00", "bpm": 70}
+                    for hour in range(6, 12)
+                ],
+            },
+            "exercises": [],
+        }
+        return api._performance_daily_state(
+            fitbit,
+            {"count": 0, "moving_minutes": 0, "training_load": 0, "calories": 0},
+            date(2026, 8, 10),
+            activity_rows=[],
+            daily_checkins=[],
+        )["physiological_stress"]
+
+    baseline_day = calculate(50)
+    elevated_rhr_day = calculate(60)
+
+    assert baseline_day["components"]["resting_reference_bpm"] == 50
+    assert elevated_rhr_day["components"]["resting_reference_bpm"] == 50
+    assert (
+        baseline_day["components"]["daytime_activation"]
+        == elevated_rhr_day["components"]["daytime_activation"]
+    )
+    assert elevated_rhr_day["score"] > baseline_day["score"]
+
+
+def test_energy_is_unknown_when_recovery_and_stress_are_missing() -> None:
+    state = api._performance_daily_state(
+        {
+            "sleep": {"goal": 8, "days": []},
+            "recovery_history": [],
+            "exercises": [],
+        },
+        {"count": 0, "moving_minutes": 0, "training_load": 0, "calories": 0},
+        date(2026, 8, 10),
+        activity_rows=[],
+        daily_checkins=[],
+    )
+
+    assert state["morning_recovery"]["score"] is None
+    assert state["physiological_stress"]["score"] is None
+    assert state["energy"] == {
+        "score": None,
+        "label": "Sin datos",
+        "recharged": None,
+        "used": None,
+        "explanation": "Faltan señales suficientes de recuperación o activación.",
+        "method": "Balance estimado entre recuperación nocturna, carga de hoy y activación fisiológica.",
+    }
+
+
+def test_recovery_baseline_uses_median_to_resist_one_outlier() -> None:
+    days = [f"2026-08-{day:02d}" for day in range(5, 11)]
+    hrv_values = [100, 101, 5, 102, 100, 101]
+    fitbit = {
+        "sleep": {
+            "goal": 8,
+            "days": [{"date": day, "hours": 8} for day in days],
+        },
+        "recovery_history": [
+            {"date": day, "hrv": hrv}
+            for day, hrv in zip(days, hrv_values)
+        ],
+        "exercises": [],
+    }
+
+    state = api._performance_daily_state(
+        fitbit,
+        {"count": 0, "moving_minutes": 0, "training_load": 0, "calories": 0},
+        date(2026, 8, 10),
+        activity_rows=[],
+        daily_checkins=[],
+    )
+    hrv = next(
+        factor
+        for factor in state["morning_recovery"]["factors"]
+        if factor["key"] == "hrv"
+    )
+
+    assert hrv["baseline"] == 100
+    assert hrv["score"] == 52
 
 
 def test_recovery_score_is_provisional_before_seven_nights() -> None:
@@ -412,6 +533,62 @@ def test_daily_movement_is_not_counted_as_training_load() -> None:
     assert load["total"] == 0
     assert load["history"][-1] == {"date": "2026-08-09", "total": 0}
     assert load["trend"][-1]["total"] == 0
+
+
+def test_load_7d_is_a_rolling_window_and_requires_three_baselines() -> None:
+    one_baseline = api._aggregate_load_7d(
+        [
+            {
+                "start_date_local": "2026-08-02T08:00:00+02:00",
+                "sport_type": "Run",
+                "moving_time_s": 3600,
+                "suffer_score": 70,
+            },
+            {
+                "start_date_local": "2026-08-04T08:00:00+02:00",
+                "sport_type": "Run",
+                "moving_time_s": 1800,
+                "suffer_score": 20,
+            },
+        ],
+        {"exercises": []},
+        date(2026, 8, 10),
+    )
+
+    assert one_baseline["window_start"] == "2026-08-04"
+    assert one_baseline["window_end"] == "2026-08-10"
+    assert [day["date"] for day in one_baseline["trend"]] == [
+        f"2026-08-{day:02d}" for day in range(4, 11)
+    ]
+    assert one_baseline["total"] == 20
+    assert one_baseline["baseline_weeks"] == 1
+    assert one_baseline["baseline"] is None
+    assert one_baseline["ratio"] is None
+    assert one_baseline["risk"] == "Sin base"
+
+    three_baselines = api._aggregate_load_7d(
+        [
+            {
+                "start_date_local": f"2026-07-{day:02d}T08:00:00+02:00",
+                "sport_type": "Run",
+                "moving_time_s": 3600,
+                "suffer_score": 70,
+            }
+            for day in (19, 26)
+        ] + [{
+            "start_date_local": "2026-08-02T08:00:00+02:00",
+            "sport_type": "Run",
+            "moving_time_s": 3600,
+            "suffer_score": 70,
+        }],
+        {"exercises": []},
+        date(2026, 8, 10),
+    )
+
+    assert three_baselines["baseline_weeks"] == 3
+    assert three_baselines["baseline"] == 70
+    assert three_baselines["ratio"] == 0
+    assert three_baselines["risk"] == "Bajo"
 
 
 def test_fitbit_insights_load_the_full_recent_heart_rate_window(monkeypatch: pytest.MonkeyPatch) -> None:

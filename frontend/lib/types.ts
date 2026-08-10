@@ -539,9 +539,9 @@ export type DashboardData = {
       baseline_weeks: number;
       method: string;
       current_today: number;
-      target_min: number;
-      target_max: number;
-      today_status: "Baja" | "Adecuada" | "Alta";
+      target_min: number | null;
+      target_max: number | null;
+      today_status: "Sin base" | "Baja" | "Adecuada" | "Alta";
     };
     physiological_stress: {
       score: number | null;
@@ -555,6 +555,7 @@ export type DashboardData = {
         daytime_activation: number | null;
         nightly_strain: number | null;
         passive_bpm: number | null;
+        resting_reference_bpm: number;
         coverage_hours: number;
         total_coverage_hours: number;
         classified: boolean;
@@ -565,10 +566,10 @@ export type DashboardData = {
       note: string;
     };
     energy: {
-      score: number;
+      score: number | null;
       label: string;
-      recharged: number;
-      used: number;
+      recharged: number | null;
+      used: number | null;
       explanation: string;
       method: string;
     };
