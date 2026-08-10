@@ -69,15 +69,22 @@ function WeekBlock({
     completion: Pick<DailyAgendaItem, "completed" | "completion_source" | "completion_locked">,
   ) => void;
 }) {
+  const [expanded, setExpanded] = useState(current);
   const activities = week.flatMap((day) => day.actual_activities ?? []);
   const completed = week.filter((day) => day.completed).length;
   const firstDay = week[0];
   const lastDay = week[week.length - 1];
 
+  useEffect(() => {
+    if (current) setExpanded(true);
+  }, [current]);
+
   return (
     <details
       className={`calendar-week-v2${current ? " calendar-week-v2-current" : ""}`}
       id={current ? "semana-actual" : undefined}
+      onToggle={(event) => setExpanded(event.currentTarget.open)}
+      open={expanded}
     >
       <summary className="calendar-week-v2-head">
         <div className="calendar-week-v2-title">
