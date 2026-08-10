@@ -4,7 +4,6 @@ import { useMemo, useState, type ReactNode } from "react";
 import {
   Activity,
   BedDouble,
-  BrainCircuit,
   ChevronDown,
   CircleGauge,
   Gauge,
@@ -261,7 +260,7 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
         </div>
       </header>
 
-      <section className="recovery-decision" aria-label="Estado y recomendación de recuperación">
+      <section className="recovery-overview-grid" aria-label="Resumen de recuperación">
         <div className="recovery-gauge-panel">
           <RecoveryGauge score={recovery.score} label={recovery.label} provisional={recovery.provisional} />
           <details className={`recovery-confidence ${confidenceNeedsExplanation ? "needs-context" : ""}`}>
@@ -269,17 +268,6 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
             <p>{state.confidence.note}</p>
           </details>
         </div>
-        <article className={`recovery-action action-${state.recovery_guidance.level}`}>
-          <span><BrainCircuit aria-hidden="true" /> Recomendación de hoy</span>
-          <h2>{state.recovery_guidance.title}</h2>
-          <p>{state.recovery_guidance.body}</p>
-          {state.recovery_guidance.reasons.length > 0 && (
-            <small>{state.recovery_guidance.reasons.join(" · ")}</small>
-          )}
-        </article>
-      </section>
-
-      <section className="recovery-summary-grid" aria-label="Resumen de recuperación">
         <SummaryCard
           icon={<MoonStar aria-hidden="true" />}
           title="Sueño"
