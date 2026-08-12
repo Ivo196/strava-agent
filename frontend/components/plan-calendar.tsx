@@ -64,6 +64,13 @@ function activityDetails(activity: CalendarActualActivity) {
   return values.join(" · ");
 }
 
+function completionLabel(source: DailyAgendaItem["completion_source"]) {
+  if (source === "fitbit") return "Sesión detectada por Fitbit";
+  if (source === "apple_watch") return "Sesión detectada por Apple Watch";
+  if (source === "manual") return "Sesión marcada como hecha";
+  return "Sesión completada";
+}
+
 function WeekBlock({
   week,
   current = false,
@@ -157,6 +164,11 @@ function WeekBlock({
                       </div>
                     ))}
                   </>
+                ) : item.completed ? (
+                  <span className="calendar-completion-status">
+                    <CheckCircle2 aria-hidden="true" size={13} />
+                    {completionLabel(item.completion_source)}
+                  </span>
                 ) : item.is_past ? (
                   <span className="calendar-no-data"><Clock3 aria-hidden="true" size={12} /> Sin actividad registrada</span>
                 ) : (
@@ -164,7 +176,7 @@ function WeekBlock({
                 )}
               </div>
 
-              {item.daily_metrics && (
+              {item.daily_metrics && item.category !== "run" && (
                 <div className="calendar-fitbit-metrics" aria-label="Resumen diario de Fitbit">
                   {item.daily_metrics.steps != null && <span><Footprints size={12} /> {item.daily_metrics.steps.toLocaleString("es-ES")}</span>}
                   {item.daily_metrics.active_minutes != null && <span><Clock3 size={12} /> {item.daily_metrics.active_minutes} min</span>}

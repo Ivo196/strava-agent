@@ -4244,6 +4244,27 @@ body {
   opacity: .7;
 }
 
+.calendar-completion-status {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  color: #aee8cb;
+  border: 1px solid rgba(86, 216, 160, .2);
+  border-radius: 9px;
+  background: rgba(86, 216, 160, .065);
+  font-size: 9px;
+  font-weight: 650;
+  text-align: center;
+}
+
+.calendar-completion-status svg {
+  flex: 0 0 auto;
+  color: #56d8a0;
+}
+
 .calendar-fitbit-metrics span {
   color: #b9c2b6;
   background: var(--day-soft);
