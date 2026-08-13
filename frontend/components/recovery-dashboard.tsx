@@ -5,6 +5,7 @@ import {
   Activity,
   BedDouble,
   CircleGauge,
+  Gauge,
   HeartPulse,
   Info,
   Minus,
@@ -213,6 +214,7 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
   const activation = state.physiological_stress;
   const sleep = state.sleep_utility;
   const load = state.load_7d;
+  const vo2Max = data.devices.fitbit.recovery.vo2_max;
   const latestSleep = data.devices.fitbit.sleep.latest;
   const sleepHours = latestSleep?.hours ?? recovery.sleep_hours ?? sleep.average_hours;
   const sleepProgress = sleepHours == null ? 0 : sleepHours / sleep.goal_hours * 100;
@@ -297,6 +299,30 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
                   </article>
                 );
               })}
+              <article
+                className="recovery-vital-card signal-neutral"
+                aria-label={
+                  vo2Max
+                    ? `VO₂ máximo estimado. Hoy ${formatMetric(vo2Max.value, vo2Max.unit)}. Fuente Fitbit y Google. Medición del ${dateLabel(vo2Max.date)}.`
+                    : "VO₂ máximo estimado. Fitbit todavía no tiene una medición disponible."
+                }
+              >
+                <header>
+                  <span className="recovery-vital-name">
+                    <Gauge aria-hidden="true" />
+                    <strong>VO₂ máx.</strong>
+                  </span>
+                  <b className="factor-status status-neutral">Estimado</b>
+                </header>
+                <div className="recovery-vital-reading">
+                  <small>Actual</small>
+                  <strong>{vo2Max ? formatMetric(vo2Max.value, vo2Max.unit) : "Sin dato"}</strong>
+                </div>
+                <div className="recovery-vital-comparison">
+                  <span><small>Fuente</small><b>Fitbit / Google</b></span>
+                  <span><small>Fecha</small><b>{vo2Max ? dateLabel(vo2Max.date) : "—"}</b></span>
+                </div>
+              </article>
             </div>
         </section>
 
