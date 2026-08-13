@@ -11,7 +11,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, ChevronLeft, ChevronRight, Clock3, Gauge, Mountain, Route } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { isoWeekDetails } from "@/lib/iso-week";
 import type { Activity, RunProgressData } from "@/lib/types";
 
@@ -31,11 +32,11 @@ type ChartPoint = WeeklyPoint & {
 
 const oneDecimal = new Intl.NumberFormat("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const wholeNumber = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 0 });
-const metricOptions: { key: Metric; label: string; dataKey: keyof ChartPoint }[] = [
-  { key: "distance", label: "Distancia", dataKey: "distance_km" },
-  { key: "time", label: "Tiempo", dataKey: "moving_minutes" },
-  { key: "pace", label: "Ritmo medio", dataKey: "average_pace_min_km" },
-  { key: "elevation", label: "Desnivel", dataKey: "elevation_gain_m" },
+const metricOptions: { key: Metric; label: string; dataKey: keyof ChartPoint; icon: LucideIcon }[] = [
+  { key: "distance", label: "Distancia", dataKey: "distance_km", icon: Route },
+  { key: "time", label: "Tiempo", dataKey: "moving_minutes", icon: Clock3 },
+  { key: "pace", label: "Ritmo medio", dataKey: "average_pace_min_km", icon: Gauge },
+  { key: "elevation", label: "Desnivel", dataKey: "elevation_gain_m", icon: Mountain },
 ];
 
 function formatPace(value: number | null) {
@@ -100,9 +101,7 @@ function useReducedMotion() {
 }
 
 function selectedWeekFor(points: ChartPoint[]) {
-  const current = points.find((point) => point.is_current);
-  if (current?.runs) return current.week;
-  return points.findLast((point) => point.runs > 0)?.week ?? current?.week ?? points.at(-1)?.week ?? "";
+  return points.at(-1)?.week ?? "";
 }
 
 function WeeklyTooltip({ active, payload }: { active?: boolean; payload?: { payload: ChartPoint }[] }) {
@@ -222,6 +221,7 @@ export function WeeklyMileageChart({
   }), [activityTotals, progress.weekly.points, range]);
 
   const [selectedWeek, setSelectedWeek] = useState(() => selectedWeekFor(points));
+  const [hoveredWeek, setHoveredWeek] = useState<string | null>(null);
   useEffect(() => {
     if (points.length && !points.some((point) => point.week === selectedWeek)) {
       setSelectedWeek(selectedWeekFor(points));
@@ -229,46 +229,80 @@ export function WeeklyMileageChart({
   }, [points, selectedWeek]);
 
   const selected = points.find((point) => point.week === selectedWeek) ?? points.at(-1);
+  const previewed = points.find((point) => point.week === hoveredWeek);
+  const activeWeek = previewed ?? selected;
+  const selectedIndex = points.findIndex((point) => point.week === selectedWeek);
   const metricOption = metricOptions.find((option) => option.key === metric) ?? metricOptions[0];
-  const historyTarget = selected ? `#history-${isoWeekDetails(selected.week).key}` : "#run-history-title";
+  const historyTarget = activeWeek ? `#history-${isoWeekDetails(activeWeek.week).key}` : "#run-history-title";
+  const selectAdjacentWeek = (offset: -1 | 1) => {
+    const point = points[selectedIndex + offset];
+    if (point) setSelectedWeek(point.week);
+  };
 
   return (
     <section className="runs-analysis-panel weekly-mileage-panel" aria-labelledby="weekly-mileage-title">
       <h2 className="sr-only" id="weekly-mileage-title">Progreso semanal de carrera</h2>
 
-      {selected && (
-        <header className="weekly-progress-header" aria-live="polite">
+      {activeWeek && (
+        <header className={`weekly-progress-header${previewed ? " is-previewing" : ""}`}>
           <div>
-            <span>Semana {selected.weekNumber}</span>
-            <strong>{selected.rangeLabel} {selected.weekYear}</strong>
+            <span>
+              Semana {activeWeek.weekNumber}
+              {previewed ? " · vista previa" : activeWeek.is_current ? " · actual" : ""}
+            </span>
+            <strong key={activeWeek.week}>{activeWeek.rangeLabel} {activeWeek.weekYear}</strong>
           </div>
-          <label className="weekly-week-picker">
+          <div className="weekly-week-picker">
             <span>Semana</span>
-            <select value={selected.week} onChange={(event) => setSelectedWeek(event.target.value)}>
-              {points.map((point) => (
-                <option key={point.week} value={point.week}>
-                  S{point.weekNumber} · {point.rangeLabel}{point.is_current ? " · actual" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+            <div className="weekly-week-control">
+              <button
+                aria-label="Seleccionar semana anterior"
+                disabled={selectedIndex <= 0}
+                onClick={() => selectAdjacentWeek(-1)}
+                type="button"
+              >
+                <ChevronLeft aria-hidden="true" size={16} />
+              </button>
+              <select aria-label="Semana seleccionada" value={selected?.week} onChange={(event) => setSelectedWeek(event.target.value)}>
+                {points.map((point) => (
+                  <option key={point.week} value={point.week}>
+                    S{point.weekNumber} · {point.rangeLabel}{point.is_current ? " · actual" : ""}
+                  </option>
+                ))}
+              </select>
+              <button
+                aria-label="Seleccionar semana siguiente"
+                disabled={selectedIndex < 0 || selectedIndex >= points.length - 1}
+                onClick={() => selectAdjacentWeek(1)}
+                type="button"
+              >
+                <ChevronRight aria-hidden="true" size={16} />
+              </button>
+            </div>
+          </div>
         </header>
       )}
 
-      {selected && (
+      {activeWeek && (
         <div className="weekly-progress-metrics" aria-label="Métrica representada en el gráfico" role="group">
-          {metricOptions.map((option) => (
+          {metricOptions.map((option) => {
+            const Icon = option.icon;
+            return (
             <button
               aria-pressed={metric === option.key}
-              className={metric === option.key ? "active" : ""}
+              className={`weekly-metric-${option.key}${metric === option.key ? " active" : ""}`}
               key={option.key}
               onClick={() => setMetric(option.key)}
               type="button"
             >
-              <small>{option.label}</small>
-              <strong>{formatMetric(metricValue(selected, option.key), option.key)}</strong>
+              <Icon aria-hidden="true" size={18} />
+              <span>
+                <small>{option.label}</small>
+                <strong key={`${activeWeek.week}-${option.key}`}>{formatMetric(metricValue(activeWeek, option.key), option.key)}</strong>
+              </span>
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -302,12 +336,16 @@ export function WeeklyMileageChart({
             onClick={(state) => {
               const activeIndex = Number(state?.activeIndex);
               const point = Number.isInteger(activeIndex) ? points[activeIndex] : undefined;
-              if (point) setSelectedWeek(point.week);
+              if (point) {
+                setSelectedWeek(point.week);
+                setHoveredWeek(null);
+              }
             }}
+            onMouseLeave={() => setHoveredWeek(null)}
             onMouseMove={(state) => {
               const activeIndex = Number(state?.activeIndex);
               const point = Number.isInteger(activeIndex) ? points[activeIndex] : undefined;
-              if (point && point.week !== selectedWeek) setSelectedWeek(point.week);
+              setHoveredWeek(point?.week ?? null);
             }}
           >
             <defs>
@@ -340,12 +378,12 @@ export function WeeklyMileageChart({
               content={<WeeklyTooltip />}
               cursor={{ stroke: "rgba(120,198,255,.34)", strokeDasharray: "3 5" }}
             />
-            {selected && (
+            {activeWeek && (
               <ReferenceLine
                 stroke="rgba(243,246,239,.82)"
                 strokeDasharray="3 5"
                 strokeWidth={1.5}
-                x={selected.axisLabel}
+                x={activeWeek.axisLabel}
               />
             )}
             <Area
@@ -357,7 +395,7 @@ export function WeeklyMileageChart({
                   {...props}
                   metric={metric}
                   onSelect={setSelectedWeek}
-                  selectedWeek={selectedWeek}
+                  selectedWeek={activeWeek?.week ?? selectedWeek}
                 />
               )}
               fill="url(#weeklyProgressFill)"
@@ -375,9 +413,9 @@ export function WeeklyMileageChart({
 
       <footer className="weekly-progress-footer">
         <span>Pasá el cursor o tocá un punto para explorar otra semana.</span>
-        {selected && selected.runs > 0 ? (
+        {activeWeek && activeWeek.runs > 0 ? (
           <a href={historyTarget}>
-            Ver {selected.runs} {selected.runs === 1 ? "carrera" : "carreras"} de la semana
+            Ver {activeWeek.runs} {activeWeek.runs === 1 ? "carrera" : "carreras"} de la semana
             <ArrowDown aria-hidden="true" size={15} />
           </a>
         ) : (

@@ -4608,32 +4608,46 @@ body {
 .runs-range-switch, .history-filter-switch { display: flex; gap: 5px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: rgba(3,7,6,.34); }
 .runs-range-switch button, .history-filter-switch button { min-height: 44px; padding: 0 12px; color: #758077; border: 1px solid transparent; border-radius: 7px; background: transparent; cursor: pointer; font-size: 9px; font-weight: 750; transition: color .18s ease,background .18s ease,border-color .18s ease; }
 .runs-range-switch button:hover, .history-filter-switch button:hover { color: #d7ddd7; background: rgba(120,198,255,.06); }
-.runs-range-switch button:focus-visible, .history-filter-switch button:focus-visible, .run-history-entry:focus-visible, .runs-data-table summary:focus-visible, .run-quality-method summary:focus-visible, .weekly-week-picker select:focus-visible, .weekly-progress-metrics button:focus-visible { outline: 2px solid var(--orange-deep); outline-offset: 2px; }
+.runs-range-switch button:focus-visible, .history-filter-switch button:focus-visible, .run-history-entry:focus-visible, .runs-data-table summary:focus-visible, .run-quality-method summary:focus-visible, .weekly-week-picker select:focus-visible, .weekly-week-control button:focus-visible, .weekly-progress-metrics button:focus-visible { outline: 2px solid var(--orange-deep); outline-offset: 2px; }
 .runs-range-switch button.active, .history-filter-switch button.active { color: #edf3ed; border-color: rgba(120,198,255,.18); background: rgba(120,198,255,.1); }
 .runs-chart-frame { width: 100%; min-width: 0; margin-top: 14px; overflow: hidden; }
-.weekly-mileage-panel { padding: 26px 28px 22px; }
+.weekly-mileage-panel { position: relative; padding: 26px 28px 22px; overflow: hidden; background: radial-gradient(circle at 88% -15%,rgba(120,198,255,.075),transparent 32%),linear-gradient(145deg,rgba(13,18,17,.96),rgba(8,13,15,.94)); }
+.weekly-mileage-panel::before { position: absolute; inset: 0 auto auto 0; width: 42%; height: 1px; content: ""; background: linear-gradient(90deg,rgba(120,198,255,.7),transparent); }
 .weekly-progress-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
 .weekly-progress-header > div span, .weekly-progress-header > div strong { display: block; }
 .weekly-progress-header > div span { color: var(--orange); font-size: 9px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
 .weekly-progress-header > div strong { margin-top: 7px; color: #f3f6ef; font: 650 clamp(27px,3vw,39px)/1 "Fira Code",ui-monospace,monospace; letter-spacing: -.045em; text-transform: capitalize; }
+.weekly-progress-header.is-previewing > div:first-child span { color: #a9b7ae; }
+.weekly-progress-header > div:first-child strong, .weekly-progress-metrics strong { animation: weekly-value-enter .22s cubic-bezier(.16,1,.3,1); }
 .weekly-week-picker { display: flex; align-items: center; gap: 9px; }
 .weekly-week-picker > span { color: #727d74; font-size: 8px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
-.weekly-week-picker select { min-width: 174px; min-height: 44px; padding: 0 34px 0 12px; color: #dce4dc; border: 1px solid rgba(120,198,255,.16); border-radius: 9px; background: rgba(120,198,255,.055); cursor: pointer; font: 600 9px "Fira Code",ui-monospace,monospace; }
-.weekly-progress-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 20px; margin-top: 25px; }
-.weekly-progress-metrics button { min-width: 0; min-height: 78px; padding: 10px 0 15px; color: inherit; border: 0; border-bottom: 2px solid rgba(218,232,211,.09); background: transparent; cursor: pointer; text-align: left; transition: border-color .18s ease,background .18s ease; }
-.weekly-progress-metrics button:hover { border-color: rgba(120,198,255,.35); background: linear-gradient(180deg,transparent,rgba(120,198,255,.025)); }
-.weekly-progress-metrics button.active { border-color: var(--orange); }
+.weekly-week-control { display: grid; grid-template-columns: 42px minmax(174px,1fr) 42px; overflow: hidden; border: 1px solid rgba(120,198,255,.17); border-radius: 12px; background: rgba(120,198,255,.045); box-shadow: inset 0 1px rgba(255,255,255,.025); }
+.weekly-week-control select { min-width: 174px; min-height: 44px; padding: 0 28px 0 12px; color: #dce4dc; border: 0; border-inline: 1px solid rgba(120,198,255,.11); border-radius: 0; background: transparent; cursor: pointer; font: 600 9px "Fira Code",ui-monospace,monospace; }
+.weekly-week-control button { width: 42px; min-height: 44px; display: grid; place-items: center; padding: 0; color: #8fcfff; border: 0; background: transparent; cursor: pointer; transition: color .18s ease,background .18s ease; }
+.weekly-week-control button:hover:not(:disabled) { color: #f1f8f3; background: rgba(120,198,255,.1); }
+.weekly-week-control button:disabled { color: #414c46; cursor: not-allowed; }
+.weekly-progress-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin-top: 25px; }
+.weekly-progress-metrics button { --metric-accent: #78c6ff; position: relative; min-width: 0; min-height: 82px; display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 10px; align-items: center; padding: 12px 14px; overflow: hidden; color: inherit; border: 1px solid rgba(148,163,184,.1); border-radius: 12px; background: rgba(3,7,10,.28); cursor: pointer; text-align: left; transition: border-color .2s ease,background .2s ease,box-shadow .2s ease,transform .2s cubic-bezier(.16,1,.3,1); }
+.weekly-progress-metrics button::after { position: absolute; inset: auto 13px 0; height: 2px; border-radius: 999px 999px 0 0; background: var(--metric-accent); content: ""; opacity: 0; transform: scaleX(.25); transition: opacity .2s ease,transform .2s cubic-bezier(.16,1,.3,1); }
+.weekly-progress-metrics button > svg { width: 34px; height: 34px; padding: 8px; color: var(--metric-accent); border-radius: 10px; background: color-mix(in srgb,var(--metric-accent) 9%,transparent); }
+.weekly-progress-metrics button:hover { border-color: color-mix(in srgb,var(--metric-accent) 26%,transparent); background: color-mix(in srgb,var(--metric-accent) 5%,rgba(3,7,10,.45)); transform: translateY(-1px); }
+.weekly-progress-metrics button.active { border-color: color-mix(in srgb,var(--metric-accent) 32%,transparent); background: linear-gradient(145deg,color-mix(in srgb,var(--metric-accent) 10%,transparent),rgba(3,7,10,.5)); box-shadow: 0 12px 28px color-mix(in srgb,var(--metric-accent) 8%,transparent); }
+.weekly-progress-metrics button.active::after { opacity: 1; transform: scaleX(1); }
+.weekly-progress-metrics .weekly-metric-time { --metric-accent: #a98bff; }
+.weekly-progress-metrics .weekly-metric-pace { --metric-accent: #f4b860; }
+.weekly-progress-metrics .weekly-metric-elevation { --metric-accent: #56d8a0; }
 .weekly-progress-metrics small, .weekly-progress-metrics strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.weekly-progress-metrics small { color: #a2aba3; font-size: 11px; }
-.weekly-progress-metrics strong { margin-top: 9px; color: #f2f5f0; font: 650 clamp(22px,2.4vw,34px)/1 "Fira Code",ui-monospace,monospace; letter-spacing: -.045em; }
+.weekly-progress-metrics small { color: #8f9b93; font-size: 9px; font-weight: 700; letter-spacing: .025em; }
+.weekly-progress-metrics strong { margin-top: 7px; color: #f2f5f0; font: 650 clamp(17px,1.75vw,25px)/1 "Fira Code",ui-monospace,monospace; letter-spacing: -.045em; }
 .weekly-chart-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 22px; }
 .weekly-chart-heading > span { color: #c7cec8; font-size: 12px; font-weight: 650; }
 .weekly-chart-heading .runs-range-switch button { min-height: 38px; }
-.weekly-progress-chart { height: 350px; margin-top: 10px; overflow: hidden; border: 1px solid rgba(218,232,211,.07); border-radius: 14px; background: linear-gradient(180deg,rgba(91,140,255,.035),rgba(3,7,6,.12)); cursor: crosshair; touch-action: pan-y; }
+.weekly-progress-chart { height: 350px; margin-top: 10px; overflow: hidden; border: 1px solid rgba(120,198,255,.1); border-radius: 16px; background: radial-gradient(circle at 50% 0,rgba(120,198,255,.055),transparent 50%),linear-gradient(180deg,rgba(7,14,20,.72),rgba(3,7,6,.18)); box-shadow: inset 0 1px rgba(255,255,255,.022); cursor: crosshair; touch-action: pan-y; transition: border-color .22s ease,box-shadow .22s ease; }
+.weekly-progress-chart:hover { border-color: rgba(120,198,255,.2); box-shadow: inset 0 1px rgba(255,255,255,.03),0 16px 34px rgba(0,0,0,.12); }
 .weekly-progress-hit { fill: transparent; cursor: pointer; outline: none; }
 .weekly-progress-dot { fill: rgba(13,16,14,.98); stroke: var(--orange); stroke-width: 3px; pointer-events: none; transition: fill .18s ease,stroke-width .18s ease; }
 .weekly-progress-hit:hover + .weekly-progress-dot, .weekly-progress-hit:focus-visible + .weekly-progress-dot, .weekly-progress-dot.is-selected { fill: var(--orange); stroke: #f3f6ef; stroke-width: 3px; }
-.weekly-progress-dot-halo { fill: rgba(120,198,255,.22); pointer-events: none; }
+.weekly-progress-dot-halo { fill: rgba(120,198,255,.22); pointer-events: none; transform-box: fill-box; transform-origin: center; animation: weekly-dot-select .22s cubic-bezier(.16,1,.3,1); }
 .weekly-progress-tooltip strong { font-size: 13px; }
 .weekly-progress-footer { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-top: 10px; border-top: 1px solid rgba(218,232,211,.08); }
 .weekly-progress-footer > span, .weekly-progress-footer > small { color: #78837a; font-size: 9px; }
@@ -4651,6 +4665,9 @@ body {
 .runs-data-table th, .runs-data-table td { padding: 7px; border-top: 1px solid var(--line); text-align: left; }
 .runs-data-table th { color: #9ba69c; }
 .run-analytics-section { margin-top: 12px; }
+
+@keyframes weekly-value-enter { from { opacity: .35; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes weekly-dot-select { from { opacity: 0; transform: scale(.45); } to { opacity: 1; transform: scale(1); } }
 
 .run-history-section { margin-top: 42px; font-family: Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
 .run-history-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 15px; }
@@ -4717,6 +4734,8 @@ body {
 }
 
 @media (min-width: 761px) and (max-width: 900px) {
+  .weekly-progress-header .weekly-week-picker > span { display: none; }
+  .weekly-progress-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .run-history-entry { min-height: 154px; grid-template-columns: 108px minmax(140px,1fr) 68px; gap: 17px 14px; align-items: center; padding-block: 18px; }
   .run-history-date { grid-column: 1; grid-row: 1; }
   .run-history-distance { grid-column: 2; grid-row: 1; }
@@ -4734,11 +4753,14 @@ body {
   .weekly-mileage-panel { padding: 20px 14px 16px !important; }
   .weekly-progress-header { align-items: flex-start; flex-direction: column; gap: 13px; }
   .weekly-week-picker { width: 100%; }
-  .weekly-week-picker select { flex: 1; min-width: 0; }
+  .weekly-week-control { width: 100%; grid-template-columns: 44px minmax(0,1fr) 44px; }
+  .weekly-week-picker select { width: 100%; min-width: 0; }
   .weekly-progress-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px 12px; margin-top: 18px; }
-  .weekly-progress-metrics button { min-height: 72px; }
+  .weekly-progress-metrics button { min-height: 76px; grid-template-columns: 30px minmax(0,1fr); gap: 8px; padding: 10px; }
+  .weekly-progress-metrics button > svg { width: 30px; height: 30px; padding: 7px; }
   .weekly-progress-metrics small { font-size: 9px; }
   .weekly-progress-metrics strong { font-size: clamp(15px,4.2vw,20px); }
+  .weekly-progress-metrics .weekly-metric-pace strong { font-size: clamp(12px,3.35vw,15px); letter-spacing: -.06em; }
   .weekly-chart-heading { align-items: flex-start; flex-direction: column; gap: 10px; margin-top: 18px; }
   .weekly-chart-heading .runs-range-switch { width: 100%; }
   .runs-chart-frame { margin-inline: -8px; width: calc(100% + 16px); }
@@ -4772,8 +4794,10 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .run-history-entry, .run-details-action svg, .runs-range-switch button, .history-filter-switch button, .weekly-progress-dot, .weekly-progress-metrics button { transition: none; }
+  .run-history-entry, .run-details-action svg, .runs-range-switch button, .history-filter-switch button, .weekly-progress-dot, .weekly-progress-metrics button, .weekly-week-control button, .weekly-progress-chart { transition: none; }
+  .weekly-progress-header > div:first-child strong, .weekly-progress-metrics strong, .weekly-progress-dot-halo { animation: none; }
   .run-history-entry:hover { transform: none; }
+  .weekly-progress-metrics button:hover { transform: none; }
 }
 
 /* Recovery v3 — one decision, progressive disclosure, personal baselines */
