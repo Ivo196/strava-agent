@@ -392,7 +392,16 @@ def test_energy_is_unknown_when_recovery_and_stress_are_missing() -> None:
         "recharged": None,
         "used": None,
         "explanation": "Faltan señales suficientes de recuperación o activación.",
-        "method": "Balance estimado entre recuperación nocturna, carga de hoy y activación fisiológica.",
+        "components": {
+            "training_load": 0.0,
+            "physiological_stress": None,
+            "active_energy_kcal": 0,
+            "movement_drain": 0.0,
+        },
+        "method": (
+            "Balance estimado entre recuperación nocturna, carga de entrenamiento, "
+            "gasto activo de Fitbit y activación fisiológica del día."
+        ),
     }
 
 
@@ -466,6 +475,184 @@ def test_recovery_score_is_provisional_before_seven_nights() -> None:
     assert state["morning_recovery"]["provisional"] is True
     assert state["morning_recovery"]["summary"].startswith("Estimación provisional")
     assert state["confidence"]["note"].startswith("Estimación provisional")
+
+
+def test_recovery_score_uses_primary_readiness_signals_only() -> None:
+    days = [f"2026-08-{day:02d}" for day in range(4, 11)]
+
+    def calculate(respiration: float, temperature: float, oxygen: float) -> int:
+        fitbit = {
+            "sleep": {
+                "goal": 8,
+                "days": [{"date": day, "hours": 8} for day in days],
+            },
+            "recovery_history": [
+                {
+                    "date": day,
+                    "hrv": 100,
+                    "resting_hr": 50,
+                    "respiratory_rate": respiration if day == days[-1] else 15,
+                    "temperature": temperature if day == days[-1] else 33.5,
+                    "oxygen": oxygen if day == days[-1] else 97,
+                }
+                for day in days
+            ],
+            "exercises": [],
+        }
+        state = api._performance_daily_state(
+            fitbit,
+            {"count": 0, "moving_minutes": 0, "training_load": 0, "calories": 0},
+            date(2026, 8, 10),
+            activity_rows=[],
+            daily_checkins=[],
+        )
+        return state["morning_recovery"]["score"]
+
+    normal = calculate(15, 33.5, 97)
+    unusual_vitals = calculate(19, 35.0, 90)
+
+    assert normal == unusual_vitals
+    assert normal is not None
+
+
+def test_recovery_sleep_score_includes_recent_sleep_pattern() -> None:
+    days = [f"2026-08-{day:02d}" for day in range(4, 11)]
+
+    def calculate(previous_hours: float) -> int:
+        fitbit = {
+            "sleep": {
+                "goal": 8,
+                "days": [
+                    {
+                        "date": day,
+                        "hours": 8 if day == days[-1] else previous_hours,
+                    }
+                    for day in days
+                ],
+            },
+            "recovery_history": [
+                {"date": day, "hrv": 100, "resting_hr": 50}
+                for day in days
+            ],
+            "exercises": [],
+        }
+        state = api._performance_daily_state(
+            fitbit,
+            {"count": 0, "moving_minutes": 0, "training_load": 0, "calories": 0},
+            date(2026, 8, 10),
+            activity_rows=[],
+            daily_checkins=[],
+        )
+        return state["morning_recovery"]["score"]
+
+    assert calculate(6) < calculate(8)
+
+
+def test_stress_never_uses_yesterdays_heart_rate_as_intraday_data() -> None:
+    days = [f"2026-08-{day:02d}" for day in range(4, 11)]
+    fitbit = {
+        "sleep": {
+            "goal": 8,
+            "days": [{"date": day, "hours": 8} for day in days],
+        },
+        "recovery_history": [
+            {"date": day, "hrv": 100, "resting_hr": 50}
+            for day in days
+        ],
+        "heart_rate": {
+            "date": "2026-08-09",
+            "latest": 90,
+            "coverage_hours": 12,
+            "stress_coverage_hours": 8,
+            "stress_classification_available": True,
+            "stress_excluded_samples": 50,
+            "stress_series": [{"time": "18:00", "bpm": 90}],
+        },
+        "exercises": [],
+    }
+
+    state = api._performance_daily_state(
+        fitbit,
+        {"count": 0, "moving_minutes": 0, "training_load": 0, "calories": 0},
+        date(2026, 8, 10),
+        activity_rows=[],
+        daily_checkins=[],
+    )
+
+    stress = state["physiological_stress"]
+    assert stress["components"]["daytime_activation"] is None
+    assert stress["components"]["intraday_current"] is False
+    assert stress["components"]["coverage_hours"] == 0
+    assert stress["components"]["excluded_samples"] == 0
+    assert stress["latest_bpm"] is None
+    assert stress["date"] == "2026-08-10"
+
+
+def test_energy_updates_with_fitbit_active_energy_during_the_day() -> None:
+    days = [f"2026-08-{day:02d}" for day in range(4, 11)]
+
+    def calculate(active_kcal: float) -> dict[str, object]:
+        fitbit = {
+            "sleep": {
+                "goal": 8,
+                "days": [{"date": day, "hours": 8} for day in days],
+            },
+            "recovery_history": [
+                {"date": day, "hrv": 100, "resting_hr": 50}
+                for day in days
+            ],
+            "heart_rate": {
+                "date": "2026-08-10",
+                "latest": 65,
+                "stress_coverage_hours": 4,
+                "stress_classification_available": True,
+                "stress_series": [
+                    {"time": f"{hour:02d}:00", "bpm": 65}
+                    for hour in range(8, 12)
+                ],
+            },
+            "active_energy": {
+                "goal": 600,
+                "latest": {"date": "2026-08-10", "kcal": active_kcal},
+            },
+            "exercises": [],
+        }
+        return api._performance_daily_state(
+            fitbit,
+            {"count": 0, "moving_minutes": 0, "training_load": 0, "calories": 0},
+            date(2026, 8, 10),
+            activity_rows=[],
+            daily_checkins=[],
+        )["energy"]
+
+    morning = calculate(0)
+    active_day = calculate(600)
+
+    assert active_day["score"] < morning["score"]
+    assert active_day["components"]["movement_drain"] == 15
+    assert active_day["components"]["active_energy_kcal"] == 600
+
+
+def test_fitbit_sleep_days_excludes_naps() -> None:
+    def sleep_row(hours: float, *, nap: bool) -> dict[str, str]:
+        return {
+            "data_type": "sleep",
+            "recorded_at": "2026-08-10T07:00:00Z",
+            "source": "FITBIT",
+            "value_json": json.dumps({
+                "sleep": {
+                    "metadata": {"nap": nap},
+                    "summary": {"minutesAsleep": hours * 60},
+                }
+            }),
+        }
+
+    days = api._fitbit_sleep_days([
+        sleep_row(7.5, nap=False),
+        sleep_row(2, nap=True),
+    ])
+
+    assert days == [{"date": "2026-08-10", "hours": 7.5}]
 
 
 def test_recovery_explanation_uses_real_baseline_differences() -> None:

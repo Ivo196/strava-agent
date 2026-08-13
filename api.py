@@ -99,6 +99,11 @@ RECOVERY_FACTOR_THRESHOLDS = {
 }
 MIN_RECOVERY_BASELINE_SAMPLES = 3
 MIN_LOAD_BASELINE_WINDOWS = 3
+RECOVERY_PRIMARY_WEIGHTS = {
+    "sleep": 0.45,
+    "hrv": 0.30,
+    "resting_hr": 0.25,
+}
 
 
 def _personal_baseline(values: list[float]) -> float | None:
@@ -1173,7 +1178,11 @@ def _fitbit_sleep_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for row in rows:
         if row["data_type"] != "sleep" or row["source"] != "FITBIT":
             continue
-        normalized = normalized_recovery_value(row["data_type"], json.loads(row["value_json"]))
+        point = json.loads(row["value_json"])
+        sleep = point.get("sleep") or {}
+        if (sleep.get("metadata") or {}).get("nap"):
+            continue
+        normalized = normalized_recovery_value(row["data_type"], point)
         if normalized is None:
             continue
         recorded = _parse_health_datetime(row["recorded_at"])
@@ -1575,7 +1584,7 @@ def _dashboard_daily_state(
         (
             night for night in reversed(sleep_days)
             if night.get("date")
-            and 0 <= (analysis_date - date.fromisoformat(str(night["date"]))).days <= 2
+            and 0 <= (analysis_date - date.fromisoformat(str(night["date"]))).days <= 1
         ),
         None,
     )
@@ -1590,7 +1599,7 @@ def _dashboard_daily_state(
         (
             item for item in reversed(history)
             if item.get("date")
-            and 0 <= (analysis_date - date.fromisoformat(str(item["date"]))).days <= 2
+            and 0 <= (analysis_date - date.fromisoformat(str(item["date"]))).days <= 1
         ),
         {},
     )
@@ -1971,7 +1980,7 @@ def _performance_daily_state(
         (
             item for item in reversed(history)
             if item.get("date")
-            and 0 <= (analysis_date - date.fromisoformat(str(item["date"]))).days <= 2
+            and 0 <= (analysis_date - date.fromisoformat(str(item["date"]))).days <= 1
         ),
         {},
     )
@@ -1983,19 +1992,50 @@ def _performance_daily_state(
             str(night.get("date")) for night in reversed(fitbit.get("sleep", {}).get("days", []))
             if night.get("date")
             and str(night.get("date")) <= current_day
-            and 0 <= (analysis_date - date.fromisoformat(str(night["date"]))).days <= 2
+            and 0 <= (analysis_date - date.fromisoformat(str(night["date"]))).days <= 1
         ),
         "",
     )
     sleep_goal = float(fitbit.get("sleep", {}).get("goal") or 8)
+    recent_sleep_hours = [
+        float(night["hours"])
+        for night in fitbit.get("sleep", {}).get("days", [])
+        if night.get("date")
+        and night.get("hours") is not None
+        and str(night["date"]) <= current_day
+        and 0 <= (analysis_date - date.fromisoformat(str(night["date"]))).days <= 7
+    ][-7:]
+    recent_sleep_average = (
+        sum(recent_sleep_hours) / len(recent_sleep_hours)
+        if len(recent_sleep_hours) >= 3
+        else None
+    )
 
     definitions = [
-        ("sleep", "Sueño", sleep, "h", 0.32),
-        ("hrv", "HRV nocturna", today_signals.get("hrv"), "ms", 0.20),
-        ("resting_hr", "Pulso en reposo", today_signals.get("resting_hr"), "bpm", 0.16),
-        ("respiratory_rate", "Respiración", today_signals.get("respiratory_rate"), "rpm", 0.12),
-        ("temperature", "Temperatura", today_signals.get("temperature"), "°C", 0.10),
-        ("oxygen", "SpO₂", today_signals.get("oxygen"), "%", 0.10),
+        ("sleep", "Sueño", sleep, "h", RECOVERY_PRIMARY_WEIGHTS["sleep"]),
+        (
+            "hrv",
+            "HRV nocturna",
+            today_signals.get("hrv"),
+            "ms",
+            RECOVERY_PRIMARY_WEIGHTS["hrv"],
+        ),
+        (
+            "resting_hr",
+            "Pulso en reposo",
+            today_signals.get("resting_hr"),
+            "bpm",
+            RECOVERY_PRIMARY_WEIGHTS["resting_hr"],
+        ),
+        (
+            "respiratory_rate",
+            "Respiración",
+            today_signals.get("respiratory_rate"),
+            "rpm",
+            0.0,
+        ),
+        ("temperature", "Temperatura", today_signals.get("temperature"), "°C", 0.0),
+        ("oxygen", "SpO₂", today_signals.get("oxygen"), "%", 0.0),
     ]
     factors: list[dict[str, Any]] = []
     weighted_score = 0.0
@@ -2009,7 +2049,15 @@ def _performance_daily_state(
         baseline = _personal_baseline(baseline_values)
         signal_score: float | None = None
         if key == "sleep" and value is not None:
-            signal_score = max(0, min(100, float(value) / sleep_goal * 100))
+            latest_sleep_score = max(0, min(100, float(value) / sleep_goal * 100))
+            recent_sleep_score = (
+                max(0, min(100, recent_sleep_average / sleep_goal * 100))
+                if recent_sleep_average is not None
+                else latest_sleep_score
+            )
+            # Fitbit readiness considers both the latest sleep and recent sleep
+            # patterns. Duration is the comparable signal available in this feed.
+            signal_score = latest_sleep_score * 0.7 + recent_sleep_score * 0.3
         elif (
             value is not None
             and baseline is not None
@@ -2041,7 +2089,7 @@ def _performance_daily_state(
             number = float(value)
             signal_score = 75 if number >= 95 else 45 if number >= 92 else 20
 
-        if signal_score is not None:
+        if signal_score is not None and weight > 0:
             weighted_score += signal_score * weight
             available_weight += weight
         factor_state = (
@@ -2093,9 +2141,18 @@ def _performance_daily_state(
 
     calibrated = state["calibration"]["ready"]
     available_signals = sum(factor["score"] is not None for factor in factors)
+    primary_signals = sum(
+        factor["score"] is not None
+        for factor in factors
+        if factor["key"] in RECOVERY_PRIMARY_WEIGHTS
+    )
+    sleep_available = any(
+        factor["key"] == "sleep" and factor["score"] is not None
+        for factor in factors
+    )
     score = (
         round(weighted_score / available_weight)
-        if available_weight and (calibrated or available_signals >= 3)
+        if available_weight and sleep_available and primary_signals >= 2
         else None
     )
     if score is not None and sleep is not None:
@@ -2104,8 +2161,8 @@ def _performance_daily_state(
         elif float(sleep) < 6:
             score = min(score, 55)
     confidence_level = (
-        "Alta" if calibrated and available_signals >= 5
-        else "Media" if available_signals >= 4
+        "Alta" if calibrated and primary_signals == 3 and available_signals >= 5
+        else "Media" if primary_signals >= 2 and available_signals >= 4
         else "Baja"
     )
     recovery_label = (
@@ -2125,7 +2182,10 @@ def _performance_daily_state(
         ),
         "factors": factors,
         "provisional": bool(score is not None and not calibrated),
-        "method": "Promedio ponderado de señales disponibles frente a tu propia base de 28 días.",
+        "method": (
+            "45% sueño reciente (última noche y últimos siete días), 30% HRV nocturna "
+            "y 25% pulso en reposo, comparados con tu base personal de 28 días."
+        ),
     })
     state["confidence"] = {
         "level": confidence_level,
@@ -2135,7 +2195,10 @@ def _performance_daily_state(
         "note": (
             "Estimación provisional: seguirá afinándose hasta completar siete noches."
             if score is not None and not calibrated
-            else "La puntuación aparecerá cuando haya al menos tres señales comparables."
+            else (
+                "La puntuación aparecerá cuando haya sueño y al menos una "
+                "señal cardíaca comparable."
+            )
             if score is None
             else "Más señales y noches estables aumentan la confianza; no es un diagnóstico."
         ),
@@ -2159,10 +2222,7 @@ def _performance_daily_state(
     )
     heart_rate = fitbit.get("heart_rate", {})
     heart_rate_date = str(heart_rate.get("date") or "")
-    heart_rate_fresh = bool(
-        heart_rate_date
-        and 0 <= (analysis_date - date.fromisoformat(heart_rate_date)).days <= 2
-    )
+    heart_rate_current = heart_rate_date == current_day
 
     def activation_score(bpm: float) -> int:
         expected_awake = resting_reference * 1.12
@@ -2181,10 +2241,10 @@ def _performance_daily_state(
         return ordered[lower] + (ordered[upper] - ordered[lower]) * (position - lower)
 
     stress_timeline = []
-    if heart_rate_fresh and "stress_series" in heart_rate:
+    if heart_rate_current and "stress_series" in heart_rate:
         series = heart_rate.get("stress_series") or []
     else:
-        series = heart_rate.get("series", []) if heart_rate_fresh else []
+        series = heart_rate.get("series", []) if heart_rate_current else []
     stride = max(1, math.ceil(len(series) / 24))
     for point in series[::stride]:
         bpm = float(point.get("bpm") or 0)
@@ -2194,7 +2254,7 @@ def _performance_daily_state(
             "bpm": round(bpm),
             "score": score_point,
         })
-    latest_bpm = float(heart_rate.get("latest") or 0) if heart_rate_fresh else 0
+    latest_bpm = float(heart_rate.get("latest") or 0) if heart_rate_current else 0
     passive_values = [
         float(point.get("bpm") or 0)
         for point in series
@@ -2202,10 +2262,10 @@ def _performance_daily_state(
     ]
     passive_bpm = float(median(passive_values)) if passive_values else 0
     all_activation_scores = [activation_score(value) for value in passive_values]
-    physiological_scores = [
+    nightly_scores = [
         int(factor["score"])
         for factor in factors
-        if factor["key"] in {"hrv", "resting_hr", "respiratory_rate", "temperature"}
+        if factor["key"] in RECOVERY_PRIMARY_WEIGHTS
         and factor["score"] is not None
     ]
     daytime_activation = (
@@ -2217,8 +2277,8 @@ def _performance_daily_state(
         else None
     )
     nightly_strain = (
-        round(100 - sum(physiological_scores) / len(physiological_scores))
-        if physiological_scores
+        round(100 - sum(nightly_scores) / len(nightly_scores))
+        if nightly_scores
         else None
     )
     if daytime_activation is not None and nightly_strain is not None:
@@ -2232,12 +2292,20 @@ def _performance_daily_state(
         else "Recuperación" if stress_score is not None
         else "Sin lectura reciente"
     )
-    stress_coverage = float(
-        heart_rate.get("stress_coverage_hours", heart_rate.get("coverage_hours")) or 0
+    stress_coverage = (
+        float(heart_rate.get("stress_coverage_hours", heart_rate.get("coverage_hours")) or 0)
+        if heart_rate_current
+        else 0.0
     )
-    total_coverage = float(heart_rate.get("coverage_hours") or 0)
-    classification_available = bool(heart_rate.get("stress_classification_available"))
-    nightly_signal_count = len(physiological_scores)
+    total_coverage = (
+        float(heart_rate.get("coverage_hours") or 0)
+        if heart_rate_current
+        else 0.0
+    )
+    classification_available = bool(
+        heart_rate_current and heart_rate.get("stress_classification_available")
+    )
+    nightly_signal_count = len(nightly_scores)
     stress_confidence = (
         "Alta"
         if daytime_activation is not None
@@ -2259,14 +2327,18 @@ def _performance_daily_state(
         "score": stress_score,
         "label": stress_label,
         "latest_bpm": round(latest_bpm) if latest_bpm else None,
-        "date": heart_rate_date or signal_date or None,
+        "date": (
+            heart_rate_date
+            if daytime_activation is not None
+            else signal_date or sleep_date or None
+        ),
         "timeline": stress_timeline,
         "source": (
             f"Estimación Google Health v4 · {daytime_source} + señales nocturnas"
             if daytime_activation is not None and nightly_strain is not None
             else f"Estimación Google Health v4 · {daytime_source}"
             if daytime_activation is not None
-            else "Estimación nocturna con HRV y constantes vitales"
+            else "Estimación nocturna con sueño, HRV y pulso en reposo"
         ),
         "confidence": stress_confidence,
         "components": {
@@ -2277,10 +2349,18 @@ def _performance_daily_state(
             "coverage_hours": stress_coverage,
             "total_coverage_hours": total_coverage,
             "classified": classification_available,
-            "excluded_samples": int(heart_rate.get("stress_excluded_samples") or 0),
+            "excluded_samples": (
+                int(heart_rate.get("stress_excluded_samples") or 0)
+                if heart_rate_current
+                else 0
+            ),
             "nightly_signals": nightly_signal_count,
+            "intraday_current": heart_rate_current,
         },
-        "method": "60% activación cardíaca despierto y sedentario + 40% tensión nocturna; usa solo las partes disponibles.",
+        "method": (
+            "60% activación cardíaca despierto y sedentario + 40% tensión nocturna "
+            "de sueño, HRV y pulso en reposo; usa solo las partes disponibles."
+        ),
         "note": "Estimación fisiológica personal, no estrés percibido ni diagnóstico. Se excluyen sueño y actividad física identificable.",
     }
     current_load = next(
@@ -2323,8 +2403,23 @@ def _performance_daily_state(
         confidence=confidence_level,
         factors=factors,
     )
+    active_energy = fitbit.get("active_energy", {})
+    active_energy_latest = active_energy.get("latest") or {}
+    active_energy_kcal = (
+        float(active_energy_latest.get("kcal") or 0)
+        if active_energy_latest.get("date") == current_day
+        else 0.0
+    )
+    active_energy_goal = float(active_energy.get("goal") or 600)
+    movement_drain = min(
+        15,
+        active_energy_kcal / active_energy_goal * 15,
+    ) if active_energy_goal > 0 else 0.0
     drain = (
-        min(70, current_load * 0.7 + float(stress_score) * 0.18)
+        min(
+            70,
+            current_load * 0.7 + float(stress_score) * 0.18 + movement_drain,
+        )
         if readiness_estimate is not None and stress_score is not None
         else None
     )
@@ -2347,11 +2442,20 @@ def _performance_daily_state(
         "recharged": readiness_estimate,
         "used": round(drain) if drain is not None else None,
         "explanation": (
-            f"+{readiness_estimate} por recuperación · −{round(drain)} por carga y activación"
+            f"+{readiness_estimate} por recuperación · −{round(drain)} por actividad y activación"
             if readiness_estimate is not None and drain is not None
             else "Faltan señales suficientes de recuperación o activación."
         ),
-        "method": "Balance estimado entre recuperación nocturna, carga de hoy y activación fisiológica.",
+        "components": {
+            "training_load": round(current_load, 1),
+            "physiological_stress": stress_score,
+            "active_energy_kcal": round(active_energy_kcal),
+            "movement_drain": round(movement_drain, 1),
+        },
+        "method": (
+            "Balance estimado entre recuperación nocturna, carga de entrenamiento, "
+            "gasto activo de Fitbit y activación fisiológica del día."
+        ),
     }
     state["trends"] = {
         "recovery": history[-90:],

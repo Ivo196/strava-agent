@@ -561,6 +561,7 @@ export type DashboardData = {
         classified: boolean;
         excluded_samples: number;
         nightly_signals: number;
+        intraday_current: boolean;
       };
       method: string;
       note: string;
@@ -571,6 +572,12 @@ export type DashboardData = {
       recharged: number | null;
       used: number | null;
       explanation: string;
+      components: {
+        training_load: number;
+        physiological_stress: number | null;
+        active_energy_kcal: number;
+        movement_drain: number;
+      };
       method: string;
     };
     recovery_guidance: {
