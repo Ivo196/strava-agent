@@ -4942,21 +4942,23 @@ body {
 .vital-card-reading strong { display: block; margin-top: 6px; color: #f1f7ff; font-family: "Fira Code", ui-monospace, monospace; }
 .vital-card-reading strong span { display: block; font-size: 28px; font-weight: 650; line-height: 1; letter-spacing: -.055em; }
 .vital-card-reading strong em { display: block; margin-top: 5px; color: #91a5ba; font-size: 9px; font-style: normal; font-weight: 600; letter-spacing: .01em; }
-.vital-mini-gauge { display: grid; grid-template-columns: 1fr 1fr; align-items: start; color: #91a2b6; font-size: 8px; font-weight: 700; }
+.vital-mini-gauge { display: grid; grid-template-columns: 1fr 1fr; align-items: start; color: #9bacc0; font-size: 8px; font-weight: 700; }
 .vital-mini-gauge svg { grid-column: 1 / -1; width: 100%; overflow: visible; }
 .vital-mini-gauge span:last-child { text-align: right; }
 .vital-mini-gauge path { fill: none; stroke-linecap: round; }
-.vital-gauge-track { stroke: rgba(148, 163, 184, .08); stroke-width: 8; }
-.vital-gauge-zone { stroke-width: 6; opacity: .52; }
-.vital-gauge-zone.active { stroke-width: 8; opacity: 1; filter: drop-shadow(0 0 5px var(--gauge-level-color)); }
+.vital-gauge-track { stroke: rgba(148, 163, 184, .1); stroke-width: 10; }
+.vital-gauge-zone { stroke-width: 7; opacity: .58; }
+.vital-gauge-zone.active { stroke-width: 9; opacity: 1; filter: drop-shadow(0 0 4px var(--gauge-level-color)); }
 .vital-gauge-zone.zone-poor { stroke: #ff7185; }
 .vital-gauge-zone.zone-fair { stroke: #ff9d5c; }
 .vital-gauge-zone.zone-average { stroke: #f0c96a; }
 .vital-gauge-zone.zone-good { stroke: #78c6ff; }
 .vital-gauge-zone.zone-very-good { stroke: #24c8f2; }
 .vital-gauge-zone.zone-excellent { stroke: #45d59a; }
-.vital-gauge-needle { stroke: var(--gauge-level-color); stroke-linecap: round; stroke-width: 2.5; filter: drop-shadow(0 0 4px var(--gauge-level-color)); }
-.vital-gauge-hub { fill: var(--gauge-level-color); stroke: #07111f; stroke-width: 2; }
+.vital-gauge-needle { fill: var(--gauge-level-color) !important; stroke: none; filter: drop-shadow(0 0 3px var(--gauge-level-color)); }
+.vital-gauge-marker-halo { fill: color-mix(in srgb, var(--gauge-level-color) 22%, transparent); }
+.vital-gauge-marker { fill: var(--gauge-level-color); stroke: #07111f; stroke-width: 1.5; }
+.vital-gauge-hub { fill: var(--gauge-level-color); stroke: #07111f; stroke-width: 2; filter: drop-shadow(0 0 3px var(--gauge-level-color)); }
 
 .stage-deep { background: #5b8cff; }
 .stage-rem { background: #a98bff; }

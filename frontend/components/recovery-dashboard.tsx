@@ -51,6 +51,24 @@ const VO2_LEVELS = [
 ] as const;
 
 type Vo2LevelKey = (typeof VO2_LEVELS)[number]["key"];
+const GAUGE_CENTER = { x: 60, y: 58 } as const;
+const GAUGE_RADIUS = 44;
+const GAUGE_START_ANGLE = 195;
+const GAUGE_SWEEP_ANGLE = 150;
+
+function gaugePoint(angle: number, radius: number) {
+  const radians = angle * Math.PI / 180;
+  return {
+    x: GAUGE_CENTER.x + Math.cos(radians) * radius,
+    y: GAUGE_CENTER.y + Math.sin(radians) * radius,
+  };
+}
+
+function gaugeArc(startAngle: number, endAngle: number, radius = GAUGE_RADIUS) {
+  const start = gaugePoint(startAngle, radius);
+  const end = gaugePoint(endAngle, radius);
+  return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${radius} ${radius} 0 0 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
+}
 
 function vo2LevelInfo(level?: string | null) {
   const normalized = level?.replace("CARDIO_FITNESS_LEVEL_", "") as Vo2LevelKey | undefined;
@@ -70,24 +88,37 @@ function VitalMiniGauge({
 }) {
   const normalized = position == null ? null : clampPercent(position);
   const activeIndex = normalized == null ? -1 : Math.min(VO2_LEVELS.length - 1, Math.floor(normalized / 100 * VO2_LEVELS.length));
-  const needleAngle = normalized == null ? 0 : -75 + normalized / 100 * 150;
+  const needleAngle = normalized == null ? GAUGE_START_ANGLE : GAUGE_START_ANGLE + normalized / 100 * GAUGE_SWEEP_ANGLE;
+  const needleTip = gaugePoint(needleAngle, 35);
+  const needleLeft = gaugePoint(needleAngle - 90, 2.7);
+  const needleRight = gaugePoint(needleAngle + 90, 2.7);
+  const marker = gaugePoint(needleAngle, GAUGE_RADIUS);
+  const segmentSweep = GAUGE_SWEEP_ANGLE / VO2_LEVELS.length;
   return (
     <div className="vital-mini-gauge" role="img" aria-label={ariaLabel}>
       <svg viewBox="0 0 120 68" aria-hidden="true">
-        <path className="vital-gauge-track" d="M12 58a48 48 0 0 1 96 0" pathLength="100" />
+        <path
+          className="vital-gauge-track"
+          d={gaugeArc(GAUGE_START_ANGLE, GAUGE_START_ANGLE + GAUGE_SWEEP_ANGLE)}
+        />
         {VO2_LEVELS.map((item, index) => (
           <path
             className={`vital-gauge-zone zone-${item.slug}${index === activeIndex ? " active" : ""}`}
-            d="M12 58a48 48 0 0 1 96 0"
+            d={gaugeArc(
+              GAUGE_START_ANGLE + index * segmentSweep + 1.8,
+              GAUGE_START_ANGLE + (index + 1) * segmentSweep - 1.8,
+            )}
             key={item.key}
-            pathLength="100"
-            strokeDasharray="14 86"
-            strokeDashoffset={index * -17.2}
           />
         ))}
         {normalized != null && (
           <>
-            <line className="vital-gauge-needle" x1="60" y1="58" x2="60" y2="25" transform={`rotate(${needleAngle} 60 58)`} />
+            <circle className="vital-gauge-marker-halo" cx={marker.x} cy={marker.y} r="5.5" />
+            <circle className="vital-gauge-marker" cx={marker.x} cy={marker.y} r="3.1" />
+            <path
+              className="vital-gauge-needle"
+              d={`M ${needleLeft.x.toFixed(2)} ${needleLeft.y.toFixed(2)} L ${needleTip.x.toFixed(2)} ${needleTip.y.toFixed(2)} L ${needleRight.x.toFixed(2)} ${needleRight.y.toFixed(2)} Z`}
+            />
             <circle className="vital-gauge-hub" cx="60" cy="58" r="4" />
           </>
         )}
