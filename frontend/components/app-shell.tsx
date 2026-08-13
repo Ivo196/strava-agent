@@ -59,7 +59,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="sidebar-today">
           <span>Hoy</span>
           <strong>{today || "Actualizando fecha…"}</strong>
-          <small>Sistema métrico internacional.</small>
         </div>
         <LiveDataRefresh />
       </aside>

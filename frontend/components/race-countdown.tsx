@@ -43,10 +43,10 @@ export function RaceCountdown({ raceDate, initialDays }: { raceDate: string; ini
     <aside className="race-countdown" aria-label={`Faltan ${days} ${dayLabel} para el Maratón de Chicago`}>
       <span className="race-countdown-icon" aria-hidden="true"><Flag size={18} /></span>
       <span className="race-countdown-copy">
-        <small>Maratón de Chicago</small>
-        <strong><b>{days}</b> {dayLabel}</strong>
-        <time dateTime={raceDate}>{raceDateLabel}</time>
+        <small>Cuenta atrás · Chicago 2026</small>
+        <strong><b>{days}</b><span>{dayLabel} para la salida</span></strong>
       </span>
+      <span className="race-countdown-date"><small>Maratón de Chicago</small><time dateTime={raceDate}>{raceDateLabel}</time></span>
     </aside>
   );
 }

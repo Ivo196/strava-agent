@@ -16,6 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { DailyAgendaItem, DashboardData } from "@/lib/types";
+import { RaceCountdown } from "@/components/race-countdown";
 import { WeeklyProgressSummary } from "@/components/weekly-progress-summary";
 
 const weekday = new Intl.DateTimeFormat("es-ES", { weekday: "short" });
@@ -75,6 +76,7 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
 
   return (
     <section className="apex-dashboard" aria-label="Resumen de entrenamiento y recuperación">
+      <RaceCountdown raceDate={data.race_date} initialDays={data.days_to_race} />
       <WeeklyProgressSummary data={data} />
 
       <section className="apex-week" aria-labelledby="apex-week-title">

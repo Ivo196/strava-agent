@@ -88,14 +88,19 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .connection span { width: 7px; height: 7px; background: #a8aaa5; border-radius: 50%; }
 .connection.connected span { background: var(--green); box-shadow: 0 0 0 4px rgba(15,118,110,.1); }
 .hero-status-stack { display: grid; justify-items: end; gap: 12px; }
-.race-countdown { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 11px; align-items: center; width: fit-content; min-width: 250px; margin-top: 14px; padding: 11px 15px 11px 11px; overflow: hidden; border: 1px solid rgba(36,242,206,.24); border-radius: var(--radius); background: linear-gradient(135deg, rgba(91,140,255,.15), rgba(36,242,206,.075)); box-shadow: 0 12px 30px rgba(0,0,0,.18), inset 0 1px rgba(255,255,255,.035); }
-.race-countdown::after { content: ""; position: absolute; inset: auto 0 0; height: 2px; background: linear-gradient(90deg, var(--orange), var(--orange-deep)); }
-.race-countdown-icon { display: grid; place-items: center; width: 34px; height: 34px; color: var(--orange-deep); border: 1px solid rgba(36,242,206,.2); border-radius: 8px; background: rgba(36,242,206,.08); }
-.race-countdown-copy, .race-countdown-copy small, .race-countdown-copy strong, .race-countdown-copy time { display: block; }
-.race-countdown-copy small { color: var(--orange-deep); font-size: 9px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
-.race-countdown-copy strong { margin-top: 3px; color: var(--ink); font-size: 15px; line-height: 1; }
-.race-countdown-copy strong b { margin-right: 3px; font-size: 27px; letter-spacing: -.04em; }
-.race-countdown-copy time { margin-top: 4px; color: var(--muted); font-size: 10px; }
+.race-countdown { position: relative; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 16px; align-items: center; width: 100%; min-width: 0; padding: 18px 20px; overflow: hidden; border: 1px solid rgba(120,198,255,.22); border-radius: 20px; background: radial-gradient(circle at 72% 0%,rgba(120,198,255,.12),transparent 25rem),linear-gradient(120deg,rgba(13,16,14,.96),rgba(9,15,17,.9)); box-shadow: var(--shadow); animation: raceCountdownIn .28s cubic-bezier(.16,1,.3,1) both; }
+.race-countdown::before { position: absolute; inset: 0; pointer-events: none; content: ""; background: linear-gradient(105deg,transparent 18%,rgba(120,198,255,.075) 50%,transparent 82%); opacity: 0; transform: translateX(-28%); animation: raceCountdownGlow .42s ease-out .08s both; }
+.race-countdown::after { position: absolute; inset: auto 0 0; height: 2px; content: ""; background: linear-gradient(90deg,var(--orange),rgba(120,198,255,.22) 58%,transparent); transform: scaleX(0); transform-origin: left; animation: raceCountdownLine .42s cubic-bezier(.16,1,.3,1) .06s both; }
+.race-countdown-icon { position: relative; z-index: 1; display: grid; place-items: center; width: 52px; height: 52px; color: var(--orange); border: 1px solid rgba(120,198,255,.24); border-radius: 15px; background: rgba(120,198,255,.08); box-shadow: inset 0 1px rgba(255,255,255,.04),0 0 28px rgba(120,198,255,.06); }
+.race-countdown-icon svg { width: 21px; height: 21px; animation: raceCountdownFlag .28s cubic-bezier(.16,1,.3,1) .08s both; }
+.race-countdown-copy, .race-countdown-copy small, .race-countdown-copy strong, .race-countdown-date, .race-countdown-date small, .race-countdown-date time { position: relative; z-index: 1; display: block; }
+.race-countdown-copy small { color: var(--orange); font-size: 9px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.race-countdown-copy strong { display: flex; align-items: baseline; gap: 9px; margin-top: 6px; color: var(--ink); line-height: 1; }
+.race-countdown-copy strong b { font: 650 clamp(44px,5vw,62px)/.84 "Fira Code",ui-monospace,monospace; letter-spacing: -.09em; animation: raceCountdownNumber .28s cubic-bezier(.16,1,.3,1) .04s both; }
+.race-countdown-copy strong span { color: #9ba69c; font-size: 12px; font-weight: 650; }
+.race-countdown-date { min-width: 180px; padding-left: 20px; border-left: 1px solid rgba(218,232,211,.1); text-align: right; }
+.race-countdown-date small { color: #7e897f; font-size: 9px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.race-countdown-date time { margin-top: 7px; color: #d7ddd5; font: 600 11px "Fira Code",ui-monospace,monospace; }
 .onboarding-banner { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 22px; padding: 16px 18px; border: 1px solid rgba(184,255,90,.2); border-radius: 14px; background: linear-gradient(90deg, rgba(184,255,90,.1), rgba(111,247,220,.035)); }
 .onboarding-banner strong, .onboarding-banner span { display: block; }
 .onboarding-banner strong { font-size: 14px; margin-bottom: 3px; }
@@ -1267,7 +1272,14 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
   .feed-avatar { width: 36px; height: 36px; }
   .hero-status-stack { width: 100%; grid-template-columns: 1fr; justify-items: stretch; }
   .connection { display: none; }
-  .race-countdown { min-width: 0; text-align: left; }
+  .race-countdown { grid-template-columns: 44px minmax(0,1fr); gap: 12px; padding: 16px; text-align: left; }
+  .race-countdown-icon { width: 44px; height: 44px; border-radius: 13px; }
+  .race-countdown-copy strong { gap: 7px; }
+  .race-countdown-copy strong b { font-size: 44px; }
+  .race-countdown-copy strong span { max-width: 92px; font-size: 10px; line-height: 1.25; }
+  .race-countdown-date { grid-column: 2; min-width: 0; padding: 10px 0 0; border-top: 1px solid rgba(218,232,211,.08); border-left: 0; text-align: left; }
+  .race-countdown-date small { display: none; }
+  .race-countdown-date time { margin-top: 0; color: #7f8a80; font-size: 9px; }
   .onboarding-banner { align-items: flex-start; flex-direction: column; }
   .today-card { padding: 18px; }
   .next-steps { grid-template-columns: 1fr; gap: 5px; }
@@ -1409,6 +1421,31 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 @keyframes pageRise {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes raceCountdownIn {
+  from { opacity: .4; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes raceCountdownGlow {
+  from { opacity: 0; transform: translateX(-28%); }
+  55% { opacity: 1; }
+  to { opacity: 0; transform: translateX(28%); }
+}
+
+@keyframes raceCountdownLine {
+  to { transform: scaleX(1); }
+}
+
+@keyframes raceCountdownNumber {
+  from { opacity: .2; transform: translateY(7px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes raceCountdownFlag {
+  from { opacity: .25; transform: rotate(-8deg) scale(.9); }
+  to { opacity: 1; transform: rotate(0) scale(1); }
 }
 
 .route-loading { min-height: 70vh; overflow: hidden; }
