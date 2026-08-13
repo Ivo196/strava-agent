@@ -4883,40 +4883,43 @@ body {
 .recovery-vital-comparison span { min-width: 0; }
 .recovery-vital-comparison b { margin-top: 5px; overflow: hidden; color: #aebdcd; font: 600 11px "Fira Code", ui-monospace, monospace; text-overflow: ellipsis; white-space: nowrap; }
 
-.vo2-vital-card {
-  --vo2-level-color: #8ea0b6;
-  border-color: color-mix(in srgb, var(--vo2-level-color) 22%, transparent);
-  background: radial-gradient(circle at 82% 48%, color-mix(in srgb, var(--vo2-level-color) 8%, transparent), transparent 35%), rgba(3, 7, 18, .28);
+.signal-gauge-card, .vo2-vital-card {
+  --gauge-level-color: #78c6ff;
+  border-color: color-mix(in srgb, var(--gauge-level-color) 22%, transparent);
+  background: radial-gradient(circle at 82% 48%, color-mix(in srgb, var(--gauge-level-color) 8%, transparent), transparent 35%), rgba(3, 7, 18, .28);
 }
-.vo2-level-poor { --vo2-level-color: #ff7185; }
-.vo2-level-fair { --vo2-level-color: #ff9d5c; }
-.vo2-level-average { --vo2-level-color: #f0c96a; }
-.vo2-level-good { --vo2-level-color: #78c6ff; }
-.vo2-level-very-good { --vo2-level-color: #24c8f2; }
-.vo2-level-excellent { --vo2-level-color: #45d59a; }
-.vo2-vital-card .recovery-vital-name svg { color: var(--vo2-level-color); }
-.vo2-level-status { color: var(--vo2-level-color); background: color-mix(in srgb, var(--vo2-level-color) 10%, transparent); }
-.vo2-vital-main { display: grid; grid-template-columns: minmax(0, 1fr) 126px; gap: 10px; align-items: end; margin-top: 15px; }
-.vo2-vital-reading { min-width: 0; }
-.vo2-vital-reading > small { display: block; color: #6f8197; font-size: 8px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
-.vo2-vital-reading strong { display: block; margin-top: 6px; color: #f1f7ff; font-family: "Fira Code", ui-monospace, monospace; }
-.vo2-vital-reading strong span { display: block; font-size: 28px; font-weight: 650; line-height: 1; letter-spacing: -.055em; }
-.vo2-vital-reading strong em { display: block; margin-top: 5px; color: #91a5ba; font-size: 9px; font-style: normal; font-weight: 600; letter-spacing: .01em; }
-.vo2-mini-gauge { display: grid; grid-template-columns: 1fr 1fr; align-items: start; color: #91a2b6; font-size: 8px; font-weight: 700; }
-.vo2-mini-gauge svg { grid-column: 1 / -1; width: 100%; overflow: visible; }
-.vo2-mini-gauge span:last-child { text-align: right; }
-.vo2-mini-gauge path { fill: none; stroke-linecap: round; }
-.vo2-gauge-track { stroke: rgba(148, 163, 184, .08); stroke-width: 8; }
-.vo2-gauge-zone { stroke-width: 6; opacity: .52; }
-.vo2-gauge-zone.active { stroke-width: 8; opacity: 1; filter: drop-shadow(0 0 5px var(--vo2-level-color)); }
-.vo2-gauge-zone.zone-poor { stroke: #ff7185; }
-.vo2-gauge-zone.zone-fair { stroke: #ff9d5c; }
-.vo2-gauge-zone.zone-average { stroke: #f0c96a; }
-.vo2-gauge-zone.zone-good { stroke: #78c6ff; }
-.vo2-gauge-zone.zone-very-good { stroke: #24c8f2; }
-.vo2-gauge-zone.zone-excellent { stroke: #45d59a; }
-.vo2-gauge-needle { stroke: var(--vo2-level-color); stroke-linecap: round; stroke-width: 2.5; filter: drop-shadow(0 0 4px var(--vo2-level-color)); }
-.vo2-gauge-hub { fill: var(--vo2-level-color); stroke: #07111f; stroke-width: 2; }
+.signal-gauge-card.signal-help { --gauge-level-color: #45d59a; }
+.signal-gauge-card.signal-brake { --gauge-level-color: #ff7185; }
+.signal-gauge-card.signal-neutral { --gauge-level-color: #78c6ff; }
+.vo2-level-poor { --gauge-level-color: #ff7185; }
+.vo2-level-fair { --gauge-level-color: #ff9d5c; }
+.vo2-level-average { --gauge-level-color: #f0c96a; }
+.vo2-level-good { --gauge-level-color: #78c6ff; }
+.vo2-level-very-good { --gauge-level-color: #24c8f2; }
+.vo2-level-excellent { --gauge-level-color: #45d59a; }
+.signal-gauge-card .recovery-vital-name svg, .vo2-vital-card .recovery-vital-name svg { color: var(--gauge-level-color); }
+.vo2-level-status { color: var(--gauge-level-color); background: color-mix(in srgb, var(--gauge-level-color) 10%, transparent); }
+.vital-card-main { display: grid; grid-template-columns: minmax(0, 1fr) 126px; gap: 10px; align-items: end; margin-top: 15px; }
+.vital-card-reading { min-width: 0; }
+.vital-card-reading > small { display: block; color: #6f8197; font-size: 8px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.vital-card-reading strong { display: block; margin-top: 6px; color: #f1f7ff; font-family: "Fira Code", ui-monospace, monospace; }
+.vital-card-reading strong span { display: block; font-size: 28px; font-weight: 650; line-height: 1; letter-spacing: -.055em; }
+.vital-card-reading strong em { display: block; margin-top: 5px; color: #91a5ba; font-size: 9px; font-style: normal; font-weight: 600; letter-spacing: .01em; }
+.vital-mini-gauge { display: grid; grid-template-columns: 1fr 1fr; align-items: start; color: #91a2b6; font-size: 8px; font-weight: 700; }
+.vital-mini-gauge svg { grid-column: 1 / -1; width: 100%; overflow: visible; }
+.vital-mini-gauge span:last-child { text-align: right; }
+.vital-mini-gauge path { fill: none; stroke-linecap: round; }
+.vital-gauge-track { stroke: rgba(148, 163, 184, .08); stroke-width: 8; }
+.vital-gauge-zone { stroke-width: 6; opacity: .52; }
+.vital-gauge-zone.active { stroke-width: 8; opacity: 1; filter: drop-shadow(0 0 5px var(--gauge-level-color)); }
+.vital-gauge-zone.zone-poor { stroke: #ff7185; }
+.vital-gauge-zone.zone-fair { stroke: #ff9d5c; }
+.vital-gauge-zone.zone-average { stroke: #f0c96a; }
+.vital-gauge-zone.zone-good { stroke: #78c6ff; }
+.vital-gauge-zone.zone-very-good { stroke: #24c8f2; }
+.vital-gauge-zone.zone-excellent { stroke: #45d59a; }
+.vital-gauge-needle { stroke: var(--gauge-level-color); stroke-linecap: round; stroke-width: 2.5; filter: drop-shadow(0 0 4px var(--gauge-level-color)); }
+.vital-gauge-hub { fill: var(--gauge-level-color); stroke: #07111f; stroke-width: 2; }
 
 .stage-deep { background: #5b8cff; }
 .stage-rem { background: #a98bff; }
@@ -4994,7 +4997,7 @@ body {
 .recovery-details .recovery-trends-v3 { margin-top: 24px; }
 
 @media (max-width: 1200px) {
-  .vo2-vital-main { grid-template-columns: minmax(0, 1fr) 96px; }
+  .vital-card-main { grid-template-columns: minmax(0, 1fr) 96px; }
 }
 
 @media (max-width: 980px) {

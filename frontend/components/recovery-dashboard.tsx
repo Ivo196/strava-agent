@@ -57,21 +57,27 @@ function vo2LevelInfo(level?: string | null) {
   return VO2_LEVELS.find((item) => item.key === normalized) ?? null;
 }
 
-function Vo2MiniGauge({ level }: { level?: string | null }) {
-  const info = vo2LevelInfo(level);
-  const activeIndex = info ? VO2_LEVELS.findIndex((item) => item.key === info.key) : -1;
-  const needleAngle = -75 + Math.max(activeIndex, 0) * 30;
+function VitalMiniGauge({
+  position,
+  ariaLabel,
+  lowLabel,
+  highLabel,
+}: {
+  position: number | null;
+  ariaLabel: string;
+  lowLabel: string;
+  highLabel: string;
+}) {
+  const normalized = position == null ? null : clampPercent(position);
+  const activeIndex = normalized == null ? -1 : Math.min(VO2_LEVELS.length - 1, Math.floor(normalized / 100 * VO2_LEVELS.length));
+  const needleAngle = normalized == null ? 0 : -75 + normalized / 100 * 150;
   return (
-    <div
-      className="vo2-mini-gauge"
-      role="img"
-      aria-label={info ? `Nivel de capacidad aeróbica: ${info.label}` : "Nivel de capacidad aeróbica sin clasificar"}
-    >
+    <div className="vital-mini-gauge" role="img" aria-label={ariaLabel}>
       <svg viewBox="0 0 120 68" aria-hidden="true">
-        <path className="vo2-gauge-track" d="M12 58a48 48 0 0 1 96 0" pathLength="100" />
+        <path className="vital-gauge-track" d="M12 58a48 48 0 0 1 96 0" pathLength="100" />
         {VO2_LEVELS.map((item, index) => (
           <path
-            className={`vo2-gauge-zone zone-${item.slug}${index === activeIndex ? " active" : ""}`}
+            className={`vital-gauge-zone zone-${item.slug}${index === activeIndex ? " active" : ""}`}
             d="M12 58a48 48 0 0 1 96 0"
             key={item.key}
             pathLength="100"
@@ -79,14 +85,61 @@ function Vo2MiniGauge({ level }: { level?: string | null }) {
             strokeDashoffset={index * -17.2}
           />
         ))}
-        {info && (
+        {normalized != null && (
           <>
-            <line className="vo2-gauge-needle" x1="60" y1="58" x2="60" y2="25" transform={`rotate(${needleAngle} 60 58)`} />
-            <circle className="vo2-gauge-hub" cx="60" cy="58" r="4" />
+            <line className="vital-gauge-needle" x1="60" y1="58" x2="60" y2="25" transform={`rotate(${needleAngle} 60 58)`} />
+            <circle className="vital-gauge-hub" cx="60" cy="58" r="4" />
           </>
         )}
       </svg>
-      <span>Bajo</span><span>Excelente</span>
+      <span>{lowLabel}</span><span>{highLabel}</span>
+    </div>
+  );
+}
+
+function Vo2MiniGauge({ level }: { level?: string | null }) {
+  const info = vo2LevelInfo(level);
+  const activeIndex = info ? VO2_LEVELS.findIndex((item) => item.key === info.key) : -1;
+  return (
+    <VitalMiniGauge
+      position={activeIndex < 0 ? null : (activeIndex + 0.5) / VO2_LEVELS.length * 100}
+      ariaLabel={info ? `Nivel de capacidad aeróbica: ${info.label}` : "Nivel de capacidad aeróbica sin clasificar"}
+      lowLabel="Bajo"
+      highLabel="Excelente"
+    />
+  );
+}
+
+function signalGaugePosition(factor: RecoveryFactor) {
+  if (factor.score == null) return null;
+  const score = clampPercent(factor.score);
+  if (factor.impact === "brake") return 10 + Math.min(score, 40) / 40 * 5;
+  if (factor.impact === "help") return 82 + Math.max(0, score - 60) / 40 * 10;
+  return 58 + Math.max(-4, Math.min(4, (score - 50) * 0.4));
+}
+
+function SignalMiniGauge({ factor, status }: { factor: RecoveryFactor; status: string }) {
+  return (
+    <VitalMiniGauge
+      position={signalGaugePosition(factor)}
+      ariaLabel={`Estado de ${factor.label}: ${status}`}
+      lowLabel="Atención"
+      highLabel="Óptimo"
+    />
+  );
+}
+
+function VitalReading({ label, value, unit }: { label: string; value: number | null; unit: string }) {
+  const digits = unit === "bpm" ? 0 : 1;
+  return (
+    <div className="vital-card-reading">
+      <small>{label}</small>
+      {value == null ? <strong><span>Sin dato</span></strong> : (
+        <strong>
+          <span>{value.toLocaleString("es-ES", { maximumFractionDigits: digits })}</span>
+          <em>{unit}</em>
+        </strong>
+      )}
     </div>
   );
 }
@@ -334,7 +387,7 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
                 const status = compactVitalStatus(factor.status_label);
                 return (
                   <article
-                    className={`recovery-vital-card signal-${factor.impact}`}
+                    className={`recovery-vital-card signal-gauge-card signal-${factor.impact}`}
                     key={factor.key}
                     aria-label={`${factor.label}. Hoy ${today}. Base ${baseline}. Cambio ${difference}. ${status}.`}
                   >
@@ -342,7 +395,10 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
                       <span className="recovery-vital-name">{factorIcon(factor.key)}<strong>{factor.label}</strong></span>
                       <b className={`factor-status status-${factor.impact}`}>{status}</b>
                     </header>
-                    <div className="recovery-vital-reading"><small>Hoy</small><strong>{today}</strong></div>
+                    <div className="vital-card-main">
+                      <VitalReading label="Hoy" value={factor.numeric_value} unit={factor.unit} />
+                      <SignalMiniGauge factor={factor} status={status} />
+                    </div>
                     <div className="recovery-vital-comparison">
                       <span><small>Base</small><b>{baseline}</b></span>
                       <span><small>Cambio</small><b>{difference}</b></span>
@@ -365,16 +421,8 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
                   </span>
                   <b className="factor-status vo2-level-status">{vo2Level?.label ?? "Estimado"}</b>
                 </header>
-                <div className="vo2-vital-main">
-                  <div className="vo2-vital-reading">
-                    <small>Actual</small>
-                    {vo2Max ? (
-                      <strong>
-                        <span>{vo2Max.value.toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
-                        <em>{vo2Max.unit}</em>
-                      </strong>
-                    ) : <strong><span>Sin dato</span></strong>}
-                  </div>
+                <div className="vital-card-main">
+                  <VitalReading label="Actual" value={vo2Max?.value ?? null} unit={vo2Max?.unit ?? "ml/kg/min"} />
                   <Vo2MiniGauge level={vo2Max?.fitness_level} />
                 </div>
                 <div className="recovery-vital-comparison">
