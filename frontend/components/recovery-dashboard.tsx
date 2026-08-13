@@ -41,6 +41,56 @@ import type { DashboardData } from "@/lib/types";
 type TrendPoint = { date: string; value: number };
 const TREND_DAYS = 30;
 
+const VO2_LEVELS = [
+  { key: "POOR", label: "Bajo", slug: "poor" },
+  { key: "FAIR", label: "Regular", slug: "fair" },
+  { key: "AVERAGE", label: "Promedio", slug: "average" },
+  { key: "GOOD", label: "Bueno", slug: "good" },
+  { key: "VERY_GOOD", label: "Muy bueno", slug: "very-good" },
+  { key: "EXCELLENT", label: "Excelente", slug: "excellent" },
+] as const;
+
+type Vo2LevelKey = (typeof VO2_LEVELS)[number]["key"];
+
+function vo2LevelInfo(level?: string | null) {
+  const normalized = level?.replace("CARDIO_FITNESS_LEVEL_", "") as Vo2LevelKey | undefined;
+  return VO2_LEVELS.find((item) => item.key === normalized) ?? null;
+}
+
+function Vo2MiniGauge({ level }: { level?: string | null }) {
+  const info = vo2LevelInfo(level);
+  const activeIndex = info ? VO2_LEVELS.findIndex((item) => item.key === info.key) : -1;
+  const needleAngle = -75 + Math.max(activeIndex, 0) * 30;
+  return (
+    <div
+      className="vo2-mini-gauge"
+      role="img"
+      aria-label={info ? `Nivel de capacidad aeróbica: ${info.label}` : "Nivel de capacidad aeróbica sin clasificar"}
+    >
+      <svg viewBox="0 0 120 68" aria-hidden="true">
+        <path className="vo2-gauge-track" d="M12 58a48 48 0 0 1 96 0" pathLength="100" />
+        {VO2_LEVELS.map((item, index) => (
+          <path
+            className={`vo2-gauge-zone zone-${item.slug}${index === activeIndex ? " active" : ""}`}
+            d="M12 58a48 48 0 0 1 96 0"
+            key={item.key}
+            pathLength="100"
+            strokeDasharray="14 86"
+            strokeDashoffset={index * -17.2}
+          />
+        ))}
+        {info && (
+          <>
+            <line className="vo2-gauge-needle" x1="60" y1="58" x2="60" y2="25" transform={`rotate(${needleAngle} 60 58)`} />
+            <circle className="vo2-gauge-hub" cx="60" cy="58" r="4" />
+          </>
+        )}
+      </svg>
+      <span>Bajo</span><span>Excelente</span>
+    </div>
+  );
+}
+
 function factorIcon(key: RecoveryFactor["key"]) {
   if (key === "sleep") return <BedDouble aria-hidden="true" />;
   if (key === "hrv") return <HeartPulse aria-hidden="true" />;
@@ -215,6 +265,7 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
   const sleep = state.sleep_utility;
   const load = state.load_7d;
   const vo2Max = data.devices.fitbit.recovery.vo2_max;
+  const vo2Level = vo2LevelInfo(vo2Max?.fitness_level);
   const latestSleep = data.devices.fitbit.sleep.latest;
   const sleepHours = latestSleep?.hours ?? recovery.sleep_hours ?? sleep.average_hours;
   const sleepProgress = sleepHours == null ? 0 : sleepHours / sleep.goal_hours * 100;
@@ -300,10 +351,10 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
                 );
               })}
               <article
-                className="recovery-vital-card signal-neutral"
+                className={`recovery-vital-card vo2-vital-card vo2-level-${vo2Level?.slug ?? "neutral"}`}
                 aria-label={
                   vo2Max
-                    ? `VO₂ máximo estimado. Hoy ${formatMetric(vo2Max.value, vo2Max.unit)}. Fuente Fitbit y Google. Medición del ${dateLabel(vo2Max.date)}.`
+                    ? `VO₂ máximo estimado. Hoy ${formatMetric(vo2Max.value, vo2Max.unit)}. ${vo2Level ? `Nivel ${vo2Level.label} según Fitbit.` : "Sin clasificación disponible."} Medición del ${dateLabel(vo2Max.date)}.`
                     : "VO₂ máximo estimado. Fitbit todavía no tiene una medición disponible."
                 }
               >
@@ -312,11 +363,19 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
                     <Gauge aria-hidden="true" />
                     <strong>VO₂ máx.</strong>
                   </span>
-                  <b className="factor-status status-neutral">Estimado</b>
+                  <b className="factor-status vo2-level-status">{vo2Level?.label ?? "Estimado"}</b>
                 </header>
-                <div className="recovery-vital-reading">
-                  <small>Actual</small>
-                  <strong>{vo2Max ? formatMetric(vo2Max.value, vo2Max.unit) : "Sin dato"}</strong>
+                <div className="vo2-vital-main">
+                  <div className="vo2-vital-reading">
+                    <small>Actual</small>
+                    {vo2Max ? (
+                      <strong>
+                        <span>{vo2Max.value.toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+                        <em>{vo2Max.unit}</em>
+                      </strong>
+                    ) : <strong><span>Sin dato</span></strong>}
+                  </div>
+                  <Vo2MiniGauge level={vo2Max?.fitness_level} />
                 </div>
                 <div className="recovery-vital-comparison">
                   <span><small>Fuente</small><b>Fitbit / Google</b></span>

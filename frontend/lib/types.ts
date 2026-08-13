@@ -199,6 +199,7 @@ export type DeviceMetric = {
   unit: string;
   date: string;
   method?: string;
+  fitness_level?: "POOR" | "FAIR" | "AVERAGE" | "GOOD" | "VERY_GOOD" | "EXCELLENT" | null;
 } | null;
 
 export type DeviceInsights = {

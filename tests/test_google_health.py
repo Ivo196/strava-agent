@@ -12,6 +12,7 @@ from strava_agent.database import Database
 from strava_agent.google_health import (
     GoogleHealthCredentials,
     GoogleHealthService,
+    cardio_fitness_level,
     data_point_time,
     normalized_recovery_value,
 )
@@ -327,9 +328,45 @@ def test_normalizes_recovery_values() -> None:
             "summary": {"minutesAsleep": "435"},
         }
     }
+    vo2 = {
+        "dataSource": {"platform": "FITBIT", "recordingMethod": "DERIVED"},
+        "dailyVo2Max": {
+            "date": {"year": 2026, "month": 7, "day": 18},
+            "vo2Max": 53.9,
+            "cardioFitnessLevel": "VERY_GOOD",
+        },
+    }
 
     assert normalized_recovery_value(
         "daily-heart-rate-variability", hrv
     ) == (61.5, "ms")
     assert normalized_recovery_value("sleep", sleep) == (7.25, "h")
+    assert normalized_recovery_value("daily-vo2-max", vo2) == (53.9, "ml/kg/min")
+    assert cardio_fitness_level(vo2) == "VERY_GOOD"
     assert data_point_time("sleep", sleep) == "2026-07-18T06:00:00Z"
+
+
+def test_fitbit_vo2_metric_includes_provider_fitness_level() -> None:
+    rows = [{
+        "data_type": "daily-vo2-max",
+        "recorded_at": "2026-07-18",
+        "source": "FITBIT",
+        "value_json": json.dumps({
+            "dataSource": {"platform": "FITBIT", "recordingMethod": "DERIVED"},
+            "dailyVo2Max": {
+                "date": {"year": 2026, "month": 7, "day": 18},
+                "vo2Max": 53.9,
+                "cardioFitnessLevel": "VERY_GOOD",
+            },
+        }),
+    }]
+
+    metric = api._fitbit_recovery_metrics(rows)["vo2_max"]
+
+    assert metric == {
+        "value": 53.9,
+        "unit": "ml/kg/min",
+        "date": "2026-07-18",
+        "method": "DERIVED",
+        "fitness_level": "VERY_GOOD",
+    }

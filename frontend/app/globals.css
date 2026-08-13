@@ -4883,6 +4883,41 @@ body {
 .recovery-vital-comparison span { min-width: 0; }
 .recovery-vital-comparison b { margin-top: 5px; overflow: hidden; color: #aebdcd; font: 600 11px "Fira Code", ui-monospace, monospace; text-overflow: ellipsis; white-space: nowrap; }
 
+.vo2-vital-card {
+  --vo2-level-color: #8ea0b6;
+  border-color: color-mix(in srgb, var(--vo2-level-color) 22%, transparent);
+  background: radial-gradient(circle at 82% 48%, color-mix(in srgb, var(--vo2-level-color) 8%, transparent), transparent 35%), rgba(3, 7, 18, .28);
+}
+.vo2-level-poor { --vo2-level-color: #ff7185; }
+.vo2-level-fair { --vo2-level-color: #ff9d5c; }
+.vo2-level-average { --vo2-level-color: #f0c96a; }
+.vo2-level-good { --vo2-level-color: #78c6ff; }
+.vo2-level-very-good { --vo2-level-color: #24c8f2; }
+.vo2-level-excellent { --vo2-level-color: #45d59a; }
+.vo2-vital-card .recovery-vital-name svg { color: var(--vo2-level-color); }
+.vo2-level-status { color: var(--vo2-level-color); background: color-mix(in srgb, var(--vo2-level-color) 10%, transparent); }
+.vo2-vital-main { display: grid; grid-template-columns: minmax(0, 1fr) 126px; gap: 10px; align-items: end; margin-top: 15px; }
+.vo2-vital-reading { min-width: 0; }
+.vo2-vital-reading > small { display: block; color: #6f8197; font-size: 8px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.vo2-vital-reading strong { display: block; margin-top: 6px; color: #f1f7ff; font-family: "Fira Code", ui-monospace, monospace; }
+.vo2-vital-reading strong span { display: block; font-size: 28px; font-weight: 650; line-height: 1; letter-spacing: -.055em; }
+.vo2-vital-reading strong em { display: block; margin-top: 5px; color: #91a5ba; font-size: 9px; font-style: normal; font-weight: 600; letter-spacing: .01em; }
+.vo2-mini-gauge { display: grid; grid-template-columns: 1fr 1fr; align-items: start; color: #91a2b6; font-size: 8px; font-weight: 700; }
+.vo2-mini-gauge svg { grid-column: 1 / -1; width: 100%; overflow: visible; }
+.vo2-mini-gauge span:last-child { text-align: right; }
+.vo2-mini-gauge path { fill: none; stroke-linecap: round; }
+.vo2-gauge-track { stroke: rgba(148, 163, 184, .08); stroke-width: 8; }
+.vo2-gauge-zone { stroke-width: 6; opacity: .52; }
+.vo2-gauge-zone.active { stroke-width: 8; opacity: 1; filter: drop-shadow(0 0 5px var(--vo2-level-color)); }
+.vo2-gauge-zone.zone-poor { stroke: #ff7185; }
+.vo2-gauge-zone.zone-fair { stroke: #ff9d5c; }
+.vo2-gauge-zone.zone-average { stroke: #f0c96a; }
+.vo2-gauge-zone.zone-good { stroke: #78c6ff; }
+.vo2-gauge-zone.zone-very-good { stroke: #24c8f2; }
+.vo2-gauge-zone.zone-excellent { stroke: #45d59a; }
+.vo2-gauge-needle { stroke: var(--vo2-level-color); stroke-linecap: round; stroke-width: 2.5; filter: drop-shadow(0 0 4px var(--vo2-level-color)); }
+.vo2-gauge-hub { fill: var(--vo2-level-color); stroke: #07111f; stroke-width: 2; }
+
 .stage-deep { background: #5b8cff; }
 .stage-rem { background: #a98bff; }
 .stage-light { background: #78c6ff; }
@@ -4957,6 +4992,10 @@ body {
 .recovery-vitals-static .recovery-section-heading { margin-bottom: 16px; }
 .recovery-vitals-static .recovery-section-heading > small { color: #91a2b6; font-size: 11px; }
 .recovery-details .recovery-trends-v3 { margin-top: 24px; }
+
+@media (max-width: 1200px) {
+  .vo2-vital-main { grid-template-columns: minmax(0, 1fr) 96px; }
+}
 
 @media (max-width: 980px) {
   .recovery-overview-grid .recovery-gauge-panel,

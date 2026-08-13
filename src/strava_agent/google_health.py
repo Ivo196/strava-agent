@@ -103,6 +103,15 @@ DATA_TYPES: dict[str, tuple[str, str, int]] = {
     "heart-rate": ("heart_rate.sample_time.physical_time", "physical", 7),
 }
 
+CARDIO_FITNESS_LEVELS = {
+    "POOR",
+    "FAIR",
+    "AVERAGE",
+    "GOOD",
+    "VERY_GOOD",
+    "EXCELLENT",
+}
+
 
 class GoogleHealthService:
     def __init__(
@@ -399,6 +408,17 @@ def normalized_recovery_value(data_type: str, point: dict[str, Any]) -> tuple[fl
     field, unit, multiplier = mapping
     value = payload.get(field)
     return (float(value) * multiplier, unit) if value is not None else None
+
+
+def cardio_fitness_level(point: dict[str, Any]) -> str | None:
+    """Return Google's normalized cardio-fitness band when a VO2 point includes it."""
+    payload = next(
+        (value for key, value in point.items() if key not in {"name", "dataSource"} and isinstance(value, dict)),
+        {},
+    )
+    raw = str(payload.get("cardioFitnessLevel") or "").upper()
+    level = raw.removeprefix("CARDIO_FITNESS_LEVEL_")
+    return level if level in CARDIO_FITNESS_LEVELS else None
 
 
 def _date_object_iso(value: dict[str, Any]) -> str:

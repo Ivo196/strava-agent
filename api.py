@@ -46,6 +46,7 @@ from strava_agent.run_progress import build_run_progress
 from strava_agent.google_health import (
     GoogleHealthCredentials,
     GoogleHealthService,
+    cardio_fitness_level,
     normalized_recovery_value,
 )
 from strava_agent.training_plan import RACE_DATE, build_adaptive_plan
@@ -2740,12 +2741,15 @@ def _fitbit_recovery_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
         if existing and recorded and recorded <= _parse_health_datetime(existing["date"]):
             continue
         value, unit = normalized
-        result[key] = {
+        metric = {
             "value": round(value, 1),
             "unit": unit,
             "date": row["recorded_at"],
             "method": (point.get("dataSource") or {}).get("recordingMethod", "UNKNOWN"),
         }
+        if key == "vo2_max":
+            metric["fitness_level"] = cardio_fitness_level(point)
+        result[key] = metric
     return result
 
 
