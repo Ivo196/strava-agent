@@ -391,7 +391,7 @@ def test_energy_is_unknown_when_recovery_and_stress_are_missing() -> None:
         "label": "Sin datos",
         "recharged": None,
         "used": None,
-        "explanation": "Faltan señales suficientes de recuperación o activación.",
+        "explanation": "Falta un resumen de sueño reciente para calcular la energía.",
         "components": {
             "training_load": 0.0,
             "physiological_stress": None,
@@ -403,6 +403,40 @@ def test_energy_is_unknown_when_recovery_and_stress_are_missing() -> None:
             "gasto activo de Fitbit y activación fisiológica del día."
         ),
     }
+
+
+def test_stale_sleep_is_explained_and_never_rendered_as_today() -> None:
+    days = [f"2026-08-{day:02d}" for day in range(10, 19)]
+    fitbit = {
+        "sleep": {
+            "goal": 8,
+            "latest": {"date": "2026-08-15", "hours": 7.1},
+            "days": [
+                {"date": f"2026-08-{day:02d}", "hours": 7.1}
+                for day in range(10, 16)
+            ],
+        },
+        "recovery_history": [
+            {"date": day, "hrv": 100, "resting_hr": 46}
+            for day in days
+        ],
+        "exercises": [],
+    }
+
+    state = api._performance_daily_state(
+        fitbit,
+        {"count": 0, "moving_minutes": 0, "training_load": 0, "calories": 0},
+        date(2026, 8, 18),
+        activity_rows=[],
+        daily_checkins=[],
+    )
+
+    assert state["morning_recovery"]["sleep_hours"] is None
+    assert state["morning_recovery"]["score"] is None
+    assert state["morning_recovery"]["label"] == "Esperando sueño reciente"
+    assert "falta un resumen de sueño" in state["morning_recovery"]["summary"].lower()
+    assert state["energy"]["score"] is None
+    assert "sueño reciente" in state["energy"]["explanation"].lower()
 
 
 def test_recovery_baseline_uses_median_to_resist_one_outlier() -> None:

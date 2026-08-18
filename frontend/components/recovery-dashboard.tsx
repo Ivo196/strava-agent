@@ -351,8 +351,11 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
   const vo2Max = data.devices.fitbit.recovery.vo2_max;
   const vo2Level = vo2LevelInfo(vo2Max?.fitness_level);
   const latestSleep = data.devices.fitbit.sleep.latest;
-  const sleepHours = latestSleep?.hours ?? recovery.sleep_hours ?? sleep.average_hours;
+  const sleepHours = recovery.sleep_hours;
   const sleepProgress = sleepHours == null ? 0 : sleepHours / sleep.goal_hours * 100;
+  const latestSleepContext = latestSleep
+    ? `Último sueño disponible: ${formatDuration(latestSleep.hours)} · ${dateLabel(latestSleep.date)}`
+    : "Fitbit todavía no entregó un resumen de sueño.";
   const factorsByKey = useMemo(
     () => Object.fromEntries(recovery.factors.map((factor) => [factor.key, factor])) as Partial<Record<RecoveryFactor["key"], RecoveryFactor>>,
     [recovery.factors],
@@ -386,11 +389,13 @@ export function RecoveryDashboard({ data }: { data: DashboardData }) {
           icon={<MoonStar aria-hidden="true" />}
           title="Sueño"
           value={formatDuration(sleepHours)}
-          status={sleepHours == null ? "Sin dato" : sleepHours >= sleep.goal_hours - 0.5 ? "En objetivo" : "Por debajo"}
+          status={sleepHours == null ? "Pendiente" : sleepHours >= sleep.goal_hours - 0.5 ? "En objetivo" : "Por debajo"}
           tone={sleepHours == null ? "neutral" : sleepHours >= sleep.goal_hours - 0.5 ? "good" : sleepHours >= 6 ? "warning" : "bad"}
           progress={sleepProgress}
         >
-          Objetivo {formatDuration(sleep.goal_hours)}{sleep.debt_hours != null ? ` · deuda ${formatDuration(sleep.debt_hours)}` : ""}
+          {sleepHours == null
+            ? latestSleepContext
+            : `Objetivo ${formatDuration(sleep.goal_hours)}${sleep.debt_hours != null ? ` · deuda ${formatDuration(sleep.debt_hours)}` : ""}`}
         </SummaryCard>
         <SummaryCard
           icon={<CircleGauge aria-hidden="true" />}

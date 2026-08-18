@@ -363,12 +363,20 @@ def data_point_time(data_type: str, point: dict[str, Any]) -> str:
 def data_point_source(point: dict[str, Any]) -> str:
     source = point.get("dataSource") or {}
     device = source.get("device") or {}
-    return str(
-        device.get("displayName")
-        or device.get("manufacturer")
-        or source.get("platform")
-        or "Google Health"
+    application = source.get("application") or {}
+    candidates = (
+        device.get("displayName"),
+        device.get("manufacturer"),
+        application.get("displayName"),
+        application.get("packageName"),
+        source.get("platform"),
     )
+    # Google Health sometimes adds the concrete device label to sleep points
+    # while daily summaries only expose the platform. Keep a stable source so
+    # all Fitbit records pass the same downstream provenance filter.
+    if any("fitbit" in str(value).casefold() for value in candidates if value):
+        return "FITBIT"
+    return str(next((value for value in candidates if value), "Google Health"))
 
 
 def data_point_key(data_type: str, point: dict[str, Any], recorded_at: str, source: str) -> str:
@@ -399,15 +407,48 @@ def normalized_recovery_value(data_type: str, point: dict[str, Any]) -> tuple[fl
         {},
     )
     if data_type == "sleep":
-        summary = payload.get("summary") or {}
-        value = summary.get("minutesAsleep")
-        return (float(value) / 60, "h") if value is not None else None
+        minutes = _sleep_minutes_asleep(payload)
+        return (minutes / 60, "h") if minutes is not None else None
     mapping = field_map.get(data_type)
     if not mapping:
         return None
     field, unit, multiplier = mapping
     value = payload.get(field)
     return (float(value) * multiplier, unit) if value is not None else None
+
+
+def _sleep_minutes_asleep(sleep: dict[str, Any]) -> float | None:
+    summary = sleep.get("summary") or {}
+    value = summary.get("minutesAsleep")
+    if value is not None and float(value) > 0:
+        return float(value)
+
+    asleep_types = {"ASLEEP", "LIGHT", "DEEP", "REM"}
+    stage_summary_minutes = sum(
+        float(item.get("minutes") or 0)
+        for item in summary.get("stagesSummary") or []
+        if isinstance(item, dict)
+        and str(item.get("type") or "").upper().removeprefix("SLEEP_STAGE_TYPE_")
+        in asleep_types
+    )
+    if stage_summary_minutes > 0:
+        return stage_summary_minutes
+
+    stage_minutes = 0.0
+    for stage in sleep.get("stages") or []:
+        if (
+            not isinstance(stage, dict)
+            or str(stage.get("type") or "").upper().removeprefix("SLEEP_STAGE_TYPE_")
+            not in asleep_types
+        ):
+            continue
+        try:
+            start = datetime.fromisoformat(str(stage["startTime"]).replace("Z", "+00:00"))
+            end = datetime.fromisoformat(str(stage["endTime"]).replace("Z", "+00:00"))
+        except (KeyError, TypeError, ValueError):
+            continue
+        stage_minutes += max((end - start).total_seconds() / 60, 0)
+    return stage_minutes if stage_minutes > 0 else None
 
 
 def cardio_fitness_level(point: dict[str, Any]) -> str | None:

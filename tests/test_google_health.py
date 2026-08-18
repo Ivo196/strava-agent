@@ -13,6 +13,7 @@ from strava_agent.google_health import (
     GoogleHealthCredentials,
     GoogleHealthService,
     cardio_fitness_level,
+    data_point_source,
     data_point_time,
     normalized_recovery_value,
 )
@@ -344,6 +345,52 @@ def test_normalizes_recovery_values() -> None:
     assert normalized_recovery_value("daily-vo2-max", vo2) == (53.9, "ml/kg/min")
     assert cardio_fitness_level(vo2) == "VERY_GOOD"
     assert data_point_time("sleep", sleep) == "2026-07-18T06:00:00Z"
+
+
+def test_normalizes_fitbit_device_labels_and_sleep_stage_fallbacks() -> None:
+    source = {
+        "dataSource": {
+            "platform": "FITBIT",
+            "device": {"displayName": "Fitbit Charge 6"},
+        }
+    }
+    stage_summary = {
+        "sleep": {
+            "summary": {
+                "stagesSummary": [
+                    {"type": "AWAKE", "minutes": "35"},
+                    {"type": "LIGHT", "minutes": "250"},
+                    {"type": "SLEEP_STAGE_TYPE_DEEP", "minutes": "75"},
+                    {"type": "REM", "minutes": "95"},
+                ]
+            }
+        }
+    }
+    raw_stages = {
+        "sleep": {
+            "stages": [
+                {
+                    "type": "DEEP",
+                    "startTime": "2026-08-17T22:00:00Z",
+                    "endTime": "2026-08-17T23:30:00Z",
+                },
+                {
+                    "type": "AWAKE",
+                    "startTime": "2026-08-17T23:30:00Z",
+                    "endTime": "2026-08-17T23:45:00Z",
+                },
+                {
+                    "type": "LIGHT",
+                    "startTime": "2026-08-17T23:45:00Z",
+                    "endTime": "2026-08-18T05:45:00Z",
+                },
+            ]
+        }
+    }
+
+    assert data_point_source(source) == "FITBIT"
+    assert normalized_recovery_value("sleep", stage_summary) == (7.0, "h")
+    assert normalized_recovery_value("sleep", raw_stages) == (7.5, "h")
 
 
 def test_fitbit_vo2_metric_includes_provider_fitness_level() -> None:

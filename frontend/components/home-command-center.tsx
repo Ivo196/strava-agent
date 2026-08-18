@@ -21,6 +21,7 @@ import { WeeklyProgressSummary } from "@/components/weekly-progress-summary";
 
 const weekday = new Intl.DateTimeFormat("es-ES", { weekday: "short" });
 const dayNumber = new Intl.DateTimeFormat("es-ES", { day: "numeric" });
+const shortDate = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" });
 
 function clamp(value: number) {
   return Math.max(0, Math.min(100, value));
@@ -69,7 +70,15 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
   const stress = state.physiological_stress;
   const energy = state.energy;
   const week = data.daily_agenda.slice(0, 7);
-  const sleepHours = recovery.sleep_hours ?? state.sleep_utility.average_hours;
+  const sleepHours = recovery.sleep_hours;
+  const latestSleep = data.devices.fitbit.sleep.latest;
+  const sleepCaption = sleepHours != null
+    ? state.sleep_utility.debt_hours != null
+      ? `${state.sleep_utility.debt_hours} h de deuda`
+      : "Última noche sincronizada"
+    : latestSleep
+      ? `Último: ${latestSleep.hours} h · ${shortDate.format(new Date(`${latestSleep.date}T12:00:00`))}`
+      : "Esperando sueño de Fitbit";
   const recoveryPercent = recovery.score ?? clamp((state.calibration.nights / state.calibration.required) * 100);
   const hrv = recovery.factors.find((factor) => factor.key === "hrv");
   const restingHr = recovery.factors.find((factor) => factor.key === "resting_hr");
@@ -106,7 +115,7 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
             value={sleepHours ?? "—"}
             unit={sleepHours != null ? "h" : undefined}
             percent={sleepHours == null ? 0 : (sleepHours / state.sleep_utility.goal_hours) * 100}
-            caption={state.sleep_utility.debt_hours != null ? `${state.sleep_utility.debt_hours} h de deuda` : "Esperando datos de Fitbit"}
+            caption={sleepCaption}
             tone="violet"
             icon={<MoonStar size={16} />}
           />
@@ -121,10 +130,10 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
           />
           <MetricTile
             label="Recuperación"
-            value={recovery.score ?? state.calibration.nights}
-            unit={recovery.score == null ? `/${state.calibration.required}` : "/100"}
+            value={recovery.score ?? "—"}
+            unit={recovery.score == null ? undefined : "/100"}
             percent={recoveryPercent}
-            caption={recovery.score == null ? "Calibrando tu base" : recovery.label}
+            caption={recovery.label}
             tone="lime"
             icon={<HeartPulse size={16} />}
           />

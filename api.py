@@ -2170,7 +2170,13 @@ def _performance_daily_state(
         "Buena recuperación" if score is not None and score >= 70
         else "Recuperación media" if score is not None and score >= 45
         else "Recuperación limitada" if score is not None
-        else state["morning_recovery"]["label"]
+        else "Esperando sueño reciente" if not sleep_available
+        else "Señales insuficientes"
+    )
+    recovery_summary = (
+        "Fitbit envió señales cardíacas, pero falta un resumen de sueño de hoy o de la última noche."
+        if score is None and not sleep_available
+        else state["morning_recovery"]["summary"]
     )
     state["morning_recovery"].update({
         "score": score,
@@ -2179,7 +2185,7 @@ def _performance_daily_state(
             f"Estimación provisional con {state['calibration']['nights']} de "
             f"{state['calibration']['required']} noches; se afinará con más datos."
             if score is not None and not calibrated
-            else state["morning_recovery"]["summary"]
+            else recovery_summary
         ),
         "factors": factors,
         "provisional": bool(score is not None and not calibrated),
@@ -2445,7 +2451,9 @@ def _performance_daily_state(
         "explanation": (
             f"+{readiness_estimate} por recuperación · −{round(drain)} por actividad y activación"
             if readiness_estimate is not None and drain is not None
-            else "Faltan señales suficientes de recuperación o activación."
+            else "Falta un resumen de sueño reciente para calcular la energía."
+            if readiness_estimate is None
+            else "Faltan señales suficientes de activación."
         ),
         "components": {
             "training_load": round(current_load, 1),
