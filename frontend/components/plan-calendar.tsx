@@ -60,6 +60,7 @@ function activityDetails(activity: CalendarActualActivity) {
   const values: string[] = [];
   if (activity.distance_km) values.push(`${activity.distance_km} km`);
   if (activity.duration_minutes) values.push(`${activity.duration_minutes} min`);
+  if (activity.pace && activity.pace !== "—") values.push(activity.pace);
   if (activity.calories) values.push(`${activity.calories} kcal`);
   return values.join(" · ");
 }

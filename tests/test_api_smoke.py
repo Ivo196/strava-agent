@@ -3,6 +3,7 @@ from pathlib import Path
 
 import api
 from strava_agent.database import Database
+from strava_agent.metrics import activities_frame
 
 
 def test_dashboard_and_coach_status_are_available() -> None:
@@ -360,3 +361,25 @@ def test_fitbit_bike_marks_the_planned_bike_as_detected(
     assert result[0]["completion_source"] == "fitbit"
     assert result[0]["completion_locked"] is True
     assert result[0]["actual_activities"][0]["label"] == "Bicicleta"
+
+
+def test_calendar_apple_watch_activity_includes_average_pace() -> None:
+    frame = activities_frame([{
+        "id": 1,
+        "name": "Carrera · Apple Watch",
+        "sport_type": "Run",
+        "device_name": "Apple Watch",
+        "start_date_local": "2026-08-10T07:00:00+02:00",
+        "distance_m": 7040,
+        "moving_time_s": 2340,
+        "elevation_gain_m": 0,
+        "average_heartrate": 145,
+        "max_heartrate": 168,
+        "suffer_score": None,
+        "calories": 500,
+        "streams_loaded": False,
+    }])
+
+    activities = api._actual_activities_by_date(frame, {})
+
+    assert activities["2026-08-10"][0]["pace"] == "5:32 min/km"

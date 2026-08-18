@@ -347,6 +347,7 @@ export type CalendarActualActivity = {
   source: "Apple Watch" | "Fitbit";
   duration_minutes: number | null;
   distance_km: number | null;
+  pace: string | null;
   calories: number | null;
   average_heartrate: number | null;
   zone_minutes: number | null;

@@ -3425,6 +3425,7 @@ def _actual_activities_by_date(
                     "source": "Apple Watch",
                     "duration_minutes": round(float(row.moving_minutes)),
                     "distance_km": round(float(row.distance_km), 2),
+                    "pace": format_pace(float(row.pace_min_km)),
                     "calories": None if _is_nan(row.calories) else round(float(row.calories)),
                     "average_heartrate": (
                         None
@@ -3447,6 +3448,7 @@ def _actual_activities_by_date(
                     "source",
                     "duration_minutes",
                     "distance_km",
+                    "pace",
                     "calories",
                     "average_heartrate",
                     "zone_minutes",
