@@ -207,7 +207,10 @@ def _workout_to_activity(
     activity_id = int(matching["id"]) if matching else _stable_id("activity", str(workout["id"]))
     average_hr = _number(_workout_stat(workout, "HKQuantityTypeIdentifierHeartRate", "average"))
     max_hr = _number(_workout_stat(workout, "HKQuantityTypeIdentifierHeartRate", "maximum"))
-    calories = _number(_workout_stat(workout, "HKQuantityTypeIdentifierActiveEnergyBurned", "sum"))
+    calories = _energy_kcal(
+        _workout_stat(workout, "HKQuantityTypeIdentifierActiveEnergyBurned", "sum"),
+        _workout_stat(workout, "HKQuantityTypeIdentifierActiveEnergyBurned", "unit"),
+    )
     speed = _number(_workout_stat(workout, "HKQuantityTypeIdentifierRunningSpeed", "average"))
     speed_mps = _speed_mps(speed, _workout_stat(workout, "HKQuantityTypeIdentifierRunningSpeed", "unit"))
 
@@ -417,6 +420,23 @@ def _speed_mps(value: float | None, unit: Any) -> float | None:
     if normalized in {"mph", "mi/h"}:
         return value * 0.44704
     return value
+
+
+def _energy_kcal(value: Any, unit: Any) -> float | None:
+    quantity = _number(value)
+    if quantity is None:
+        return None
+    raw_unit = str(unit or "kcal").strip().replace(" ", "")
+    if raw_unit == "Cal":
+        return quantity
+    normalized = raw_unit.casefold()
+    if normalized in {"kj", "kilojoule", "kilojoules"}:
+        return quantity / 4.184
+    if normalized in {"j", "joule", "joules"}:
+        return quantity / 4_184
+    if normalized in {"cal", "calorie", "calories"}:
+        return quantity / 1_000
+    return quantity
 
 
 def _parse_date(value: Any) -> datetime | None:

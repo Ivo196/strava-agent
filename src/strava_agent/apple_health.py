@@ -142,7 +142,7 @@ def _workout_to_activity(workout: dict[str, Any], database: Database) -> dict[st
         "average_heartrate": average_hr,
         "max_heartrate": maximum_hr,
         "suffer_score": None,
-        "calories": _quantity(workout.get("activeEnergyBurned")),
+        "calories": _energy_kcal(workout.get("activeEnergyBurned")),
         "has_heartrate": average_hr is not None,
         "device_name": workout_device_name(workout),
         "source": "health_auto_export",
@@ -240,6 +240,24 @@ def _quantity(value: Any) -> float | None:
     if isinstance(value, dict):
         return _number(value.get("qty", value.get("Avg")))
     return _number(value)
+
+
+def _energy_kcal(value: Any) -> float | None:
+    quantity = _quantity(value)
+    if quantity is None:
+        return None
+    units = str(value.get("units") or value.get("unit") or "kcal") if isinstance(value, dict) else "kcal"
+    raw_units = units.strip().replace(" ", "")
+    if raw_units == "Cal":
+        return quantity
+    normalized = raw_units.casefold()
+    if normalized in {"kj", "kilojoule", "kilojoules"}:
+        return quantity / 4.184
+    if normalized in {"j", "joule", "joules"}:
+        return quantity / 4_184
+    if normalized in {"cal", "calorie", "calories"}:
+        return quantity / 1_000
+    return quantity
 
 
 def _heart_rate_value(value: dict[str, Any]) -> float | None:

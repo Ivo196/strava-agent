@@ -1,6 +1,8 @@
 from pathlib import Path
 from zipfile import ZipFile
 
+import pytest
+
 from strava_agent.apple_health_export import import_apple_health_export_zip
 from strava_agent.database import Database
 
@@ -40,6 +42,7 @@ def test_native_export_batches_metrics_and_uses_apple_watch_runs(tmp_path: Path)
     activity = database.list_activities()[0]
     assert activity["device_name"] == "Ivo's Apple Watch"
     assert activity["distance_m"] == 5000
+    assert activity["calories"] == 390
     assert len(
         database.list_apple_health_metrics(
             ["heart_rate"],
@@ -52,3 +55,15 @@ def test_native_export_batches_metrics_and_uses_apple_watch_runs(tmp_path: Path)
         start_date="2026-07-22",
         end_date="2026-07-23",
     ) == []
+
+
+def test_native_export_converts_active_energy_from_kilojoules(tmp_path: Path) -> None:
+    archive_path = tmp_path / "export-kj.zip"
+    export_xml = EXPORT_XML.replace('sum="390" unit="kcal"', 'sum="1631.76" unit="kJ"')
+    with ZipFile(archive_path, "w") as archive:
+        archive.writestr("apple_health_export/export.xml", export_xml)
+
+    database = Database(tmp_path / "coach-kj.db")
+    import_apple_health_export_zip(str(archive_path), database)
+
+    assert database.list_activities()[0]["calories"] == pytest.approx(390)

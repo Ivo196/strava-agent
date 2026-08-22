@@ -90,6 +90,7 @@ def test_imports_health_auto_export_and_is_idempotent(tmp_path: Path) -> None:
     assert database.activity_count() == 1
     activity = database.list_activities()[0]
     assert activity["distance_m"] == pytest.approx(5000)
+    assert activity["calories"] == pytest.approx(390)
     assert activity["average_heartrate"] == pytest.approx(147.5)
     assert activity["streams_loaded"] == 1
     assert database.list_apple_health_workouts()[0]["workout_id"] == "run-2026-07-17"
@@ -99,6 +100,19 @@ def test_imports_health_auto_export_and_is_idempotent(tmp_path: Path) -> None:
     assert status["last_sync"]["workouts_received"] == 1
     assert status["last_sync"]["runs_updated"] == 1
     assert status["last_sync"]["result_recorded"] == 1
+
+
+def test_health_auto_export_converts_active_energy_from_kilojoules(tmp_path: Path) -> None:
+    payload = deepcopy(health_payload())
+    payload["data"]["workouts"][0]["activeEnergyBurned"] = {
+        "qty": 1631.76,
+        "units": "kJ",
+    }
+    database = Database(tmp_path / "coach-kj.db")
+
+    import_health_auto_export(payload, database)
+
+    assert database.list_activities()[0]["calories"] == pytest.approx(390)
 
 
 def test_activity_detail_includes_route_map_points(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -473,3 +487,4 @@ def test_run_endpoints_keep_rich_copy_of_overlapping_apple_imports(
     activities = response.json()["activities"]
     assert [item["id"] for item in activities] == [str(rich["id"])]
     assert activities[0]["distance_km"] == 5.0
+    assert activities[0]["calories"] == 390

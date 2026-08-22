@@ -519,6 +519,7 @@ def activities() -> dict[str, Any]:
             "average_heartrate": None if _is_nan(row.average_heartrate) else round(float(row.average_heartrate)),
             "elevation_gain_m": round(float(row.elevation_gain_m)),
             "training_load": round(float(row.training_load)),
+            "calories": None if _is_nan(row.calories) else round(float(row.calories)),
         }
         for row in frame.itertuples()
     ]
