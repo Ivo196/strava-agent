@@ -4883,184 +4883,6 @@ body {
   .weekly-progress-metrics button:hover { transform: none; }
 }
 
-/* Carreras v2 — editorial season log */
-.runs-progress-page { max-width: 1500px; padding-top: 28px; }
-
-.run-season-hero {
-  --season-blue: #72a7ff;
-  --season-mint: #24f2ce;
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  padding: 20px 28px 0;
-  border: 1px solid rgba(114,167,255,.22);
-  border-radius: 30px;
-  background:
-    radial-gradient(circle at 79% 12%,rgba(36,242,206,.12),transparent 27rem),
-    radial-gradient(circle at 14% 92%,rgba(91,140,255,.16),transparent 35rem),
-    linear-gradient(128deg,#07101f 0%,#080e19 47%,#06151a 100%);
-  box-shadow: 0 34px 90px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.045);
-}
-.run-season-hero::before {
-  position: absolute;
-  z-index: -1;
-  top: -310px;
-  right: -190px;
-  width: 690px;
-  height: 690px;
-  border: 1px solid rgba(114,167,255,.1);
-  border-radius: 50%;
-  content: "";
-  box-shadow: 0 0 0 54px rgba(114,167,255,.025),0 0 0 108px rgba(36,242,206,.018);
-}
-.run-season-hero::after {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  pointer-events: none;
-  content: "";
-  opacity: .28;
-  background: repeating-linear-gradient(118deg,transparent 0 82px,rgba(114,167,255,.045) 82px 83px);
-  mask-image: linear-gradient(90deg,transparent,black 58%,transparent);
-}
-.run-season-topline { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid rgba(148,163,184,.12); }
-.run-season-topline > span { display: inline-flex; align-items: center; gap: 9px; color: #b9c8dd; font-size: 8px; font-weight: 850; letter-spacing: .17em; text-transform: uppercase; }
-.run-season-topline > span i { width: 6px; height: 6px; border-radius: 50%; background: var(--season-mint); box-shadow: 0 0 0 5px rgba(36,242,206,.08),0 0 16px rgba(36,242,206,.6); }
-.run-season-topline time { color: #607087; font: 600 8px "Fira Code",ui-monospace,monospace; text-transform: capitalize; }
-.run-season-main { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(390px,.8fr); gap: clamp(40px,7vw,110px); align-items: end; padding: clamp(34px,5vw,68px) 8px 36px; }
-.run-season-intro { min-width: 0; }
-.run-season-intro .eyebrow { color: var(--season-mint); }
-.run-season-intro h1 { margin: 14px 0 20px; max-width: none; color: #f8fbff; font: 720 clamp(58px,7vw,104px)/.84 Inter,ui-sans-serif,sans-serif; letter-spacing: -.075em; }
-.run-season-intro h1 em { color: var(--season-blue); font-style: normal; }
-.run-season-intro > p { max-width: 630px; margin: 0; color: #8e9bae; font-size: 13px; line-height: 1.65; }
-.run-season-proof { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 24px; }
-.run-season-proof span { min-height: 34px; display: inline-flex; align-items: center; gap: 8px; padding: 0 11px; color: #adbbcc; border: 1px solid rgba(148,163,184,.15); border-radius: 999px; background: rgba(3,7,18,.28); font-size: 9px; font-weight: 700; }
-.run-season-proof svg { color: var(--season-mint); }
-
-.run-season-week { min-width: 0; padding: 24px 24px 19px; border: 1px solid rgba(114,167,255,.2); border-radius: 24px; background: linear-gradient(145deg,rgba(114,167,255,.1),rgba(3,7,18,.43)); box-shadow: inset 0 1px rgba(255,255,255,.035),0 24px 55px rgba(0,0,0,.18); }
-.run-season-week-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-.run-season-week-heading span { color: #9ec2ff; font-size: 9px; font-weight: 850; letter-spacing: .13em; text-transform: uppercase; }
-.run-season-week-heading small { color: #718096; font-size: 9px; }
-.run-season-week > strong { display: block; margin-top: 17px; color: #f7fbff; font: 680 clamp(54px,5.8vw,82px)/.86 "Fira Code",ui-monospace,monospace; letter-spacing: -.085em; font-variant-numeric: tabular-nums; }
-.run-season-week > strong small { color: var(--season-mint); font-size: 15px; letter-spacing: -.02em; }
-.run-season-week > p { margin: 13px 0 0; color: #7d8999; font-size: 9px; }
-.run-season-week > p.is-positive { color: #69dec9; }
-.run-season-spark { height: 88px; display: grid; grid-template-columns: repeat(8,minmax(0,1fr)); gap: 7px; align-items: end; margin-top: 22px; padding-top: 11px; border-top: 1px solid rgba(148,163,184,.1); }
-.run-season-spark > span { height: 100%; display: grid; grid-template-rows: 1fr auto; gap: 6px; align-items: end; text-align: center; }
-.run-season-spark i { width: 100%; display: block; min-height: 4px; border-radius: 5px 5px 2px 2px; background: linear-gradient(180deg,rgba(114,167,255,.9),rgba(91,140,255,.2)); box-shadow: 0 0 14px rgba(91,140,255,.08); }
-.run-season-spark span.is-current i { background: linear-gradient(180deg,#69ffe3,#24f2ce 55%,rgba(36,242,206,.2)); box-shadow: 0 0 18px rgba(36,242,206,.2); }
-.run-season-spark small { color: #5e6d80; font: 650 7px "Fira Code",ui-monospace,monospace; }
-.run-season-spark span.is-current small { color: #7cebd7; }
-
-.run-season-strip { display: grid; grid-template-columns: 1.25fr repeat(3,1fr); margin: 0 -28px; border-top: 1px solid rgba(148,163,184,.13); background: rgba(2,6,14,.35); }
-.run-season-strip > div,.run-season-strip > a { position: relative; min-width: 0; min-height: 116px; display: flex; flex-direction: column; justify-content: center; padding: 21px 25px; }
-.run-season-strip > * + * { border-left: 1px solid rgba(148,163,184,.12); }
-.run-season-strip span { display: flex; align-items: center; gap: 7px; color: #718096; font-size: 8px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
-.run-season-strip span svg { color: var(--season-blue); }
-.run-season-strip strong { display: block; margin-top: 10px; overflow: hidden; color: #edf3fb; font: 680 clamp(17px,2vw,25px) "Fira Code",ui-monospace,monospace; letter-spacing: -.055em; text-overflow: ellipsis; white-space: nowrap; }
-.run-season-strip small { display: block; margin-top: 4px; overflow: hidden; color: #5f6d7e; font-size: 8px; text-overflow: ellipsis; text-transform: capitalize; white-space: nowrap; }
-.run-season-latest { transition: background .2s ease; }
-.run-season-latest > svg { position: absolute; top: 21px; right: 22px; color: var(--season-mint); transition: transform .2s cubic-bezier(.16,1,.3,1); }
-.run-season-latest:hover { background: rgba(114,167,255,.055); }
-.run-season-latest:hover > svg { transform: translate(2px,-2px); }
-
-.runs-progress-page .run-analytics-section { margin-top: 22px; }
-.runs-progress-page .weekly-mileage-panel { padding: 30px; border-color: rgba(114,167,255,.16); border-radius: 26px; background: linear-gradient(145deg,rgba(9,17,33,.96),rgba(5,11,21,.92)); box-shadow: 0 28px 70px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.035); }
-.runs-progress-page .weekly-mileage-panel::before { width: 100%; background: linear-gradient(90deg,var(--season-mint),var(--season-blue) 38%,transparent 78%); opacity: .68; }
-.runs-progress-page .weekly-progress-header > div strong { font-family: Inter,ui-sans-serif,sans-serif; font-size: clamp(27px,3vw,42px); font-weight: 720; }
-.runs-progress-page .weekly-progress-metrics { gap: 12px; }
-.runs-progress-page .weekly-progress-metrics button { min-height: 92px; border-radius: 16px; background: rgba(3,7,18,.36); }
-.runs-progress-page .weekly-progress-chart { height: 315px; border-radius: 20px; background: radial-gradient(circle at 62% 0,rgba(114,167,255,.07),transparent 55%),rgba(3,7,18,.45); }
-
-.runs-progress-page .run-history-section { margin-top: 68px; }
-.runs-progress-page .run-history-heading { align-items: end; margin-bottom: 18px; }
-.runs-progress-page .run-history-heading h2 { margin-top: 9px; color: #f5f8fc; font-size: clamp(36px,4.3vw,58px); font-weight: 760; letter-spacing: -.065em; }
-.runs-progress-page .run-history-heading p { color: #718096; font-size: 10px; }
-.runs-progress-page .run-history-heading .history-filter-switch { border-color: rgba(114,167,255,.16); background: rgba(6,12,24,.7); }
-.runs-progress-page .run-history-heading .history-filter-switch button.active { color: #06101d; background: linear-gradient(120deg,#72a7ff,#24f2ce); }
-.runs-progress-page .run-quality-method { margin: 0 0 34px; padding: 0 3px; }
-.runs-progress-page .run-quality-method summary { color: #77869a; }
-.runs-progress-page .run-history-groups { gap: 56px; }
-.runs-progress-page .run-history-group { --week-accent: #72a7ff; }
-.runs-progress-page .run-history-group.is-current { --week-accent: #24f2ce; }
-.runs-progress-page .run-history-week-header { align-items: end; margin-bottom: 14px; padding: 0 4px; }
-.runs-progress-page .run-history-week-title h3 { margin-top: 8px; font-size: 27px; }
-.runs-progress-page .run-history-week-summary { gap: 10px; }
-.runs-progress-page .run-history-week-summary > span { padding: 6px 9px; border: 1px solid rgba(148,163,184,.12); border-radius: 999px; background: rgba(3,7,18,.25); }
-.runs-progress-page .run-history-list { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.runs-progress-page .run-history-entry { --run-accent: #72a7ff; --run-accent-soft: rgba(114,167,255,.08); min-width: 0; min-height: 338px; display: flex; flex-direction: column; gap: 0; align-items: stretch; padding: 20px; overflow: hidden; border: 1px solid rgba(148,163,184,.14); border-radius: 22px; background: radial-gradient(circle at 100% 0,var(--run-accent-soft),transparent 45%),linear-gradient(150deg,rgba(11,20,36,.94),rgba(5,10,20,.94)); box-shadow: 0 20px 50px rgba(0,0,0,.16),inset 0 1px rgba(255,255,255,.025); transform: none; transition: border-color .2s ease,box-shadow .2s ease,transform .2s cubic-bezier(.16,1,.3,1); }
-.runs-progress-page .run-history-entry + .run-history-entry { border-top: 1px solid rgba(148,163,184,.14); }
-.runs-progress-page .run-history-entry::before { inset: 0 20px auto; width: auto; height: 2px; border-radius: 0 0 999px 999px; background: linear-gradient(90deg,transparent,var(--run-accent),transparent); opacity: .7; }
-.runs-progress-page .run-history-entry:hover,.runs-progress-page .run-history-entry:focus-visible { border-color: color-mix(in srgb,var(--run-accent) 32%,transparent); background: radial-gradient(circle at 100% 0,color-mix(in srgb,var(--run-accent) 13%,transparent),transparent 48%),linear-gradient(150deg,rgba(13,23,41,.98),rgba(5,11,22,.98)); box-shadow: 0 28px 60px rgba(0,0,0,.24),0 0 0 1px color-mix(in srgb,var(--run-accent) 8%,transparent) inset; transform: translateY(-3px); }
-.runs-progress-page .run-history-entry-tone-1 { --run-accent: #a98bff; --run-accent-soft: rgba(169,139,255,.075); }
-.runs-progress-page .run-history-entry-tone-2 { --run-accent: #ff7c9d; --run-accent-soft: rgba(255,124,157,.07); }
-.runs-progress-page .run-history-entry-tone-3 { --run-accent: #f4b860; --run-accent-soft: rgba(244,184,96,.07); }
-.run-history-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.runs-progress-page .run-history-date > span { font-size: 8px; }
-.runs-progress-page .run-history-date time { margin-top: 6px; color: #aeb9c7; font-size: 11px; }
-.runs-progress-page .run-details-action { width: 38px; min-height: 38px; flex: 0 0 38px; padding: 0; border-radius: 50%; }
-.runs-progress-page .run-history-distance { margin-top: 30px; }
-.runs-progress-page .run-history-distance strong { font-size: clamp(52px,5.2vw,72px); line-height: .8; }
-.runs-progress-page .run-history-distance small { font-size: 11px; }
-.runs-progress-page .run-history-distance-bar { width: 100%; height: 3px; margin-top: 18px; }
-.runs-progress-page .run-history-tags { min-height: 25px; margin-top: 13px; }
-.run-name-chip,.run-elevation-chip { min-height: 22px; display: inline-flex; align-items: center; gap: 4px; padding: 0 7px; color: #8a98a9; border: 1px solid rgba(148,163,184,.12); border-radius: 999px; background: rgba(3,7,18,.3); font-size: 7px; font-weight: 720; }
-.runs-progress-page .run-history-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1px; margin-top: auto; overflow: hidden; border: 1px solid rgba(148,163,184,.1); border-radius: 13px; background: rgba(148,163,184,.1); }
-.runs-progress-page .run-history-metric { min-height: 58px; grid-template-columns: 25px minmax(0,1fr); gap: 2px 7px; padding: 8px 10px; background: rgba(3,7,18,.64); }
-.runs-progress-page .run-history-metric + .run-history-metric { border-left: 0; }
-.runs-progress-page .run-history-metric svg { width: 25px; height: 25px; padding: 6px; border-radius: 8px; }
-.runs-progress-page .run-history-metric small { font-size: 7px; }
-.runs-progress-page .run-history-metric strong { font-size: 10px; }
-.runs-progress-page .run-history-metric-energy { --metric-accent: #ff9e64; }
-
-@media (max-width: 1180px) {
-  .run-season-main { grid-template-columns: minmax(0,1fr) minmax(340px,.72fr); gap: 36px; }
-  .run-season-intro h1 { font-size: clamp(58px,8vw,84px); }
-  .run-season-strip { grid-template-columns: repeat(2,1fr); }
-  .run-season-strip > :nth-child(3) { border-left: 0; border-top: 1px solid rgba(148,163,184,.12); }
-  .run-season-strip > :nth-child(4) { border-top: 1px solid rgba(148,163,184,.12); }
-  .runs-progress-page .run-history-list { grid-template-columns: repeat(2,minmax(0,1fr)); }
-}
-
-@media (max-width: 820px) {
-  .run-season-hero { padding-inline: 20px; border-radius: 24px; }
-  .run-season-main { grid-template-columns: 1fr; gap: 28px; padding: 34px 0 26px; }
-  .run-season-intro h1 { font-size: clamp(58px,14vw,84px); }
-  .run-season-week { padding: 21px; }
-  .run-season-strip { margin-inline: -20px; }
-  .runs-progress-page .run-history-list { grid-template-columns: 1fr; }
-  .runs-progress-page .run-history-entry { min-height: 320px; }
-}
-
-@media (max-width: 560px) {
-  .runs-progress-page { padding-top: 18px; }
-  .run-season-hero { padding-inline: 16px; border-radius: 20px; }
-  .run-season-topline time { display: none; }
-  .run-season-main { padding-top: 29px; }
-  .run-season-intro h1 { margin-top: 12px; font-size: clamp(54px,18vw,72px); }
-  .run-season-intro > p { font-size: 12px; }
-  .run-season-proof { align-items: stretch; flex-direction: column; }
-  .run-season-proof span { width: fit-content; }
-  .run-season-week > strong { font-size: clamp(50px,16vw,70px); }
-  .run-season-strip { grid-template-columns: 1fr 1fr; margin-inline: -16px; }
-  .run-season-strip > div,.run-season-strip > a { min-height: 104px; padding: 17px 15px; }
-  .run-season-strip strong { font-size: 16px; }
-  .runs-progress-page .weekly-mileage-panel { padding: 19px 14px 16px !important; border-radius: 20px; }
-  .runs-progress-page .weekly-progress-chart { height: 280px; border-radius: 15px; }
-  .runs-progress-page .run-history-section { margin-top: 52px; }
-  .runs-progress-page .run-history-heading h2 { font-size: 38px; }
-  .runs-progress-page .run-history-week-header { align-items: flex-start; }
-  .runs-progress-page .run-history-week-summary { align-items: flex-end; }
-  .runs-progress-page .run-history-week-summary > span { padding: 0; border: 0; background: none; }
-  .runs-progress-page .run-history-entry { padding: 18px; border-radius: 18px; }
-  .runs-progress-page .run-history-distance strong { font-size: 60px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .run-season-latest,.run-season-latest > svg,.runs-progress-page .run-history-entry { transition: none; }
-  .runs-progress-page .run-history-entry:hover { transform: none; }
-}
-
 /* Recovery v3 — one decision, progressive disclosure, personal baselines */
 .recovery-page-v3 {
   --recovery-blue: #78c6ff;
@@ -5274,4 +5096,113 @@ body {
   .recovery-overview-grid .recovery-gauge-panel { min-height: 238px; padding-block: 12px 18px; }
   .recovery-overview-grid .recovery-summary-card { min-height: 0; }
   .recovery-vital-card { flex-basis: 100%; }
+}
+
+/* Individual activity — performance story */
+.activity-detail-page-v2 { max-width: 1440px; }
+.activity-detail-topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.activity-detail-back { display: inline-flex; align-items: center; gap: 8px; color: #91a3b8; font-size: 11px; font-weight: 750; letter-spacing: .03em; transition: color .18s ease, transform .18s ease; }
+.activity-detail-back:hover { color: #eff7ff; transform: translateX(-2px); }
+.activity-detail-topbar .live-date-badge { float: none; }
+
+.activity-performance-hero { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(440px, .92fr); overflow: hidden; margin-bottom: 20px; border: 1px solid rgba(103, 178, 255, .28); border-radius: 26px; background: radial-gradient(circle at 88% 2%, rgba(36, 242, 206, .14), transparent 35%), linear-gradient(124deg, #0b1426 0%, #081221 55%, #07181c 100%); box-shadow: 0 30px 80px rgba(0, 0, 0, .38), inset 0 1px rgba(255,255,255,.04); }
+.activity-performance-hero::before { position: absolute; z-index: -1; inset: -75% -10% auto 42%; width: 720px; height: 720px; content: ""; border: 1px solid rgba(91, 140, 255, .11); border-radius: 43% 57% 58% 42%; transform: rotate(18deg); box-shadow: 0 0 0 56px rgba(36,242,206,.018), 0 0 0 112px rgba(91,140,255,.018); }
+.activity-performance-hero::after { position: absolute; inset: 0 0 auto; height: 2px; content: ""; background: linear-gradient(90deg, transparent, #5b8cff 22%, #24f2ce 78%, transparent); opacity: .72; }
+.activity-performance-main { display: flex; min-width: 0; min-height: 330px; padding: 34px 36px 30px; flex-direction: column; justify-content: space-between; border-right: 1px solid rgba(148,163,184,.13); }
+.activity-performance-copy { position: relative; z-index: 1; }
+.activity-performance-copy h1 { max-width: 680px; margin: 11px 0 10px; color: #f7fbff; font-size: clamp(28px, 3.4vw, 48px); line-height: 1.02; letter-spacing: -.045em; }
+.activity-performance-copy time { display: block; color: #8d9db1; font-size: 12px; line-height: 1.4; text-transform: capitalize; }
+.activity-distance-lockup { display: flex; align-items: baseline; min-width: 0; margin-top: 26px; }
+.activity-distance-lockup strong { color: #f7fbff; font: 690 clamp(74px, 8.2vw, 126px)/.78 Inter, sans-serif; letter-spacing: -.095em; font-variant-numeric: tabular-nums; text-shadow: 0 12px 38px rgba(0,0,0,.2); }
+.activity-distance-lockup span { margin-left: 14px; color: #42efd2; font: 760 20px/1 Inter, sans-serif; letter-spacing: -.03em; }
+
+.activity-performance-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; padding: 24px; gap: 10px; align-content: center; }
+.activity-performance-metrics article { position: relative; min-width: 0; min-height: 132px; padding: 18px; overflow: hidden; border: 1px solid rgba(148,163,184,.14); border-radius: 15px; background: linear-gradient(145deg, rgba(255,255,255,.045), rgba(255,255,255,.016)); box-shadow: inset 0 1px rgba(255,255,255,.025); }
+.activity-performance-metrics article::after { position: absolute; inset: auto 16px 0; height: 1px; content: ""; background: linear-gradient(90deg, transparent, rgba(91,140,255,.62), transparent); }
+.activity-performance-metrics article.is-accent { border-color: rgba(36,242,206,.25); background: linear-gradient(145deg, rgba(36,242,206,.1), rgba(36,242,206,.022)); }
+.activity-performance-metrics article.is-accent::after { background: linear-gradient(90deg, transparent, rgba(36,242,206,.8), transparent); }
+.activity-performance-metrics svg { display: block; margin-bottom: 15px; color: #6ea0ff; }
+.activity-performance-metrics .is-accent svg { color: #36e5c9; }
+.activity-performance-metrics span, .activity-performance-metrics strong, .activity-performance-metrics em { display: block; min-width: 0; }
+.activity-performance-metrics span { color: #7f91a7; font-size: 8px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.activity-performance-metrics strong { margin-top: 7px; overflow: hidden; color: #f5f9ff; font-size: clamp(18px, 2vw, 25px); font-style: normal; font-weight: 690; letter-spacing: -.045em; text-overflow: ellipsis; white-space: nowrap; }
+.activity-performance-metrics strong small { color: #91a2b7; font-size: 9px; font-weight: 550; letter-spacing: 0; }
+.activity-performance-metrics em { margin-top: 5px; color: #788ca4; font-size: 9px; font-style: normal; }
+
+.activity-performance-insights { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid rgba(148,163,184,.13); background: rgba(2,7,16,.28); }
+.activity-performance-insights div { display: grid; grid-template-columns: 28px minmax(0,1fr); grid-template-rows: auto auto; align-content: center; min-width: 0; min-height: 82px; padding: 16px 24px; border-right: 1px solid rgba(148,163,184,.13); }
+.activity-performance-insights div:last-child { border-right: 0; }
+.activity-performance-insights svg { grid-row: 1 / span 2; align-self: center; color: #42dfc7; }
+.activity-performance-insights span, .activity-performance-insights strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-performance-insights span { color: #70839a; font-size: 8px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.activity-performance-insights strong { margin-top: 5px; color: #dce8f5; font-size: 12px; font-weight: 660; }
+
+.activity-detail-page-v2 .activity-route-map { margin: 0 0 38px; padding: 27px; border-color: rgba(91,140,255,.21); border-radius: 22px; background: radial-gradient(circle at 22% 18%, rgba(91,140,255,.09), transparent 32%), linear-gradient(145deg, rgba(10,19,36,.97), rgba(4,10,19,.92)); }
+.activity-detail-page-v2 .route-map-heading { align-items: center; margin-bottom: 20px; }
+.activity-detail-page-v2 .route-map-heading h2 { margin-top: 7px; color: #eff6ff; font-size: clamp(23px, 2.2vw, 31px); font-weight: 650; letter-spacing: -.045em; }
+.activity-detail-page-v2 .route-map-heading > span { min-height: 30px; color: #91a8c0; border-color: rgba(148,163,184,.16); background: rgba(3,7,18,.26); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.activity-detail-page-v2 .route-map-stage { border-color: rgba(91,140,255,.2); border-radius: 16px; background: radial-gradient(circle at 38% 24%, rgba(36,242,206,.1), transparent 30%), linear-gradient(145deg, rgba(4,11,23,.99), rgba(6,15,29,.96)); }
+.activity-detail-page-v2 .route-map-canvas { height: 475px; }
+.activity-detail-page-v2 .route-detail-card { right: 18px; bottom: 18px; padding: 14px 16px; border-radius: 12px; }
+.activity-detail-page-v2 .route-map-slider { border-radius: 12px; }
+
+.activity-detail-story-section, .activity-detail-page-v2 .dynamics-section, .activity-detail-page-v2 .splits-section { margin-top: 42px; }
+.activity-detail-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; margin-bottom: 18px; }
+.activity-detail-section-heading h2 { margin: 7px 0 0; color: #eff6ff; font-size: clamp(24px, 2.4vw, 34px); line-height: 1.05; letter-spacing: -.045em; }
+.activity-detail-section-heading p { max-width: 460px; margin: 0; color: #8396ad; font-size: 11px; line-height: 1.55; text-align: right; }
+.activity-detail-page-v2 .activity-charts { gap: 14px; }
+.activity-detail-page-v2 .detail-chart { padding: 21px 21px 12px; border-color: rgba(148,163,184,.15); border-radius: 18px; background: linear-gradient(145deg, rgba(11,20,37,.94), rgba(5,11,22,.88)); }
+.activity-detail-page-v2 .detail-chart:hover { border-color: rgba(36,242,206,.27); }
+.activity-detail-page-v2 .chart-title { padding: 0 2px 9px; }
+.activity-detail-page-v2 .chart-title strong { color: #e3edf8; font-size: 15px; font-weight: 620; }
+.activity-detail-page-v2 .dynamics-section > .section-heading { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 18px; }
+.activity-detail-page-v2 .dynamics-section > .section-heading h2 { margin: 7px 0 0; color: #eff6ff; font-size: clamp(24px, 2.4vw, 34px); letter-spacing: -.045em; }
+.activity-detail-page-v2 .dynamics-summary { overflow: hidden; margin: 0 0 14px; border: 1px solid rgba(148,163,184,.15); border-radius: 15px; background: rgba(7,14,27,.72); }
+.activity-detail-page-v2 .dynamics-summary div { padding: 17px 18px; }
+.activity-detail-page-v2 .dynamics-charts { gap: 14px; }
+.activity-detail-page-v2 .splits-section .table-scroll { overflow: auto; border: 1px solid rgba(148,163,184,.15); border-radius: 18px; background: rgba(7,14,27,.78); box-shadow: var(--shadow); }
+.activity-detail-page-v2 .splits-table { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.activity-detail-page-v2 .splits-table th { padding: 14px 15px; background: rgba(91,140,255,.055); }
+.activity-detail-page-v2 .splits-table td { padding: 16px 15px; }
+.activity-detail-page-v2 .splits-table tbody tr:last-child td { border-bottom: 0; }
+.activity-detail-page-v2 .table-note { padding: 0 15px 14px; }
+
+@media (max-width: 1050px) {
+  .activity-performance-hero { grid-template-columns: minmax(0, 1fr) minmax(360px, .95fr); }
+  .activity-performance-main { min-height: 300px; padding: 28px; }
+  .activity-performance-metrics { padding: 18px; }
+  .activity-performance-metrics article { min-height: 122px; padding: 15px; }
+}
+
+@media (max-width: 820px) {
+  .activity-performance-hero { grid-template-columns: 1fr; }
+  .activity-performance-main { min-height: 285px; border-right: 0; border-bottom: 1px solid rgba(148,163,184,.13); }
+  .activity-performance-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .activity-performance-metrics article { min-height: 130px; }
+  .activity-performance-insights { grid-template-columns: 1fr; }
+  .activity-performance-insights div { border-right: 0; border-bottom: 1px solid rgba(148,163,184,.13); }
+  .activity-performance-insights div:last-child { border-bottom: 0; }
+  .activity-detail-section-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .activity-detail-section-heading p { max-width: 560px; text-align: left; }
+}
+
+@media (max-width: 680px) {
+  .activity-detail-page-v2 { padding-inline: 16px; }
+  .activity-detail-topbar { align-items: flex-start; }
+  .activity-detail-topbar .live-date-badge { max-width: 52%; }
+  .activity-performance-hero { border-radius: 19px; }
+  .activity-performance-main { min-height: 255px; padding: 23px 20px; }
+  .activity-performance-copy h1 { font-size: 30px; }
+  .activity-distance-lockup { margin-top: 30px; }
+  .activity-distance-lockup strong { font-size: clamp(62px, 20vw, 88px); }
+  .activity-distance-lockup span { margin-left: 10px; font-size: 16px; }
+  .activity-performance-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px; }
+  .activity-performance-metrics article { min-height: 126px; }
+  .activity-performance-insights div { padding: 15px 18px; }
+  .activity-detail-page-v2 .activity-route-map { padding: 17px; border-radius: 18px; }
+  .activity-detail-page-v2 .route-map-heading { align-items: flex-start; }
+  .activity-detail-page-v2 .route-map-canvas { height: 330px; }
+  .activity-detail-page-v2 .route-detail-card { position: static; margin: 10px; }
+  .activity-detail-page-v2 .detail-chart { padding: 17px 14px 8px; border-radius: 15px; }
+  .activity-detail-story-section, .activity-detail-page-v2 .dynamics-section, .activity-detail-page-v2 .splits-section { margin-top: 34px; }
 }

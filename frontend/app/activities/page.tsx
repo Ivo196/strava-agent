@@ -1,7 +1,6 @@
 import { OfflineState } from "@/components/offline-state";
 import { RunAnalytics } from "@/components/run-analytics";
 import { RunHistory } from "@/components/run-history";
-import { RunSeasonHero } from "@/components/run-season-hero";
 import { getActivities, getActivitiesProgress } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +12,17 @@ export default async function ActivitiesPage() {
 
   return (
     <div className="page-wrap runs-page runs-progress-page">
-      <RunSeasonHero activities={data.activities} progress={progress} />
+      <header className="simple-header section-page-header runs-page-header">
+        <div>
+          <span className="eyebrow">Camino a Chicago</span>
+          <h1>Carreras</h1>
+          <p>Tu entrenamiento ordenado por semanas ISO, de lunes a domingo.</p>
+        </div>
+        <div className="runs-summary" aria-label="Totales históricos contabilizados">
+          <span>{progress.lifetime.runs}<small>carreras contabilizadas</small></span>
+          <span>{progress.lifetime.distance_km.toFixed(0)}<small>km históricos</small></span>
+        </div>
+      </header>
 
       <RunAnalytics activities={data.activities} progress={progress} />
 

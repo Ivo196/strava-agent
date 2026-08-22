@@ -136,12 +136,6 @@ export function ActivityRouteMap({ route }: { route: ActivityRoutePoint[] }) {
   const activeIndex = Math.min(selectedIndex, points.length - 1);
   const activePoint = points[activeIndex] ?? finish;
   const completedPath = routePath(points.slice(0, activeIndex + 1));
-  const altitudeValues = points
-    .map((point) => point.altitudeM)
-    .filter((value): value is number => value !== null);
-  const minAltitude = altitudeValues.length ? Math.min(...altitudeValues) : null;
-  const maxAltitude = altitudeValues.length ? Math.max(...altitudeValues) : null;
-  const altitudeRange = minAltitude !== null && maxAltitude !== null ? Math.round(maxAltitude - minAltitude) : null;
 
   return (
     <section className="activity-route-map panel" aria-label="Mapa de la ruta">
@@ -150,13 +144,7 @@ export function ActivityRouteMap({ route }: { route: ActivityRoutePoint[] }) {
           <span className="eyebrow">Mapa</span>
           <h2>Ruta de la carrera</h2>
         </div>
-        <span>{finish.distanceKm.toFixed(2)} km</span>
-      </div>
-      <div className="route-map-metrics" aria-label="Resumen de la ruta">
-        <div><span>Puntos GPS</span><strong>{route.length}</strong></div>
-        <div><span>Tiempo</span><strong>{formatElapsed(finish.elapsedS)}</strong></div>
-        <div><span>Ritmo en cursor</span><strong>{formatPointPace(activePoint)}</strong></div>
-        <div><span>Altitud</span><strong>{altitudeRange !== null ? `${altitudeRange} m` : "—"}</strong></div>
+        <span>{route.length.toLocaleString("es-ES")} puntos GPS</span>
       </div>
       <div className="route-map-stage">
         <svg
