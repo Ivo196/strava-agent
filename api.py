@@ -3051,8 +3051,9 @@ def plan(today: date | None = None) -> dict[str, Any]:
     )
     return {
         "fixed": True,
-        "policy": "Desde la semana 4: lunes regenerativo, miércoles de pasadas y sábado de fondo; gimnasio martes y jueves sin piernas, viernes y domingo con piernas. Ninguna sesión se reescribe sin confirmación.",
+        "policy": "Bloque final aceptado: fondos progresivos de 24, 28 y 32 km los sábados 12, 19 y 26 de septiembre; después, dos semanas de taper hasta Chicago. Ninguna sesión se reescribe sin confirmación.",
         "current_date": analysis_date.isoformat(),
+        "race_date": RACE_DATE.isoformat(),
         "current_week_number": current_week.number if current_week else None,
         "current_week_start": (analysis_date - timedelta(days=analysis_date.weekday())).isoformat(),
         "current_week_end": (analysis_date - timedelta(days=analysis_date.weekday()) + timedelta(days=6)).isoformat(),
@@ -3249,6 +3250,21 @@ def save_profile(profile: ProfileInput) -> dict[str, Any]:
 
 
 def _serialize_week(week: Any) -> dict[str, Any]:
+    long_run_plan = None
+    if week.long_run_plan is not None:
+        long_run_plan = {
+            "objective": week.long_run_plan.objective,
+            "segments": [
+                {
+                    "distance": segment.distance,
+                    "pace": segment.pace,
+                    "note": segment.note,
+                }
+                for segment in week.long_run_plan.segments
+            ],
+            "guardrail": week.long_run_plan.guardrail,
+            "is_peak": week.long_run_plan.is_peak,
+        }
     return {
         "number": week.number,
         "start": week.start.isoformat(),
@@ -3258,6 +3274,7 @@ def _serialize_week(week: Any) -> dict[str, Any]:
         "long_run_km": week.long_run_km,
         "sessions": list(week.sessions),
         "session_objectives": list(week.session_objectives),
+        "long_run_plan": long_run_plan,
         "strength_recommendation": week.strength_recommendation,
         "bike_recommendation": week.bike_recommendation,
         "risk_level": week.risk_level,
@@ -3509,7 +3526,17 @@ def _planned_day(plan: list[Any], target: date) -> dict[str, Any] | None:
             if session_index < len(week.session_objectives)
             else f"Sesión de la semana {week.number} del plan fijo."
         )
+        if day_name == "Sábado" and week.long_run_plan is not None:
+            detail = week.long_run_plan.objective
         title = _sentence_case(instruction)
+    elif week.long_run_plan is not None and target.weekday() == 4:
+        category = "rest"
+        title = "Descanso previo al fondo"
+        detail = "Movilidad suave, hidratación y nada de fuerza de piernas para llegar fresco al sábado."
+    elif week.long_run_plan is not None and target.weekday() == 6:
+        category = "rest"
+        title = "Recuperación post fondo"
+        detail = "Descanso y movilidad suave. No sumar fuerza de piernas después del fondo."
     elif week.number >= 4 and target.weekday() in {1, 3}:
         category = "strength"
         title = "Gimnasio · tren superior y core"

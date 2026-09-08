@@ -332,6 +332,12 @@ export type TrainingWeek = {
   long_run_km: number;
   sessions: string[];
   session_objectives: string[];
+  long_run_plan: {
+    objective: string;
+    segments: { distance: string; pace: string; note: string }[];
+    guardrail: string;
+    is_peak: boolean;
+  } | null;
   strength_recommendation: string;
   bike_recommendation: string;
   risk_level: "Bajo" | "Moderado" | "Alto";
@@ -412,6 +418,7 @@ export type PlanData = {
   fixed: boolean;
   policy: string;
   current_date: string;
+  race_date: string;
   current_week_number: number | null;
   current_week_start: string;
   current_week_end: string;

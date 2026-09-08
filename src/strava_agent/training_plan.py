@@ -10,6 +10,21 @@ PLAN_START_DATE = date(2026, 7, 20)
 
 
 @dataclass(frozen=True)
+class LongRunSegment:
+    distance: str
+    pace: str
+    note: str = ""
+
+
+@dataclass(frozen=True)
+class LongRunPlan:
+    objective: str
+    segments: tuple[LongRunSegment, ...]
+    guardrail: str
+    is_peak: bool = False
+
+
+@dataclass(frozen=True)
 class TrainingWeek:
     number: int
     start: date
@@ -19,6 +34,7 @@ class TrainingWeek:
     long_run_km: float
     sessions: tuple[str, ...]
     session_objectives: tuple[str, ...]
+    long_run_plan: LongRunPlan | None
     strength_recommendation: str
     bike_recommendation: str
     risk_level: str
@@ -34,6 +50,7 @@ class PlanWeekTemplate:
     target_km: float
     long_run_km: float
     sessions: tuple[str, ...]
+    long_run_plan: LongRunPlan | None = None
 
 
 PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
@@ -108,33 +125,65 @@ PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
         ),
     ),
     PlanWeekTemplate(
-        "Específica",
-        40.0,
-        22.0,
+        "Carga específica",
+        42.0,
+        24.0,
         (
             "Lunes: 8 km regenerativos a 5:30-5:45 min/km",
-            "Miércoles: 10 km totales con 5 x 1 km a 4:55-5:00 min/km y 2 min suaves entre pasadas; resto a 5:35-5:50 min/km",
-            "Sábado: tirada larga de 22 km a 5:35-5:55 min/km; reducir a 18-20 km si la recuperación no es buena",
+            "Miércoles: 10 km aeróbicos a 5:35-5:50 min/km, sin trabajo intenso",
+            "Sábado: fondo progresivo de 24 km; ver bloques de ritmo",
+        ),
+        LongRunPlan(
+            objective="Primer fondo realmente largo del bloque; terminar con sensación de que podrías seguir.",
+            segments=(
+                LongRunSegment("0–4 km", "5:55–6:05/km"),
+                LongRunSegment("4–18 km", "5:40–5:50/km"),
+                LongRunSegment("18–22 km", "5:30–5:40/km", "Solo si estás cómodo"),
+                LongRunSegment("22–24 km", "5:45–5:55/km", "Soltar"),
+            ),
+            guardrail="No bajar de 5:30/km. Este fondo es principalmente aeróbico.",
         ),
     ),
     PlanWeekTemplate(
-        "Taper",
-        32.0,
-        17.0,
+        "Carga máxima",
+        43.0,
+        28.0,
         (
             "Lunes: 7 km regenerativos a 5:30-5:45 min/km",
-            "Miércoles: 8 km totales con 3 x 1 km a 4:55-5:00 min/km y 2 min suaves entre pasadas; resto a 5:35-5:50 min/km",
-            "Sábado: tirada larga de 17 km a 5:40-5:55 min/km",
+            "Miércoles: 8 km aeróbicos a 5:35-5:50 min/km, sin trabajo intenso",
+            "Sábado: fondo progresivo de 28 km; ver bloques de ritmo",
+        ),
+        LongRunPlan(
+            objective="Aumentar tiempo sobre las piernas y aprender a correr bien con fatiga.",
+            segments=(
+                LongRunSegment("0–5 km", "5:55–6:05/km"),
+                LongRunSegment("5–20 km", "5:40–5:50/km"),
+                LongRunSegment("20–25 km", "5:25–5:35/km", "Aceleración controlada"),
+                LongRunSegment("25–28 km", "5:40–5:55/km"),
+            ),
+            guardrail="Acelerar ligeramente estando cansado, sin convertir el fondo en una carrera.",
         ),
     ),
     PlanWeekTemplate(
-        "Taper",
-        25.0,
-        13.0,
+        "Pico",
+        44.0,
+        32.0,
         (
             "Lunes: 6 km regenerativos a 5:35-5:50 min/km",
-            "Miércoles: 6 km totales con 3 x 1 km a 4:55-5:00 min/km y 2 min suaves entre pasadas; resto a 5:40-5:55 min/km",
-            "Sábado: tirada larga de 13 km a 5:40-5:55 min/km",
+            "Miércoles: 6 km aeróbicos a 5:40-5:55 min/km, sin trabajo intenso",
+            "Sábado: fondo clave de 32 km; ver bloques de ritmo",
+        ),
+        LongRunPlan(
+            objective="Ensayar resistencia, alimentación, hidratación, zapatillas y tolerancia a unas 3 horas corriendo; no demostrar fitness.",
+            segments=(
+                LongRunSegment("0–5 km", "5:55–6:05/km"),
+                LongRunSegment("5–15 km", "5:45–5:50/km"),
+                LongRunSegment("15–25 km", "5:40–5:50/km"),
+                LongRunSegment("25–30 km", "5:35–5:45/km", "Solo si todo está perfecto"),
+                LongRunSegment("30–32 km", "5:45–6:00/km"),
+            ),
+            guardrail="Nada de 4:55/km. Solo hacerlo si llegás recuperado del 28 km y sin dolor que altere tu forma de correr.",
+            is_peak=True,
         ),
     ),
     PlanWeekTemplate(
@@ -200,13 +249,23 @@ def build_adaptive_plan(
         target = template.target_km
         long_run = template.long_run_km
         sessions = template.sessions
+        long_run_plan = template.long_run_plan
         objectives = _session_objectives(phase, len(sessions), legacy=index < 3)
         if index < 3:
             plan_note = "Bloque 1: pace ajustado alrededor de 5:30 min/km, con la tirada larga algo más controlada."
-        else:
+        elif index < 7:
             plan_note = (
                 "Calendario ajustado desde la semana 4: lunes regenerativo, miércoles de pasadas, "
                 "sábado de fondo y gimnasio martes, jueves, viernes y domingo."
+            )
+        elif index < 10:
+            plan_note = (
+                "Bloque pico aceptado: fondos progresivos de 24, 28 y 32 km; se aumenta distancia "
+                "sin sumar intensidad de calidad."
+            )
+        else:
+            plan_note = (
+                "Taper final de dos semanas: baja el volumen, se conserva algo de activación y se prioriza llegar fresco a Chicago."
             )
         if index < 3:
             strength_recommendation = (
@@ -217,6 +276,12 @@ def build_adaptive_plan(
                 "Lunes: 30-45 min de bicicleta suave opcional; omitir si hay fatiga "
                 "o si la mano no permite frenar con seguridad."
             )
+        elif long_run_plan is not None:
+            strength_recommendation = (
+                "Martes y jueves: tren superior y core, sin piernas. Viernes: descanso, movilidad suave "
+                "e hidratación. Domingo: recuperación y movilidad, sin fuerza de piernas."
+            )
+            bike_recommendation = "Sin bicicleta planificada durante el bloque de fondos largos."
         elif phase == "Carrera":
             strength_recommendation = (
                 "Martes y jueves: tren superior y core, sin piernas. Viernes: solo activación "
@@ -242,6 +307,7 @@ def build_adaptive_plan(
                 long_run_km=round(long_run, 1),
                 sessions=sessions,
                 session_objectives=objectives,
+                long_run_plan=long_run_plan,
                 strength_recommendation=strength_recommendation,
                 bike_recommendation=bike_recommendation,
                 risk_level=risk_level,
@@ -331,6 +397,12 @@ def _session_objectives(phase: str, count: int, *, legacy: bool = False) -> tupl
             "Recuperar con poco volumen y ritmo cómodo.",
             "Conservar economía y velocidad con pasadas sin generar fatiga.",
             "Reducir fatiga acumulada conservando resistencia.",
+        )
+    elif phase in {"Carga específica", "Carga máxima", "Pico"}:
+        objectives = (
+            "Recuperar y sostener la base aeróbica sin acumular fatiga.",
+            "Acumular volumen aeróbico sin añadir trabajo intenso.",
+            "Aumentar resistencia respetando los bloques de ritmo y las condiciones del fondo.",
         )
     else:
         objectives = (

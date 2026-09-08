@@ -55,9 +55,9 @@ def test_current_week_does_not_rewrite_remaining_run() -> None:
     assert plan[0].sessions[-1].startswith("Sábado: tirada larga de 11 km")
     assert "5:35-5:50 min/km" in plan[0].sessions[-1]
     assert plan[0].long_run_km == 11.0
-    assert max(week.long_run_km for week in plan[:-1]) == 22.0
-    assert [week.phase for week in plan[-4:-1]] == ["Taper", "Taper", "Taper"]
-    assert max(week.target_km for week in plan[:-1]) == 40.0
+    assert max(week.long_run_km for week in plan[:-1]) == 32.0
+    assert [week.phase for week in plan[-2:]] == ["Taper", "Carrera"]
+    assert max(week.target_km for week in plan[:-1]) == 44.0
 
 
 def test_weekly_checkin_updates_status_without_changing_plan() -> None:
@@ -94,10 +94,33 @@ def test_red_flags_raise_warning_without_silently_rewriting_plan() -> None:
 def test_second_block_records_the_accepted_calendar_adjustment() -> None:
     plan = build_adaptive_plan({}, today=date(2026, 7, 21), include_past=True)
 
-    for week in plan[3:]:
+    for week in plan[3:7]:
         assert "lunes regenerativo" in week.change_reason
         assert "miércoles de pasadas" in week.change_reason
         assert "gimnasio martes, jueves, viernes y domingo" in week.change_reason
+    for week in plan[7:10]:
+        assert "fondos progresivos de 24, 28 y 32 km" in week.change_reason
+        assert "sin sumar intensidad" in week.change_reason
+    for week in plan[10:]:
+        assert "Taper final de dos semanas" in week.change_reason
+
+
+def test_peak_block_has_the_accepted_long_runs_and_pace_segments() -> None:
+    plan = build_adaptive_plan({}, today=date(2026, 9, 8), include_past=True)
+    peak_weeks = plan[7:10]
+
+    assert [(week.start, week.long_run_km, week.target_km) for week in peak_weeks] == [
+        (date(2026, 9, 7), 24.0, 42.0),
+        (date(2026, 9, 14), 28.0, 43.0),
+        (date(2026, 9, 21), 32.0, 44.0),
+    ]
+    assert all("sin trabajo intenso" in week.sessions[1] for week in peak_weeks)
+    assert peak_weeks[0].long_run_plan is not None
+    assert peak_weeks[0].long_run_plan.segments[0].distance == "0–4 km"
+    assert peak_weeks[0].long_run_plan.segments[0].pace == "5:55–6:05/km"
+    assert peak_weeks[2].long_run_plan is not None
+    assert peak_weeks[2].long_run_plan.is_peak is True
+    assert "recuperado del 28 km" in peak_weeks[2].long_run_plan.guardrail
 
 
 def test_first_block_history_keeps_the_previous_schedule() -> None:

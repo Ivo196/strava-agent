@@ -137,6 +137,33 @@ def test_new_calendar_pattern_starts_in_week_four() -> None:
     assert payload["calendar"][-1]["date"] == "2026-10-11"
 
 
+def test_calendar_exposes_the_final_long_run_progression() -> None:
+    client = TestClient(api.app)
+
+    response = client.get("/api/plan?today=2026-09-08")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["race_date"] == "2026-10-11"
+    peak_weeks = payload["weeks"][7:10]
+    assert [week["long_run_km"] for week in peak_weeks] == [24.0, 28.0, 32.0]
+    assert peak_weeks[0]["long_run_plan"]["segments"][2] == {
+        "distance": "18–22 km",
+        "pace": "5:30–5:40/km",
+        "note": "Solo si estás cómodo",
+    }
+    assert peak_weeks[2]["long_run_plan"]["is_peak"] is True
+    saturday = next(day for day in payload["calendar"] if day["date"] == "2026-09-12")
+    assert saturday["title"] == "Fondo progresivo de 24 km; ver bloques de ritmo"
+    assert "podrías seguir" in saturday["detail"]
+    friday = next(day for day in payload["calendar"] if day["date"] == "2026-09-11")
+    sunday = next(day for day in payload["calendar"] if day["date"] == "2026-09-13")
+    assert friday["category"] == "rest"
+    assert friday["title"] == "Descanso previo al fondo"
+    assert sunday["category"] == "rest"
+    assert sunday["title"] == "Recuperación post fondo"
+
+
 def test_dashboard_demo_scenario_is_read_only_and_recalculates() -> None:
     client = TestClient(api.app)
     points_before = api.database.google_health_status()["point_count"]
