@@ -153,6 +153,7 @@ def test_calendar_exposes_the_final_long_run_progression() -> None:
         "note": "Solo si estás cómodo",
     }
     assert peak_weeks[2]["long_run_plan"]["is_peak"] is True
+    assert peak_weeks[2]["long_run_plan"]["alternate_day"] == "Domingo"
     saturday = next(day for day in payload["calendar"] if day["date"] == "2026-09-12")
     assert saturday["title"] == "Fondo progresivo de 24 km; ver bloques de ritmo"
     assert "podrías seguir" in saturday["detail"]
@@ -162,6 +163,28 @@ def test_calendar_exposes_the_final_long_run_progression() -> None:
     assert friday["title"] == "Descanso previo al fondo"
     assert sunday["category"] == "rest"
     assert sunday["title"] == "Recuperación post fondo"
+
+
+def test_peak_week_matches_the_updated_recovery_schedule() -> None:
+    client = TestClient(api.app)
+
+    response = client.get("/api/plan?today=2026-09-21")
+
+    assert response.status_code == 200
+    payload = response.json()
+    days = {
+        day["date"]: day
+        for day in payload["calendar"]
+        if "2026-09-21" <= day["date"] <= "2026-09-27"
+    }
+    assert "6 km regenerativos" in days["2026-09-21"]["title"]
+    assert days["2026-09-22"]["title"] == "Gimnasio · piernas suaves"
+    assert "sin llegar al fallo" in days["2026-09-22"]["detail"]
+    assert "10 km tranquilos" in days["2026-09-23"]["title"]
+    assert "32 km" in days["2026-09-26"]["title"]
+    assert days["2026-09-27"]["category"] == "run"
+    assert days["2026-09-27"]["title"] == "Plan B · fondo clave de 32 km"
+    assert "nunca completar ambos" in days["2026-09-27"]["detail"]
 
 
 def test_dashboard_demo_scenario_is_read_only_and_recalculates() -> None:

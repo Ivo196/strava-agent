@@ -337,6 +337,7 @@ export type TrainingWeek = {
     segments: { distance: string; pace: string; note: string }[];
     guardrail: string;
     is_peak: boolean;
+    alternate_day: string | null;
   } | null;
   strength_recommendation: string;
   bike_recommendation: string;

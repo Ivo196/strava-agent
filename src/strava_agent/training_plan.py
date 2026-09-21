@@ -22,6 +22,7 @@ class LongRunPlan:
     segments: tuple[LongRunSegment, ...]
     guardrail: str
     is_peak: bool = False
+    alternate_day: str | None = None
 
 
 @dataclass(frozen=True)
@@ -166,12 +167,12 @@ PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
     ),
     PlanWeekTemplate(
         "Pico",
-        44.0,
+        48.0,
         32.0,
         (
             "Lunes: 6 km regenerativos a 5:35-5:50 min/km",
-            "Miércoles: 6 km aeróbicos a 5:40-5:55 min/km, sin trabajo intenso",
-            "Sábado: fondo clave de 32 km; ver bloques de ritmo",
+            "Miércoles: 10 km tranquilos a 5:40-5:55 min/km, sin trabajo intenso",
+            "Sábado: fondo clave de 32 km; domingo como alternativa si no lo hacés el sábado",
         ),
         LongRunPlan(
             objective="Ensayar resistencia, alimentación, hidratación, zapatillas y tolerancia a unas 3 horas corriendo; no demostrar fitness.",
@@ -182,8 +183,9 @@ PLAN_WEEKS: tuple[PlanWeekTemplate, ...] = (
                 LongRunSegment("25–30 km", "5:35–5:45/km", "Solo si todo está perfecto"),
                 LongRunSegment("30–32 km", "5:45–6:00/km"),
             ),
-            guardrail="Nada de 4:55/km. Solo hacerlo si llegás recuperado del 28 km y sin dolor que altere tu forma de correr.",
+            guardrail="Nada de 4:55/km. Hacerlo una sola vez, sábado o domingo, y solo si estás recuperado y sin dolor que altere tu forma de correr.",
             is_peak=True,
+            alternate_day="Domingo",
         ),
     ),
     PlanWeekTemplate(
@@ -277,10 +279,17 @@ def build_adaptive_plan(
                 "o si la mano no permite frenar con seguridad."
             )
         elif long_run_plan is not None:
-            strength_recommendation = (
-                "Martes y jueves: tren superior y core, sin piernas. Viernes: descanso, movilidad suave "
-                "e hidratación. Domingo: recuperación y movilidad, sin fuerza de piernas."
-            )
+            if phase == "Pico":
+                strength_recommendation = (
+                    "Martes: gimnasio suave de piernas, sin llegar al fallo. Jueves: tren superior y core, "
+                    "sin piernas. Viernes: descanso, movilidad suave e hidratación. Domingo: fondo alternativo "
+                    "solo si no se hizo el sábado; de lo contrario, recuperación."
+                )
+            else:
+                strength_recommendation = (
+                    "Martes y jueves: tren superior y core, sin piernas. Viernes: descanso, movilidad suave "
+                    "e hidratación. Domingo: recuperación y movilidad, sin fuerza de piernas."
+                )
             bike_recommendation = "Sin bicicleta planificada durante el bloque de fondos largos."
         elif phase == "Carrera":
             strength_recommendation = (

@@ -3051,7 +3051,7 @@ def plan(today: date | None = None) -> dict[str, Any]:
     )
     return {
         "fixed": True,
-        "policy": "Bloque final aceptado: fondos progresivos de 24, 28 y 32 km los sábados 12, 19 y 26 de septiembre; después, dos semanas de taper hasta Chicago. Ninguna sesión se reescribe sin confirmación.",
+        "policy": "Bloque final aceptado: fondos progresivos de 24, 28 y 32 km; el último puede hacerse el sábado 26 o el domingo 27 de septiembre, una sola vez. Después, dos semanas de taper hasta Chicago. Ninguna sesión se reescribe sin confirmación.",
         "current_date": analysis_date.isoformat(),
         "race_date": RACE_DATE.isoformat(),
         "current_week_number": current_week.number if current_week else None,
@@ -3264,6 +3264,7 @@ def _serialize_week(week: Any) -> dict[str, Any]:
             ],
             "guardrail": week.long_run_plan.guardrail,
             "is_peak": week.long_run_plan.is_peak,
+            "alternate_day": week.long_run_plan.alternate_day,
         }
     return {
         "number": week.number,
@@ -3534,9 +3535,21 @@ def _planned_day(plan: list[Any], target: date) -> dict[str, Any] | None:
         title = "Descanso previo al fondo"
         detail = "Movilidad suave, hidratación y nada de fuerza de piernas para llegar fresco al sábado."
     elif week.long_run_plan is not None and target.weekday() == 6:
-        category = "rest"
-        title = "Recuperación post fondo"
-        detail = "Descanso y movilidad suave. No sumar fuerza de piernas después del fondo."
+        if week.long_run_plan.alternate_day == "Domingo":
+            category = "run"
+            title = "Plan B · fondo clave de 32 km"
+            detail = (
+                "Hacelo hoy solo si no corriste el sábado. Si el fondo ya está hecho, descanso y movilidad; "
+                "nunca completar ambos."
+            )
+        else:
+            category = "rest"
+            title = "Recuperación post fondo"
+            detail = "Descanso y movilidad suave. No sumar fuerza de piernas después del fondo."
+    elif week.phase == "Pico" and target.weekday() == 1:
+        category = "strength"
+        title = "Gimnasio · piernas suaves"
+        detail = _recommendation_for_day(week.strength_recommendation, day_name)
     elif week.number >= 4 and target.weekday() in {1, 3}:
         category = "strength"
         title = "Gimnasio · tren superior y core"

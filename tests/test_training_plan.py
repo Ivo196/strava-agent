@@ -57,7 +57,7 @@ def test_current_week_does_not_rewrite_remaining_run() -> None:
     assert plan[0].long_run_km == 11.0
     assert max(week.long_run_km for week in plan[:-1]) == 32.0
     assert [week.phase for week in plan[-2:]] == ["Taper", "Carrera"]
-    assert max(week.target_km for week in plan[:-1]) == 44.0
+    assert max(week.target_km for week in plan[:-1]) == 48.0
 
 
 def test_weekly_checkin_updates_status_without_changing_plan() -> None:
@@ -112,7 +112,7 @@ def test_peak_block_has_the_accepted_long_runs_and_pace_segments() -> None:
     assert [(week.start, week.long_run_km, week.target_km) for week in peak_weeks] == [
         (date(2026, 9, 7), 24.0, 42.0),
         (date(2026, 9, 14), 28.0, 43.0),
-        (date(2026, 9, 21), 32.0, 44.0),
+        (date(2026, 9, 21), 32.0, 48.0),
     ]
     assert all("sin trabajo intenso" in week.sessions[1] for week in peak_weeks)
     assert peak_weeks[0].long_run_plan is not None
@@ -120,7 +120,10 @@ def test_peak_block_has_the_accepted_long_runs_and_pace_segments() -> None:
     assert peak_weeks[0].long_run_plan.segments[0].pace == "5:55–6:05/km"
     assert peak_weeks[2].long_run_plan is not None
     assert peak_weeks[2].long_run_plan.is_peak is True
-    assert "recuperado del 28 km" in peak_weeks[2].long_run_plan.guardrail
+    assert peak_weeks[2].long_run_plan.alternate_day == "Domingo"
+    assert "una sola vez" in peak_weeks[2].long_run_plan.guardrail
+    assert peak_weeks[2].sessions[1].startswith("Miércoles: 10 km tranquilos")
+    assert "Martes: gimnasio suave de piernas" in peak_weeks[2].strength_recommendation
 
 
 def test_first_block_history_keeps_the_previous_schedule() -> None:

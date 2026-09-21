@@ -4,6 +4,10 @@ import type { TrainingWeek } from "@/lib/types";
 const workoutDate = new Intl.DateTimeFormat("es-ES", { weekday: "short", day: "numeric", month: "short" });
 const raceDateFormat = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "long" });
 
+function addDays(date: string, days: number) {
+  return new Date(`${date}T12:00:00`).getTime() + days * 86400000;
+}
+
 export function LongRunProgression({ weeks, raceDate }: { weeks: TrainingWeek[]; raceDate: string }) {
   const keyWeeks = weeks.filter((week) => week.long_run_plan).slice(0, 3);
   if (!keyWeeks.length) return null;
@@ -26,7 +30,11 @@ export function LongRunProgression({ weeks, raceDate }: { weeks: TrainingWeek[];
           return (
             <article className={`long-run-workout${plan.is_peak ? " is-peak" : ""}`} key={week.number}>
               <header>
-                <span><CalendarDays aria-hidden="true" size={14} /> {workoutDate.format(new Date(`${week.start}T12:00:00`).getTime() + 5 * 86400000)}</span>
+                <span>
+                  <CalendarDays aria-hidden="true" size={14} />
+                  {workoutDate.format(addDays(week.start, 5))}
+                  {plan.alternate_day && ` o ${workoutDate.format(addDays(week.start, 6))}`}
+                </span>
                 {plan.is_peak && <b><Star aria-hidden="true" size={12} /> Sesión clave</b>}
               </header>
               <div className="long-run-distance"><strong>{week.long_run_km}</strong><small>km</small></div>
@@ -75,7 +83,7 @@ export function LongRunProgression({ weeks, raceDate }: { weeks: TrainingWeek[];
       <div className="long-run-finish-line" aria-label="Progresión hasta la maratón de Chicago">
         <span>12 sep <strong>24 km</strong></span><ArrowRight aria-hidden="true" size={14} />
         <span>19 sep <strong>28 km</strong></span><ArrowRight aria-hidden="true" size={14} />
-        <span>26 sep <strong>32 km</strong></span><ArrowRight aria-hidden="true" size={14} />
+        <span>26/27 sep <strong>32 km</strong></span><ArrowRight aria-hidden="true" size={14} />
         <span>2 semanas <strong>Taper</strong></span><ArrowRight aria-hidden="true" size={14} />
         <span className="is-race"><Flag aria-hidden="true" size={14} /> {raceDateFormat.format(new Date(`${raceDate}T12:00:00`))} <strong>Chicago 42,2</strong></span>
         <a href="https://pubmed.ncbi.nlm.nih.gov/17762369/" target="_blank" rel="noreferrer" aria-label="Ver respaldo científico del taper"><ExternalLink aria-hidden="true" size={12} /></a>
