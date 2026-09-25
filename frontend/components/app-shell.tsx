@@ -37,7 +37,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <Link className="brand" href="/" aria-label="PaceOS Chicago 26.2">
+        <Link className="brand" href="/" prefetch={false} aria-label="PaceOS Chicago 26.2">
           <ChicagoMark />
           <span><strong>PaceOS</strong><small>Chicago 26.2</small></span>
         </Link>
@@ -45,14 +45,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {navigation.map(({ href, label, icon: Icon }) => {
             const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (
-              <Link className={active ? "nav-link active" : "nav-link"} href={href} key={href}>
+              <Link className={active ? "nav-link active" : "nav-link"} href={href} prefetch={false} key={href}>
                 <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
                 {label}
               </Link>
             );
           })}
         </nav>
-        <Link className={pathname.startsWith("/settings") ? "nav-link nav-settings active" : "nav-link nav-settings"} href="/settings">
+        <Link className={pathname.startsWith("/settings") ? "nav-link nav-settings active" : "nav-link nav-settings"} href="/settings" prefetch={false}>
           <Settings size={19} strokeWidth={1.8} aria-hidden="true" />
           Ajustes
         </Link>
@@ -67,7 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {navigation.filter((item) => item.mobile !== false).map(({ href, label, mobileLabel, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
-            <Link className={active ? "mobile-link active" : "mobile-link"} href={href} key={href}>
+            <Link className={active ? "mobile-link active" : "mobile-link"} href={href} prefetch={false} key={href}>
               <Icon size={19} aria-hidden="true" />
               <span>{mobileLabel ?? label}</span>
             </Link>

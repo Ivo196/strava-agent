@@ -187,6 +187,29 @@ def test_peak_week_matches_the_updated_recovery_schedule() -> None:
     assert "nunca completar ambos" in days["2026-09-27"]["detail"]
 
 
+def test_calendar_endpoint_returns_only_calendar_page_data(monkeypatch) -> None:
+    client = TestClient(api.app)
+
+    def fail_if_full_health_snapshot_runs(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("calendar page must not build the full health dashboard")
+
+    monkeypatch.setattr(api, "_health_dashboard_snapshot", fail_if_full_health_snapshot_runs)
+    response = client.get("/api/plan/calendar?today=2026-09-25")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert set(payload) == {
+        "current_date",
+        "current_week_number",
+        "current_week_start",
+        "current_week_end",
+        "calendar",
+    }
+    assert payload["current_date"] == "2026-09-25"
+    assert payload["current_week_number"] == 10
+    assert any(day["date"] == "2026-09-27" for day in payload["calendar"])
+
+
 def test_dashboard_demo_scenario_is_read_only_and_recalculates() -> None:
     client = TestClient(api.app)
     points_before = api.database.google_health_status()["point_count"]

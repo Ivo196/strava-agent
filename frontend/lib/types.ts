@@ -439,6 +439,11 @@ export type PlanData = {
   calendar: PlanCalendarDay[];
 };
 
+export type PlanCalendarData = Pick<
+  PlanData,
+  "current_date" | "current_week_number" | "current_week_start" | "current_week_end" | "calendar"
+>;
+
 export type DashboardData = {
   demo_scenario: "recovered" | "sleep-debt" | "heavy-load" | "calibrating" | null;
   current_date: string;

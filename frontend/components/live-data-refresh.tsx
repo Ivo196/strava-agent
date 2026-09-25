@@ -16,6 +16,7 @@ export function LiveDataRefresh() {
   const checkLocked = useRef(false);
 
   useEffect(() => {
+    if (pathname !== "/") return;
     let mounted = true;
 
     const checkForChanges = async () => {
@@ -29,8 +30,9 @@ export function LiveDataRefresh() {
         const previous = versionRef.current;
         versionRef.current = payload.version;
         setLastCheck(new Date());
-        if (!initialRefreshDone.current || (previous !== null && previous !== payload.version)) {
+        if (!initialRefreshDone.current) {
           initialRefreshDone.current = true;
+        } else if (previous !== null && previous !== payload.version) {
           await fetch("/api/revalidate-training", { method: "POST" });
           if (!mounted) return;
           startRefresh(() => router.refresh());
@@ -58,7 +60,7 @@ export function LiveDataRefresh() {
       window.removeEventListener("online", checkForChanges);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [router]);
+  }, [pathname, router]);
 
   if (pathname !== "/") return null;
 

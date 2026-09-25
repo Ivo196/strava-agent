@@ -1175,6 +1175,34 @@ def _fitbit_insights(google_status: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _fitbit_calendar_snapshot() -> dict[str, Any]:
+    """Load only the Fitbit fields displayed inside calendar day cards."""
+    rows = database.list_google_health_data_points(
+        [
+            "steps",
+            "active-energy-burned",
+            "total-calories",
+            "active-minutes",
+            "active-zone-minutes",
+            "distance",
+            "sedentary-period",
+            "exercise",
+        ],
+        source="FITBIT",
+    )
+    step_days = _fitbit_step_days(rows)
+    active_energy_days = _fitbit_active_energy_days(rows)
+    total_calorie_days = _fitbit_total_calorie_days(rows)
+    activity_days = _fitbit_activity_days(rows)
+    return {
+        "steps": {"days": step_days},
+        "active_energy": {"days": active_energy_days},
+        "total_calories": {"days": total_calorie_days},
+        "daily_activity": {"days": activity_days},
+        "exercises": _fitbit_exercises(rows),
+    }
+
+
 def _fitbit_sleep_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     nights: dict[str, float] = {}
     for row in rows:
@@ -3061,6 +3089,38 @@ def plan(today: date | None = None) -> dict[str, Any]:
         "body_composition": _body_composition_plan_context(analysis_date),
         "weeks": [_serialize_week(week) for week in weeks],
         "daily_agenda": daily_agenda,
+        "calendar": calendar,
+    }
+
+
+@app.get("/api/plan/calendar")
+def plan_calendar(today: date | None = None) -> dict[str, Any]:
+    """Return only the data rendered by the calendar page.
+
+    The full plan endpoint includes recovery, profile and body-composition
+    context. None of that is visible here, so keeping this route focused avoids
+    the expensive health-dashboard calculation during the first page load.
+    """
+    analysis_date = today or date.today()
+    activity_rows = _apple_watch_activity_rows()
+    frame = activities_frame(activity_rows)
+    weeks = build_adaptive_plan({}, today=analysis_date, include_past=True)
+    current_week = next(
+        (week for week in weeks if week.start <= analysis_date <= week.end),
+        None,
+    )
+    fitbit = _fitbit_calendar_snapshot()
+    calendar = _agenda_with_completion(
+        _plan_calendar(weeks, analysis_date, frame),
+        frame,
+        fitbit,
+    )
+    current_week_start = analysis_date - timedelta(days=analysis_date.weekday())
+    return {
+        "current_date": analysis_date.isoformat(),
+        "current_week_number": current_week.number if current_week else None,
+        "current_week_start": current_week_start.isoformat(),
+        "current_week_end": (current_week_start + timedelta(days=6)).isoformat(),
         "calendar": calendar,
     }
 

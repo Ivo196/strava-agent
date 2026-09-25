@@ -1,7 +1,6 @@
 import { OfflineState } from "@/components/offline-state";
-import { getPlan } from "@/lib/api";
+import { getPlanCalendar } from "@/lib/api";
 import { PlanCalendar } from "@/components/plan-calendar";
-import { LongRunProgression } from "@/components/long-run-progression";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +9,7 @@ const dayMonth = new Intl.DateTimeFormat("es", { day: "numeric", month: "short" 
 export default async function PlanPage({ searchParams }: { searchParams: Promise<{ today?: string }> }) {
   const { today } = await searchParams;
   const simulatedToday = today && /^\d{4}-\d{2}-\d{2}$/.test(today) ? today : undefined;
-  const data = await getPlan(simulatedToday).catch(() => null);
+  const data = await getPlanCalendar(simulatedToday).catch(() => null);
   if (!data) return <OfflineState />;
   return (
     <div className="page-wrap">
@@ -19,7 +18,6 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
         <h1>Calendario</h1>
         <p>Lo que toca y lo que realmente hiciste.</p>
       </header>
-      <LongRunProgression weeks={data.weeks} raceDate={data.race_date} />
       <section className="plan-calendar-panel" aria-label="Calendario del plan">
         <div className="section-heading">
           <div><span className="eyebrow">Calendario semanal</span><h2>Tu plan, semana por semana</h2><p>De lunes a domingo. Abre una semana para ver cada sesión.</p></div>
