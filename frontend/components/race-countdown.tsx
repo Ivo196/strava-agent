@@ -16,8 +16,6 @@ const fullDate = new Intl.DateTimeFormat("es-ES", {
   year: "numeric",
   timeZone: "UTC",
 });
-const journeyDate = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "long", timeZone: "UTC" });
-
 type TimeRemaining = {
   days: number;
   hours: number;
@@ -82,7 +80,6 @@ export function RaceCountdown({
   }, [raceDate]);
 
   const raceDateLabel = fullDate.format(new Date(`${raceDate}T00:00:00Z`));
-  const journeyStartLabel = journeyDate.format(new Date(`${journey.start_date}T00:00:00Z`));
   const accessibleTime = `${remaining.days} días, ${remaining.hours} horas, ${remaining.minutes} minutos y ${remaining.seconds} segundos`;
   const progressPercentage = Math.round(remaining.progress * 100);
 
@@ -112,8 +109,6 @@ export function RaceCountdown({
       <div className="race-countdown-journey" aria-label={`${journey.distance_km} kilómetros recorridos rumbo a Chicago`}>
         <header><Footprints aria-hidden="true" size={17} /><span>Tu camino a Chicago</span></header>
         <div><strong>{journey.distance_km.toLocaleString("es-ES")}</strong><small>km</small></div>
-        <p><b>{journey.runs}</b> {journey.runs === 1 ? "carrera" : "carreras"} desde el {journeyStartLabel}</p>
-        <span>Cada kilómetro te acercó a esta largada.</span>
       </div>
 
       <div
