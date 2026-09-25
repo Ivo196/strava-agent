@@ -49,7 +49,11 @@ from strava_agent.google_health import (
     cardio_fitness_level,
     normalized_recovery_value,
 )
-from strava_agent.training_plan import PLAN_START_DATE, RACE_DATE, build_adaptive_plan
+from strava_agent.training_plan import (
+    CHICAGO_MILEAGE_START_DATE,
+    RACE_DATE,
+    build_adaptive_plan,
+)
 
 
 settings = get_settings()
@@ -472,7 +476,7 @@ def dashboard(today: date | None = None, scenario: str | None = None) -> dict[st
     )
     training_journey = get_training_journey(
         frame,
-        start_date=PLAN_START_DATE,
+        start_date=CHICAGO_MILEAGE_START_DATE,
         end_date=min(analysis_date, RACE_DATE),
     )
     return {

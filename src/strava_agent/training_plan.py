@@ -6,6 +6,7 @@ from typing import Any
 
 
 RACE_DATE = date(2026, 10, 11)
+CHICAGO_MILEAGE_START_DATE = date(2026, 5, 1)
 PLAN_START_DATE = date(2026, 7, 20)
 
 
