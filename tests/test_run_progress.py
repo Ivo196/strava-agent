@@ -10,6 +10,7 @@ from strava_agent.run_progress import (
     get_long_run_progression,
     get_period_summary,
     get_run_quality_flags,
+    get_training_journey,
     get_weekly_mileage,
 )
 
@@ -113,6 +114,33 @@ def test_quality_flags_keep_bad_rows_visible_but_exclude_unreliable_trends() -> 
     progress = build_run_progress(frame, today=date(2026, 8, 1))
     assert progress["lifetime"]["runs"] == 5  # zero row and one duplicate-like row do not count
     assert progress["quality_summary"]["duplicate_like_excluded_from_aggregates"] == 1
+
+
+def test_training_journey_counts_only_eligible_runs_inside_marathon_block() -> None:
+    frame = activities_frame(
+        [
+            row(1, "2026-07-10T08:00:00Z", distance_km=20, minutes=110),
+            row(2, "2026-07-20T08:00:00Z", distance_km=6, minutes=33),
+            row(3, "2026-07-20T08:05:00Z", distance_km=6.1, minutes=33.5),
+            row(4, "2026-07-25T08:00:00Z", distance_km=10, minutes=55),
+            row(5, "2026-07-26T08:00:00Z", distance_km=0, minutes=0),
+            row(6, "2026-10-12T08:00:00Z", distance_km=5, minutes=28),
+        ]
+    )
+
+    journey = get_training_journey(
+        frame,
+        start_date=date(2026, 7, 20),
+        end_date=date(2026, 10, 11),
+    )
+
+    assert journey == {
+        "start_date": "2026-07-20",
+        "end_date": "2026-10-11",
+        "runs": 2,
+        "distance_km": 16.0,
+        "longest_run_km": 10.0,
+    }
 
 
 def test_aerobic_trend_uses_same_distance_group_and_ignores_missing_hr_and_outlier() -> None:

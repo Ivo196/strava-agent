@@ -559,6 +559,25 @@ def get_training_summary(
     return {"state": state, "text": f"{opening} {focus}"}
 
 
+def get_training_journey(
+    frame: pd.DataFrame,
+    *,
+    start_date: date,
+    end_date: date,
+    thresholds: RunProgressThresholds = RUN_PROGRESS_THRESHOLDS,
+) -> dict[str, Any]:
+    """Summarize real, deduplicated running volume inside one training block."""
+    quality = get_run_quality_flags(frame, thresholds)
+    journey = _between_dates(_volume_frame(frame, quality), start_date, end_date)
+    return {
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "runs": int(len(journey)),
+        "distance_km": round(float(journey["distance_km"].sum()), 1) if not journey.empty else 0.0,
+        "longest_run_km": round(float(journey["distance_km"].max()), 1) if not journey.empty else 0.0,
+    }
+
+
 def build_run_progress(
     frame: pd.DataFrame,
     *,

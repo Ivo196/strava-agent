@@ -450,6 +450,13 @@ export type DashboardData = {
   activity_count: number;
   days_to_race: number;
   race_date: string;
+  training_journey: {
+    start_date: string;
+    end_date: string;
+    runs: number;
+    distance_km: number;
+    longest_run_km: number;
+  };
   profile: Profile;
   metrics: {
     distance_current_week: number;

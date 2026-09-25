@@ -85,7 +85,11 @@ export function HomeCommandCenter({ data }: { data: DashboardData }) {
 
   return (
     <section className="apex-dashboard" aria-label="Resumen de entrenamiento y recuperación">
-      <RaceCountdown raceDate={data.race_date} initialDays={data.days_to_race} />
+      <RaceCountdown
+        raceDate={data.race_date}
+        initialDays={data.days_to_race}
+        journey={data.training_journey}
+      />
       <WeeklyProgressSummary data={data} />
 
       <section className="apex-week" aria-labelledby="apex-week-title">

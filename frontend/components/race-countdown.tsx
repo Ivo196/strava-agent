@@ -1,8 +1,9 @@
 "use client";
 
-import { Flag } from "lucide-react";
+import { Flag, Footprints } from "lucide-react";
 import { useEffect, useState } from "react";
 import { localNow } from "@/lib/local-clock";
+import type { DashboardData } from "@/lib/types";
 
 const HOUR_MS = 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
@@ -15,6 +16,7 @@ const fullDate = new Intl.DateTimeFormat("es-ES", {
   year: "numeric",
   timeZone: "UTC",
 });
+const journeyDate = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "long", timeZone: "UTC" });
 
 type TimeRemaining = {
   days: number;
@@ -55,7 +57,15 @@ function CountdownUnit({ label, value }: { label: string; value: number }) {
   );
 }
 
-export function RaceCountdown({ raceDate, initialDays }: { raceDate: string; initialDays: number }) {
+export function RaceCountdown({
+  raceDate,
+  initialDays,
+  journey,
+}: {
+  raceDate: string;
+  initialDays: number;
+  journey: DashboardData["training_journey"];
+}) {
   const [remaining, setRemaining] = useState<TimeRemaining>({
     days: initialDays,
     hours: 0,
@@ -72,6 +82,7 @@ export function RaceCountdown({ raceDate, initialDays }: { raceDate: string; ini
   }, [raceDate]);
 
   const raceDateLabel = fullDate.format(new Date(`${raceDate}T00:00:00Z`));
+  const journeyStartLabel = journeyDate.format(new Date(`${journey.start_date}T00:00:00Z`));
   const accessibleTime = `${remaining.days} días, ${remaining.hours} horas, ${remaining.minutes} minutos y ${remaining.seconds} segundos`;
   const progressPercentage = Math.round(remaining.progress * 100);
 
@@ -96,6 +107,13 @@ export function RaceCountdown({ raceDate, initialDays }: { raceDate: string; ini
         <CountdownUnit label="Horas" value={remaining.hours} />
         <CountdownUnit label="Min" value={remaining.minutes} />
         <CountdownUnit label="Seg" value={remaining.seconds} />
+      </div>
+
+      <div className="race-countdown-journey" aria-label={`${journey.distance_km} kilómetros recorridos rumbo a Chicago`}>
+        <header><Footprints aria-hidden="true" size={17} /><span>Tu camino a Chicago</span></header>
+        <div><strong>{journey.distance_km.toLocaleString("es-ES")}</strong><small>km</small></div>
+        <p><b>{journey.runs}</b> {journey.runs === 1 ? "carrera" : "carreras"} desde el {journeyStartLabel}</p>
+        <span>Cada kilómetro te acercó a esta largada.</span>
       </div>
 
       <div

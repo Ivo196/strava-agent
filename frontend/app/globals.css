@@ -88,7 +88,7 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .connection span { width: 7px; height: 7px; background: #a8aaa5; border-radius: 50%; }
 .connection.connected span { background: var(--green); box-shadow: 0 0 0 4px rgba(15,118,110,.1); }
 .hero-status-stack { display: grid; justify-items: end; gap: 12px; }
-.race-countdown { position: relative; isolation: isolate; display: grid; grid-template: "heading live" auto "course course" auto / minmax(260px,.72fr) minmax(0,1.28fr); gap: 23px 34px; width: 100%; min-width: 0; padding: 24px 27px 20px; overflow: hidden; border: 1px solid rgba(120,198,255,.32); border-radius: 22px; background: radial-gradient(circle at 86% 8%,rgba(65,184,255,.16),transparent 32rem),linear-gradient(118deg,#0a100f 0%,#091315 54%,#0a1920 100%); box-shadow: inset 0 1px rgba(255,255,255,.045),0 22px 60px rgba(0,0,0,.28),0 0 0 1px rgba(5,10,11,.5); animation: raceCountdownIn .34s cubic-bezier(.16,1,.3,1) both; }
+.race-countdown { position: relative; isolation: isolate; display: grid; grid-template: "heading live" auto "journey course" auto / minmax(260px,.72fr) minmax(0,1.28fr); gap: 23px 34px; width: 100%; min-width: 0; padding: 24px 27px 20px; overflow: hidden; border: 1px solid rgba(120,198,255,.32); border-radius: 22px; background: radial-gradient(circle at 86% 8%,rgba(65,184,255,.16),transparent 32rem),linear-gradient(118deg,#0a100f 0%,#091315 54%,#0a1920 100%); box-shadow: inset 0 1px rgba(255,255,255,.045),0 22px 60px rgba(0,0,0,.28),0 0 0 1px rgba(5,10,11,.5); animation: raceCountdownIn .34s cubic-bezier(.16,1,.3,1) both; }
 .race-countdown::before { position: absolute; inset: 0; z-index: -2; pointer-events: none; content: ""; opacity: .34; background: repeating-linear-gradient(112deg,transparent 0 62px,rgba(120,198,255,.045) 62px 63px); mask-image: linear-gradient(90deg,transparent 8%,black 72%,transparent); }
 .race-countdown::after { position: absolute; inset: 16px auto 16px 0; width: 3px; z-index: 3; content: ""; border-radius: 0 999px 999px 0; background: linear-gradient(180deg,transparent,var(--orange) 18% 82%,transparent); box-shadow: 0 0 24px rgba(120,198,255,.48); }
 .race-countdown-skyline { position: absolute; z-index: -1; right: -4%; bottom: 36px; width: 68%; height: 102px; opacity: .46; fill: rgba(120,198,255,.026); stroke: rgba(120,198,255,.055); stroke-width: 1; vector-effect: non-scaling-stroke; }
@@ -117,6 +117,15 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
 .race-countdown-unit small { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: #748078; font-size: 7px; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
 .race-countdown-unit small i { width: 11px; height: 1px; background: #4f5d55; }
 .race-countdown-unit:first-child small i, .race-countdown-unit:last-child small i { background: #66bceb; }
+.race-countdown-journey { position: relative; z-index: 2; grid-area: journey; min-width: 0; padding: 15px 17px; overflow: hidden; border: 1px solid rgba(86,216,201,.27); border-radius: 15px; background: radial-gradient(circle at 100% 0%,rgba(86,216,201,.14),transparent 13rem),linear-gradient(145deg,rgba(86,216,201,.075),rgba(7,16,16,.72)); box-shadow: inset 0 1px rgba(255,255,255,.04),0 14px 35px rgba(0,0,0,.16); }
+.race-countdown-journey::after { position: absolute; right: -20px; bottom: -42px; width: 120px; height: 120px; border: 1px solid rgba(86,216,201,.09); border-radius: 50%; content: ""; }
+.race-countdown-journey header { display: flex; align-items: center; gap: 8px; color: #71decc; font-size: 8px; font-weight: 850; letter-spacing: .13em; text-transform: uppercase; }
+.race-countdown-journey > div { display: flex; align-items: baseline; gap: 8px; margin-top: 9px; }
+.race-countdown-journey > div strong { color: #f4faf6; font: 690 clamp(34px,3.2vw,46px)/.9 "Fira Code",ui-monospace,monospace; letter-spacing: -.085em; font-variant-numeric: tabular-nums; text-shadow: 0 0 25px rgba(86,216,201,.12); }
+.race-countdown-journey > div small { color: #70d9c8; font-size: 10px; font-weight: 850; text-transform: uppercase; }
+.race-countdown-journey p { margin: 8px 0 0; color: #83948a; font-size: 9px; }
+.race-countdown-journey p b { color: #c4d9cf; font-family: "Fira Code",ui-monospace,monospace; }
+.race-countdown-journey > span { display: block; margin-top: 7px; color: #a7b9ae; font-size: 9px; line-height: 1.4; }
 .race-countdown-course { position: relative; z-index: 2; grid-area: course; padding-top: 16px; border-top: 1px solid rgba(218,232,211,.075); }
 .race-countdown-course-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
 .race-countdown-course-heading > span { color: #7c8981; font-size: 8px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
@@ -1241,7 +1250,7 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
   .calendar-week-label { grid-template-columns: auto 1fr; align-items: center; }
   .coach-rail-section { border-bottom: 0; border-right: 1px solid var(--line); }
   .coach-rail-section:last-child { border-right: 0; }
-  .race-countdown { grid-template: "heading" auto "live" auto "course" auto / minmax(0,1fr); gap: 14px; padding: 18px 20px 15px; }
+  .race-countdown { grid-template: "heading" auto "live" auto "journey" auto "course" auto / minmax(0,1fr); gap: 14px; padding: 18px 20px 15px; }
   .race-countdown-title > span { display: none; }
   .race-countdown-live { gap: 7px; }
   .race-countdown-unit { padding-block: 9px; }
@@ -1312,7 +1321,7 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
   .feed-avatar { width: 36px; height: 36px; }
   .hero-status-stack { width: 100%; grid-template-columns: 1fr; justify-items: stretch; }
   .connection { display: none; }
-  .race-countdown { grid-template: "heading" auto "live" auto "course" auto / minmax(0,1fr); gap: 18px; padding: 18px 16px 16px; border-radius: 19px; }
+  .race-countdown { grid-template: "heading" auto "live" auto "journey" auto "course" auto / minmax(0,1fr); gap: 18px; padding: 18px 16px 16px; border-radius: 19px; }
   .race-countdown-skyline { right: -22%; bottom: 58px; width: 112%; opacity: .3; }
   .race-countdown-heading { grid-template-columns: 46px minmax(0,1fr); gap: 0 12px; }
   .race-countdown-icon { width: 46px; height: 46px; }
@@ -1326,6 +1335,8 @@ h1 { margin-bottom: 9px; max-width: 780px; font: 650 clamp(30px, 4vw, 46px)/1.04
   .race-countdown-unit strong { font-size: clamp(31px,10.5vw,41px); }
   .race-countdown-unit small { gap: 4px; margin-top: 7px; font-size: 6px; letter-spacing: .1em; }
   .race-countdown-unit small i { width: 6px; }
+  .race-countdown-journey { padding: 14px 15px; }
+  .race-countdown-journey > div strong { font-size: 36px; }
   .race-countdown-course { padding-top: 13px; }
   .race-countdown-course-heading { align-items: center; }
   .race-countdown-course-heading > span { max-width: 150px; line-height: 1.45; }

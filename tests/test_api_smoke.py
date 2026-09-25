@@ -73,6 +73,9 @@ def test_dashboard_and_plan_accept_simulated_today() -> None:
     assert dashboard.status_code == 200
     assert dashboard.json()["days_to_race"] == 48
     assert dashboard.json()["current_date"] == "2026-08-24"
+    assert dashboard.json()["training_journey"]["start_date"] == "2026-07-20"
+    assert dashboard.json()["training_journey"]["end_date"] == "2026-08-24"
+    assert dashboard.json()["training_journey"]["distance_km"] >= 0
     assert dashboard.json()["today_activity"]["count"] == 0
     assert plan.status_code == 200
     assert plan.json()["current_date"] == "2026-08-24"

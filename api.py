@@ -42,14 +42,14 @@ from strava_agent.metrics import (
     readiness_assessment,
     weekly_summary,
 )
-from strava_agent.run_progress import build_run_progress
+from strava_agent.run_progress import build_run_progress, get_training_journey
 from strava_agent.google_health import (
     GoogleHealthCredentials,
     GoogleHealthService,
     cardio_fitness_level,
     normalized_recovery_value,
 )
-from strava_agent.training_plan import RACE_DATE, build_adaptive_plan
+from strava_agent.training_plan import PLAN_START_DATE, RACE_DATE, build_adaptive_plan
 
 
 settings = get_settings()
@@ -470,11 +470,17 @@ def dashboard(today: date | None = None, scenario: str | None = None) -> dict[st
         activity_rows=rows,
         daily_checkins=database.list_daily_checkins(),
     )
+    training_journey = get_training_journey(
+        frame,
+        start_date=PLAN_START_DATE,
+        end_date=min(analysis_date, RACE_DATE),
+    )
     return {
         "current_date": analysis_date.isoformat(),
         "activity_count": len(rows),
         "days_to_race": days_to_race,
         "race_date": RACE_DATE.isoformat(),
+        "training_journey": training_journey,
         "profile": profile,
         "metrics": {key: round(float(value), 1) for key, value in metrics.items()},
         "readiness": {"status": status, "notes": notes},
