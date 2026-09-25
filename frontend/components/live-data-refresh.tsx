@@ -9,6 +9,7 @@ const VERSION_CHECK_INTERVAL_MS = 20 * 1000;
 export function LiveDataRefresh() {
   const router = useRouter();
   const pathname = usePathname();
+  const refreshesTrainingData = pathname === "/" || pathname === "/activities";
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
   const [refreshing, startRefresh] = useTransition();
   const versionRef = useRef<string | null>(null);
@@ -16,7 +17,7 @@ export function LiveDataRefresh() {
   const checkLocked = useRef(false);
 
   useEffect(() => {
-    if (pathname !== "/") return;
+    if (!refreshesTrainingData) return;
     let mounted = true;
 
     const checkForChanges = async () => {
@@ -60,9 +61,9 @@ export function LiveDataRefresh() {
       window.removeEventListener("online", checkForChanges);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [pathname, router]);
+  }, [refreshesTrainingData, router]);
 
-  if (pathname !== "/") return null;
+  if (!refreshesTrainingData) return null;
 
   return (
     <div className={refreshing ? "live-refresh live-refresh-active" : "live-refresh"} aria-live="polite">

@@ -553,13 +553,19 @@ def activities_progress(today: date | None = None) -> dict[str, Any]:
         (week for week in plan if week.start <= analysis_date <= week.end),
         None,
     )
-    return build_run_progress(
+    progress = build_run_progress(
         frame,
         today=analysis_date,
         planned_long_run_km=current_week.long_run_km if current_week else None,
         planned_runs_per_week=int(profile.get("running_days") or 3),
         plan_adherence_percent=current_week.completion_percentage if current_week else None,
     )
+    progress["training_journey"] = get_training_journey(
+        frame,
+        start_date=CHICAGO_MILEAGE_START_DATE,
+        end_date=min(analysis_date, RACE_DATE),
+    )
+    return progress
 
 
 @app.get("/api/activities/{activity_id}")

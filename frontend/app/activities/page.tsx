@@ -18,9 +18,9 @@ export default async function ActivitiesPage() {
           <h1>Carreras</h1>
           <p>Tu entrenamiento ordenado por semanas ISO, de lunes a domingo.</p>
         </div>
-        <div className="runs-summary" aria-label="Totales históricos contabilizados">
-          <span>{progress.lifetime.runs}<small>carreras contabilizadas</small></span>
-          <span>{progress.lifetime.distance_km.toFixed(0)}<small>km históricos</small></span>
+        <div className="runs-summary" aria-label="Kilómetros contabilizados rumbo a Chicago">
+          <span>{progress.training_journey.runs}<small>carreras desde mayo</small></span>
+          <span>{progress.training_journey.distance_km.toLocaleString("es-ES")}<small>km rumbo a Chicago</small></span>
         </div>
       </header>
 

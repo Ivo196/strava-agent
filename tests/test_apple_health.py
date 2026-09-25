@@ -196,6 +196,7 @@ def test_rest_receiver_requires_shared_key(tmp_path: Path, monkeypatch: pytest.M
         replace(api.settings, apple_health_api_key="test-private-key"),
     )
     client = TestClient(api.app)
+    version_before = client.get("/api/data-version").json()["version"]
 
     unauthorized = client.post("/api/import/apple-health", json=health_payload())
     accepted = client.post(
@@ -207,6 +208,27 @@ def test_rest_receiver_requires_shared_key(tmp_path: Path, monkeypatch: pytest.M
     assert unauthorized.status_code == 401
     assert accepted.status_code == 200
     assert accepted.json()["runs_imported"] == 1
+    version_after = client.get("/api/data-version").json()["version"]
+    activities = client.get("/api/activities").json()["activities"]
+    progress = client.get("/api/activities/progress?today=2026-07-17").json()
+    dashboard = client.get("/api/dashboard?today=2026-07-17").json()
+
+    assert version_after != version_before
+    assert len(activities) == 1
+    assert activities[0]["distance_km"] == pytest.approx(5)
+    assert progress["training_journey"] == dashboard["training_journey"]
+    assert progress["training_journey"]["runs"] == 1
+    assert progress["training_journey"]["distance_km"] == pytest.approx(5)
+
+    repeated = client.post(
+        "/api/import/apple-health",
+        json=health_payload(),
+        headers={"X-API-Key": "test-private-key"},
+    )
+
+    assert repeated.status_code == 200
+    assert repeated.json()["runs_updated"] == 1
+    assert len(client.get("/api/activities").json()["activities"]) == 1
 
 
 def test_overlapping_exports_deduplicate_a_workout_even_if_its_id_changes(tmp_path: Path) -> None:

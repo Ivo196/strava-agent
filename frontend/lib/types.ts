@@ -57,6 +57,13 @@ export type RunProgressData = {
   analysis_date: string;
   summary: { state: string; text: string };
   lifetime: { runs: number; distance_km: number };
+  training_journey: {
+    start_date: string;
+    end_date: string;
+    runs: number;
+    distance_km: number;
+    longest_run_km: number;
+  };
   periods: {
     days_7: RunPeriodComparison;
     days_28: RunPeriodComparison;
