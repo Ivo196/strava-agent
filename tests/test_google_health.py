@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -189,11 +190,13 @@ def test_sync_saves_available_google_health_points(tmp_path: Path) -> None:
     assert "activity_level.interval.start_time" in activity_level_request["filter"]
 
     service.sync()
+    repeated_status = database.google_health_status()
     incremental_request = [
         params
         for url, params in service.session.gets
         if "/daily-resting-heart-rate/" in url
     ][-1]
+    assert repeated_status["point_count"] == 2
     assert (date.today() - timedelta(days=2)).isoformat() in incremental_request["filter"]
 
 
@@ -234,6 +237,95 @@ def test_status_separates_passive_fitbit_samples_from_derived_data(
     assert status["fitbit_sensor_points"] == 1
     assert status["fitbit_sensor_first"] == "2026-07-18T12:00:00Z"
     assert status["consolidated_points"] == 1
+
+
+def test_google_health_status_reads_persisted_aggregates(
+    tmp_path: Path,
+) -> None:
+    database = Database(tmp_path / "coach.db")
+    database.upsert_google_health_data_point(
+        "heart-rate",
+        "sensor-sample",
+        "2026-07-18T12:00:00Z",
+        "FITBIT",
+        {"heartRate": {"beatsPerMinute": 62}},
+    )
+    database.upsert_google_health_data_point(
+        "daily-vo2-max",
+        "derived-value",
+        "2026-07-18",
+        "FITBIT",
+        {"dailyVo2Max": {"vo2Max": 54.9}},
+    )
+
+    with database.connect() as connection:
+        connection.execute("DROP TABLE google_health_data_points")
+
+    status = database.google_health_status()
+
+    assert status["point_count"] == 2
+    assert status["fitbit_sensor_points"] == 1
+    assert status["fitbit_sensor_first"] == "2026-07-18T12:00:00Z"
+    assert status["fitbit_sensor_last"] == "2026-07-18T12:00:00Z"
+    assert status["consolidated_points"] == 1
+    assert status["data_types"] == [
+        {"data_type": "daily-vo2-max", "count": 1, "latest": "2026-07-18"},
+        {
+            "data_type": "heart-rate",
+            "count": 1,
+            "latest": "2026-07-18T12:00:00Z",
+        },
+    ]
+
+
+def test_existing_google_health_points_are_backfilled_into_summary(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "legacy.db"
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """CREATE TABLE google_health_data_points (
+                   data_type TEXT NOT NULL,
+                   point_key TEXT NOT NULL,
+                   recorded_at TEXT NOT NULL,
+                   source TEXT NOT NULL DEFAULT '',
+                   value_json TEXT NOT NULL,
+                   synced_at TEXT NOT NULL,
+                   PRIMARY KEY(data_type, point_key)
+               )"""
+        )
+        connection.executemany(
+            "INSERT INTO google_health_data_points VALUES (?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    "heart-rate",
+                    "sample-1",
+                    "2026-07-18T12:00:00Z",
+                    "FITBIT",
+                    "{}",
+                    "2026-07-18T12:01:00Z",
+                ),
+                (
+                    "heart-rate",
+                    "sample-2",
+                    "2026-07-18T12:01:00Z",
+                    "FITBIT",
+                    "{}",
+                    "2026-07-18T12:02:00Z",
+                ),
+            ],
+        )
+
+    database = Database(database_path)
+    with database.connect() as connection:
+        connection.execute("DROP TABLE google_health_data_points")
+
+    status = database.google_health_status()
+
+    assert status["point_count"] == 2
+    assert status["fitbit_sensor_points"] == 2
+    assert status["fitbit_sensor_first"] == "2026-07-18T12:00:00Z"
+    assert status["fitbit_sensor_last"] == "2026-07-18T12:01:00Z"
 
 
 def test_health_points_can_be_filtered_by_source(tmp_path: Path) -> None:

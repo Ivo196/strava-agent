@@ -179,6 +179,15 @@ ON google_health_data_points(data_type, recorded_at);
 CREATE INDEX IF NOT EXISTS idx_google_health_data_points_source_type_recorded
 ON google_health_data_points(source, data_type, recorded_at);
 
+CREATE TABLE IF NOT EXISTS google_health_data_summary (
+    data_type TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT '',
+    point_count INTEGER NOT NULL DEFAULT 0,
+    first_recorded_at TEXT,
+    latest_recorded_at TEXT,
+    PRIMARY KEY(data_type, source)
+);
+
 CREATE TABLE IF NOT EXISTS google_health_syncs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     received_at TEXT NOT NULL,
@@ -231,6 +240,7 @@ class Database:
                 connection.execute("ALTER TABLE athlete_profile ADD COLUMN goal_pace_seconds_km INTEGER")
             self._ensure_apple_health_sync_details(connection)
             self._ensure_apple_health_metric_identities(connection)
+            self._ensure_google_health_data_summary(connection)
 
     @staticmethod
     def _ensure_apple_health_sync_details(connection: sqlite3.Connection) -> None:
@@ -298,6 +308,102 @@ class Database:
         connection.execute(
             """CREATE UNIQUE INDEX IF NOT EXISTS idx_apple_health_metrics_identity
                ON apple_health_metrics(identity_key)"""
+        )
+
+    @staticmethod
+    def _ensure_google_health_data_summary(connection: sqlite3.Connection) -> None:
+        summary_exists = connection.execute(
+            "SELECT 1 FROM google_health_data_summary LIMIT 1"
+        ).fetchone()
+        data_exists = connection.execute(
+            "SELECT 1 FROM google_health_data_points LIMIT 1"
+        ).fetchone()
+        if summary_exists is None and data_exists is not None:
+            connection.execute(
+                """INSERT INTO google_health_data_summary(
+                       data_type, source, point_count,
+                       first_recorded_at, latest_recorded_at
+                   )
+                   SELECT data_type, source, COUNT(*),
+                          MIN(recorded_at), MAX(recorded_at)
+                   FROM google_health_data_points
+                   GROUP BY data_type, source"""
+            )
+
+    @staticmethod
+    def _merge_google_health_summary(
+        connection: sqlite3.Connection,
+        data_type: str,
+        source: str,
+        point_count: int,
+        first_recorded_at: str,
+        latest_recorded_at: str,
+    ) -> None:
+        connection.execute(
+            """INSERT INTO google_health_data_summary(
+                   data_type, source, point_count,
+                   first_recorded_at, latest_recorded_at
+               ) VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(data_type, source) DO UPDATE SET
+                   point_count=google_health_data_summary.point_count + excluded.point_count,
+                   first_recorded_at=CASE
+                       WHEN google_health_data_summary.first_recorded_at IS NULL
+                         OR excluded.first_recorded_at < google_health_data_summary.first_recorded_at
+                       THEN excluded.first_recorded_at
+                       ELSE google_health_data_summary.first_recorded_at
+                   END,
+                   latest_recorded_at=CASE
+                       WHEN google_health_data_summary.latest_recorded_at IS NULL
+                         OR excluded.latest_recorded_at > google_health_data_summary.latest_recorded_at
+                       THEN excluded.latest_recorded_at
+                       ELSE google_health_data_summary.latest_recorded_at
+                   END""",
+            (
+                data_type,
+                source,
+                point_count,
+                first_recorded_at,
+                latest_recorded_at,
+            ),
+        )
+
+    @staticmethod
+    def _refresh_google_health_summary_group(
+        connection: sqlite3.Connection,
+        data_type: str,
+        source: str,
+    ) -> None:
+        aggregate = connection.execute(
+            """SELECT COUNT(*) AS point_count,
+                      MIN(recorded_at) AS first_recorded_at,
+                      MAX(recorded_at) AS latest_recorded_at
+               FROM google_health_data_points
+               WHERE data_type = ? AND source = ?""",
+            (data_type, source),
+        ).fetchone()
+        if aggregate is None or not int(aggregate["point_count"]):
+            connection.execute(
+                """DELETE FROM google_health_data_summary
+                   WHERE data_type = ? AND source = ?""",
+                (data_type, source),
+            )
+            return
+        connection.execute(
+            """INSERT INTO google_health_data_summary(
+                   data_type, source, point_count,
+                   first_recorded_at, latest_recorded_at
+               ) VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(data_type, source) DO UPDATE SET
+                   point_count=excluded.point_count,
+                   first_recorded_at=excluded.first_recorded_at,
+                   latest_recorded_at=excluded.latest_recorded_at""",
+            (
+                data_type,
+                source,
+                int(aggregate["point_count"]),
+                aggregate["first_recorded_at"],
+                aggregate["latest_recorded_at"],
+            ),
         )
 
     @contextmanager
@@ -954,11 +1060,11 @@ class Database:
         point: dict[str, Any],
     ) -> bool:
         with self.connect() as connection:
-            existed = connection.execute(
-                """SELECT 1 FROM google_health_data_points
+            existing = connection.execute(
+                """SELECT recorded_at, source FROM google_health_data_points
                    WHERE data_type = ? AND point_key = ?""",
                 (data_type, point_key),
-            ).fetchone() is not None
+            ).fetchone()
             connection.execute(
                 """INSERT INTO google_health_data_points(
                        data_type, point_key, recorded_at, source, value_json, synced_at
@@ -977,7 +1083,31 @@ class Database:
                     utc_now_iso(),
                 ),
             )
-        return existed
+            normalized_source = source or ""
+            if existing is None:
+                self._merge_google_health_summary(
+                    connection,
+                    data_type,
+                    normalized_source,
+                    1,
+                    recorded_at,
+                    recorded_at,
+                )
+            elif (
+                str(existing["recorded_at"]) != recorded_at
+                or str(existing["source"]) != normalized_source
+            ):
+                affected_groups = {
+                    (data_type, str(existing["source"])),
+                    (data_type, normalized_source),
+                }
+                for affected_type, affected_source in affected_groups:
+                    self._refresh_google_health_summary_group(
+                        connection,
+                        affected_type,
+                        affected_source,
+                    )
+        return existing is not None
 
     def upsert_google_health_data_points_batch(
         self,
@@ -987,12 +1117,15 @@ class Database:
         imported = updated = 0
         synced_at = utc_now_iso()
         with self.connect() as connection:
+            summary_additions: dict[tuple[str, str], tuple[int, str, str]] = {}
+            summary_refreshes: set[tuple[str, str]] = set()
             for point_key, recorded_at, source, point in points:
-                existed = connection.execute(
-                    """SELECT 1 FROM google_health_data_points
+                normalized_source = source or ""
+                existing = connection.execute(
+                    """SELECT recorded_at, source FROM google_health_data_points
                        WHERE data_type = ? AND point_key = ?""",
                     (data_type, point_key),
-                ).fetchone() is not None
+                ).fetchone()
                 connection.execute(
                     """INSERT INTO google_health_data_points(
                            data_type, point_key, recorded_at, source, value_json, synced_at
@@ -1011,10 +1144,49 @@ class Database:
                         synced_at,
                     ),
                 )
-                if existed:
+                if existing is not None:
                     updated += 1
+                    if (
+                        str(existing["recorded_at"]) != recorded_at
+                        or str(existing["source"]) != normalized_source
+                    ):
+                        summary_refreshes.update(
+                            {
+                                (data_type, str(existing["source"])),
+                                (data_type, normalized_source),
+                            }
+                        )
                 else:
                     imported += 1
+                    summary_key = (data_type, normalized_source)
+                    count, first_at, latest_at = summary_additions.get(
+                        summary_key,
+                        (0, recorded_at, recorded_at),
+                    )
+                    summary_additions[summary_key] = (
+                        count + 1,
+                        min(first_at, recorded_at),
+                        max(latest_at, recorded_at),
+                    )
+            for (summary_type, summary_source), (
+                count,
+                first_at,
+                latest_at,
+            ) in summary_additions.items():
+                self._merge_google_health_summary(
+                    connection,
+                    summary_type,
+                    summary_source,
+                    count,
+                    first_at,
+                    latest_at,
+                )
+            for summary_type, summary_source in summary_refreshes:
+                self._refresh_google_health_summary_group(
+                    connection,
+                    summary_type,
+                    summary_source,
+                )
         return imported, updated
 
     def record_google_health_sync(
@@ -1036,33 +1208,35 @@ class Database:
             sync = connection.execute(
                 "SELECT * FROM google_health_syncs ORDER BY id DESC LIMIT 1"
             ).fetchone()
-            total = connection.execute(
-                "SELECT COUNT(*) AS count FROM google_health_data_points"
-            ).fetchone()
             types = connection.execute(
-                """SELECT data_type, COUNT(*) AS count,
-                          MAX(recorded_at) AS latest
-                   FROM google_health_data_points
+                """SELECT data_type, SUM(point_count) AS count,
+                          MAX(latest_recorded_at) AS latest
+                   FROM google_health_data_summary
                    GROUP BY data_type ORDER BY data_type"""
             ).fetchall()
             fitbit_sensor = connection.execute(
-                """SELECT COUNT(*) AS count, MIN(recorded_at) AS first_at,
-                          MAX(recorded_at) AS last_at
-                   FROM google_health_data_points
-                   WHERE source = 'FITBIT'
-                     AND data_type = 'heart-rate'"""
+                """SELECT point_count AS count,
+                          first_recorded_at AS first_at,
+                          latest_recorded_at AS last_at
+                   FROM google_health_data_summary
+                   WHERE source = 'FITBIT' AND data_type = 'heart-rate'"""
             ).fetchone()
+            connected = connection.execute(
+                "SELECT 1 FROM google_health_oauth WHERE id = 1"
+            ).fetchone() is not None
         last_sync = dict(sync) if sync else None
         if last_sync:
             last_sync["errors"] = json.loads(last_sync.pop("errors_json"))
+        point_count = sum(int(row["count"]) for row in types)
+        fitbit_sensor_count = int(fitbit_sensor["count"]) if fitbit_sensor else 0
         return {
-            "connected": self.get_google_health_tokens() is not None,
+            "connected": connected,
             "last_sync": last_sync,
-            "point_count": int(total["count"]),
-            "fitbit_sensor_points": int(fitbit_sensor["count"]),
-            "fitbit_sensor_first": fitbit_sensor["first_at"],
-            "fitbit_sensor_last": fitbit_sensor["last_at"],
-            "consolidated_points": int(total["count"]) - int(fitbit_sensor["count"]),
+            "point_count": point_count,
+            "fitbit_sensor_points": fitbit_sensor_count,
+            "fitbit_sensor_first": fitbit_sensor["first_at"] if fitbit_sensor else None,
+            "fitbit_sensor_last": fitbit_sensor["last_at"] if fitbit_sensor else None,
+            "consolidated_points": point_count - fitbit_sensor_count,
             "data_types": [dict(row) for row in types],
         }
 
